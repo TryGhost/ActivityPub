@@ -14,6 +14,7 @@ import {
     type Metadata,
     OutboxType,
     Post,
+    PostContentWarning,
     PostSummary,
     PostTitle,
 } from '@/post/post.entity';
@@ -32,6 +33,8 @@ interface PostRow {
     title: string | null;
     excerpt: string | null;
     summary: string | null;
+    sensitive: 0 | 1 | boolean;
+    content_warning: string | null;
     content: string | null;
     url: string;
     image_url: string | null;
@@ -106,6 +109,8 @@ export class KnexPostRepository {
                 'posts.title',
                 'posts.excerpt',
                 'posts.summary',
+                'posts.sensitive',
+                'posts.content_warning',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',
@@ -328,6 +333,8 @@ export class KnexPostRepository {
                         title: post.title,
                         excerpt: post.excerpt,
                         summary: post.summary,
+                        sensitive: post.sensitive,
+                        content_warning: post.contentWarning,
                         content: post.content,
                         image_url: post.imageUrl?.href || null,
                         url: post.url.href,
@@ -605,6 +612,8 @@ export class KnexPostRepository {
                 title: post.title,
                 excerpt: post.excerpt,
                 summary: post.summary,
+                sensitive: post.sensitive,
+                content_warning: post.contentWarning,
                 content: post.content,
                 url: post.url?.href,
                 image_url: post.imageUrl?.href ?? null,
@@ -1027,6 +1036,10 @@ export class KnexPostRepository {
             new URL(row.ap_id),
             row.deleted_at !== null,
             row.updated_at ? new Date(row.updated_at) : null,
+            Boolean(row.sensitive),
+            row.content_warning
+                ? PostContentWarning.parse(row.content_warning)
+                : null,
         );
 
         if (post.id) {
@@ -1050,6 +1063,8 @@ export class KnexPostRepository {
                 'posts.title',
                 'posts.excerpt',
                 'posts.summary',
+                'posts.sensitive',
+                'posts.content_warning',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',

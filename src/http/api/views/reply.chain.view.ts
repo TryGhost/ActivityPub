@@ -29,6 +29,8 @@ const PostRowSchema = z.object({
     post_title: z.string().nullable(),
     post_excerpt: z.string().nullable(),
     post_summary: z.string().nullable(),
+    post_sensitive: z.union([z.literal(0), z.literal(1), z.boolean()]),
+    post_content_warning: z.string().nullable(),
     post_content: z.string().nullable(),
     post_url: z.string(),
     post_image_url: z.string().nullable(),
@@ -80,6 +82,8 @@ export class ReplyChainView {
                 title: '',
                 excerpt: '',
                 summary: null,
+                sensitive: false,
+                contentWarning: null,
                 content: '',
                 url: result.post_url,
                 featureImageUrl: null,
@@ -116,6 +120,8 @@ export class ReplyChainView {
             title: normalizePlainText(result.post_title ?? ''),
             excerpt: result.post_excerpt ?? '',
             summary: result.post_summary ?? null,
+            sensitive: Boolean(result.post_sensitive),
+            contentWarning: result.post_content_warning ?? null,
             content: result.post_content ?? '',
             url: result.post_url,
             featureImageUrl: result.post_image_url ?? null,
@@ -204,6 +210,8 @@ export class ReplyChainView {
                     'posts.title as post_title',
                     'posts.excerpt as post_excerpt',
                     'posts.summary as post_summary',
+                    'posts.sensitive as post_sensitive',
+                    'posts.content_warning as post_content_warning',
                     'posts.content as post_content',
                     'posts.url as post_url',
                     'posts.image_url as post_image_url',
@@ -271,8 +279,6 @@ export class ReplyChainView {
                         contextAccountId,
                     );
                 })
-                .leftJoin('users', 'users.account_id', 'author_account.id')
-                .leftJoin('sites', 'sites.id', 'users.site_id')
                 .leftJoin('likes', function () {
                     this.on('likes.post_id', 'posts.id').andOnVal(
                         'likes.account_id',

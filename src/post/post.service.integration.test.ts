@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    Article,
     Collection,
     Document,
     Image,
@@ -746,6 +747,111 @@ describe('PostService', () => {
                 type: 'Image',
                 url: attachmentUrl,
             });
+        });
+
+        it('should persist sensitive flag for incoming sensitive posts', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const apId = new URL('https://example.com/post/sensitive');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: 'Test sensitive post',
+                    sensitive: true,
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.sensitive).toBe(true);
+
+            const savedPost = await postRepository.getByApId(apId);
+            expect(savedPost?.sensitive).toBe(true);
+        });
+
+        it('treats the summary as a content warning for sensitive posts', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const apId = new URL('https://example.com/post/sensitive-cw');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: 'Test sensitive post',
+                    sensitive: true,
+                    summary: 'Eye contact',
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.contentWarning).toBe('Eye contact');
+            expect(post.summary).toBeNull();
+
+            const savedPost = await postRepository.getByApId(apId);
+            expect(savedPost?.contentWarning).toBe('Eye contact');
+            expect(savedPost?.summary).toBeNull();
+        });
+
+        it('should persist sensitive flag for incoming sensitive articles', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const apId = new URL('https://example.com/articles/sensitive');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Article({
+                    id: apId,
+                    content: 'Test sensitive article',
+                    sensitive: true,
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.type).toBe(PostType.Article);
+            expect(post.sensitive).toBe(true);
+        });
+
+        it('should default incoming posts to not sensitive', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const apId = new URL('https://example.com/post/not-sensitive');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: 'Test non-sensitive post',
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.sensitive).toBe(false);
         });
 
         it('should handle attachments correctly for incoming posts with Document type attachment', async () => {

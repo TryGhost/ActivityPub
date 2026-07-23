@@ -61,6 +61,7 @@ import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
+import { PreferencesController } from '@/http/api/preferences.controller';
 import { RecommendationsController } from '@/http/api/recommendations.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
@@ -94,6 +95,8 @@ import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
 import { ImageStorageService } from '@/storage/image-storage.service';
+import { KnexUserRepository } from '@/user/user.repository.knex';
+import { UserService } from '@/user/user.service';
 
 type RedisMode = 'cluster' | 'standalone';
 
@@ -366,8 +369,13 @@ export function registerDependencies(
         'postRepository',
         asClass(KnexPostRepository).singleton(),
     );
+    container.register(
+        'userRepository',
+        asClass(KnexUserRepository).singleton(),
+    );
     container.register('accountService', asClass(AccountService).singleton());
     container.register('postService', asClass(PostService).singleton());
+    container.register('userService', asClass(UserService).singleton());
     container.register(
         'ghostPostService',
         asClass(GhostPostService).singleton(),
@@ -559,6 +567,10 @@ export function registerDependencies(
     container.register(
         'notificationController',
         asClass(NotificationController).singleton(),
+    );
+    container.register(
+        'preferencesController',
+        asClass(PreferencesController).singleton(),
     );
 
     container.register(

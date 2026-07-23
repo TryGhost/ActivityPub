@@ -82,6 +82,8 @@ export class NotificationController {
                           id: result.post_ap_id,
                           type: postTypeMap[Number(result.post_type)],
                           title: normalizePlainText(result.post_title ?? ''),
+                          sensitive: Boolean(result.post_sensitive),
+                          contentWarning: result.post_content_warning ?? null,
                           content: result.post_content,
                           url: result.post_url,
                           likeCount: result.post_like_count || 0,
@@ -108,6 +110,9 @@ export class NotificationController {
                           title: normalizePlainText(
                               result.in_reply_to_post_title ?? '',
                           ),
+                          sensitive: Boolean(result.in_reply_to_post_sensitive),
+                          contentWarning:
+                              result.in_reply_to_post_content_warning ?? null,
                           content: result.in_reply_to_post_content,
                           url: result.in_reply_to_post_url,
                       }

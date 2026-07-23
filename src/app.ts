@@ -116,6 +116,7 @@ import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
+import { PreferencesController } from '@/http/api/preferences.controller';
 import { RecommendationsController } from '@/http/api/recommendations.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
@@ -978,6 +979,10 @@ routeRegistry.registerController('feedController', FeedController);
 routeRegistry.registerController(
     'notificationController',
     NotificationController,
+);
+routeRegistry.registerController(
+    'preferencesController',
+    PreferencesController,
 );
 routeRegistry.registerController('mediaController', MediaController);
 routeRegistry.registerController('blockController', BlockController);

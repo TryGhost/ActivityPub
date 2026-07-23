@@ -45,6 +45,8 @@ export function postToDTO(
         title: normalizePlainText(post.title ?? ''),
         excerpt: post.excerpt ?? '',
         summary: post.summary ?? null,
+        sensitive: post.sensitive,
+        contentWarning: post.contentWarning ?? null,
         content: post.content ?? '',
         url: post.url.href,
         featureImageUrl: post.imageUrl?.href ?? null,
