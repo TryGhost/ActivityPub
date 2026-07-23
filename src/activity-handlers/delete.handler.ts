@@ -7,6 +7,24 @@ import { exhaustiveCheck, getError, isError } from '@/core/result';
 import { getRelatedActivities } from '@/db';
 import type { PostService } from '@/post/post.service';
 
+/**
+ * Check whether a Delete activity is an account deletion, i.e. its object
+ * references the actor itself
+ *
+ * We don't process account deletions, and they are fanned out to every
+ * site the deleted account ever touched — so they must be recognised
+ * without any network I/O (the actor is deleted; fetching it can only
+ * return 410 Gone)
+ */
+function isAccountDelete(deleteActivity: Delete): boolean {
+    const objectId = deleteActivity.objectId;
+    const actorId = deleteActivity.actorId;
+
+    return (
+        objectId !== null && actorId !== null && objectId.href === actorId.href
+    );
+}
+
 export class DeleteHandler {
     constructor(
         private readonly postService: PostService,
@@ -19,6 +37,13 @@ export class DeleteHandler {
         ctx.data.logger.debug('Parsed delete object', { parsed });
         if (!deleteActivity.id) {
             ctx.data.logger.debug('Missing delete id - exit');
+            return;
+        }
+
+        if (isAccountDelete(deleteActivity)) {
+            ctx.data.logger.debug(
+                'Delete activity is an account deletion, exit early',
+            );
             return;
         }
 
