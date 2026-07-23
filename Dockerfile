@@ -21,4 +21,6 @@ RUN pnpm build
 
 EXPOSE 8080
 
-CMD ["node", "dist/app.js"]
+# Node 24's default heap ceiling (~50% of container memory) is too small for
+# our working set and causes fatal heap OOMs; 75% leaves room for off-heap usage
+CMD ["node", "--max-old-space-size-percentage=75", "dist/app.js"]
