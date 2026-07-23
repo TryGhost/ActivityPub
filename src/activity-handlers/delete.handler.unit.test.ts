@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Delete, Note, Person } from '@fedify/vocab';
 
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContext } from '@/app';
+import { ok } from '@/core/result';
 import type { PostService } from '@/post/post.service';
+import { createTestExternalAccount } from '@/test/account-entity-test-helpers';
 import { DeleteHandler } from './delete.handler';
 
 vi.mock('@/db', () => ({
@@ -29,7 +32,22 @@ describe('DeleteHandler', () => {
 
     const actor = new Person({ id: actorApId, preferredUsername: 'alice' });
 
-    beforeEach(() => {
+    let senderAccount: Account;
+
+    beforeEach(async () => {
+        senderAccount = await createTestExternalAccount(456, {
+            username: 'alice',
+            name: 'Alice',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+            apId: actorApId,
+            apFollowers: null,
+            apInbox: new URL('https://example.com/users/alice/inbox'),
+        });
+
         mockLogger = {
             debug: vi.fn(),
             error: vi.fn(),
@@ -40,11 +58,11 @@ describe('DeleteHandler', () => {
         };
 
         mockPostService = {
-            deleteByApId: vi.fn(),
+            deleteByApId: vi.fn().mockResolvedValue(ok(true)),
         } as unknown as PostService;
 
         mockAccountService = {
-            getByApId: vi.fn().mockResolvedValue(null),
+            getByApId: vi.fn().mockResolvedValue(senderAccount),
         } as unknown as AccountService;
 
         mockContext = {
@@ -138,6 +156,10 @@ describe('DeleteHandler', () => {
         await handler.handle(mockContext, deleteActivity);
 
         expect(mockAccountService.getByApId).toHaveBeenCalledWith(actorApId);
+        expect(mockPostService.deleteByApId).toHaveBeenCalledWith(
+            noteApId,
+            senderAccount,
+        );
     });
 
     it('should process Delete activities with an embedded post object', async () => {
@@ -150,5 +172,9 @@ describe('DeleteHandler', () => {
         await handler.handle(mockContext, deleteActivity);
 
         expect(mockAccountService.getByApId).toHaveBeenCalledWith(actorApId);
+        expect(mockPostService.deleteByApId).toHaveBeenCalledWith(
+            noteApId,
+            senderAccount,
+        );
     });
 });
