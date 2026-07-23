@@ -1,4 +1,4 @@
-import type { Actor, Delete } from '@fedify/vocab';
+import type { Delete } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -22,18 +22,8 @@ export class DeleteHandler {
             return;
         }
 
-        let sender: Actor | null = null;
-        try {
-            sender = await deleteActivity.getActor(ctx);
-        } catch (error) {
-            ctx.data.logger.debug(
-                'Error fetching sender from delete activity',
-                { error },
-            );
-            return;
-        }
-
-        if (sender === null || sender.id === null) {
+        const senderId = deleteActivity.actorId;
+        if (senderId === null) {
             ctx.data.logger.debug('Delete sender missing, exit early');
             return;
         }
@@ -43,10 +33,15 @@ export class DeleteHandler {
             return;
         }
 
+        // Deletes are fanned out to every site the deleted actor ever
+        // touched, so most reference an actor we have never stored — and
+        // fetching a deleted actor only yields a 410. Check the database
+        // before any network I/O and drop the activity if the sender is
+        // unknown.
         let senderAccount: Account | null = null;
 
         try {
-            senderAccount = await this.accountService.getByApId(sender.id);
+            senderAccount = await this.accountService.getStoredByApId(senderId);
         } catch (error) {
             ctx.data.logger.error('Error fetching sender account', { error });
             return;

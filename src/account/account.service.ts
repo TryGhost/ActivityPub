@@ -102,6 +102,14 @@ export class AccountService {
     ) {}
 
     /**
+     * Get an Account by the ActivityPub ID from the database only —
+     * never fetches from the remote server
+     */
+    async getStoredByApId(id: URL): Promise<Account | null> {
+        return this.accountRepository.getByApId(id);
+    }
+
+    /**
      * @deprecated use `ensureByApId`
      * Get an Account by the ActivityPub ID
      * If it is not found locally in our database it will be
