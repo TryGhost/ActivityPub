@@ -66,7 +66,7 @@
       matchPackageNames: [
         '@types/node',
       ],
-      allowedVersions: '<25',
+      allowedVersions: '<23',
     },
   ],
 }
