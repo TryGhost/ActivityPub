@@ -116,9 +116,6 @@ importers:
       uuid:
         specifier: 14.0.1
         version: 14.0.1
-      x-forwarded-fetch:
-        specifier: 0.2.0
-        version: 0.2.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -3857,9 +3854,6 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
-
-  x-forwarded-fetch@0.2.0:
-    resolution: {integrity: sha512-2qsguQrLHFvP3/rnvxSSaw3DlK9eOOx9iyL+Qv+1YH8jzq6nbRk+P6gyFFNdWanyusyCHuE3/CnX3+gmLeYEeg==}
 
   xml-naming@0.3.0:
     resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
@@ -7737,8 +7731,6 @@ snapshots:
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
-
-  x-forwarded-fetch@0.2.0: {}
 
   xml-naming@0.3.0: {}
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createFetchHandler } from './fetch-handler';
 
@@ -106,6 +106,45 @@ describe('createFetchHandler', () => {
             expect(request.headers.get('accept')).toBe(
                 'application/activity+json',
             );
+        }
+    });
+
+    it('should preserve the body of a POST request', async () => {
+        const body = JSON.stringify({ type: 'Create', id: 'https://a.b/c' });
+
+        const request = await dispatch(
+            'production',
+            new Request('http://example.com/inbox', {
+                method: 'POST',
+                headers: { 'content-type': 'application/ld+json' },
+                body,
+            }),
+        );
+
+        expect(request.method).toBe('POST');
+        expect(await request.text()).toBe(body);
+    });
+
+    // Node >= 24.16.0 permanently retains any body that goes through
+    // Blob.prototype.stream() (https://github.com/nodejs/node/issues/63574),
+    // which is why the vendored x-forwarded-request passes bytes instead of a
+    // Blob. Guard against the Blob path creeping back in.
+    it('should not stream the request body through a Blob', async () => {
+        const streamSpy = vi.spyOn(Blob.prototype, 'stream');
+
+        try {
+            await dispatch(
+                'production',
+                new Request('http://example.com/inbox', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/ld+json' },
+                    body: '{"type":"Like"}',
+                }),
+            );
+
+            expect(streamSpy).not.toHaveBeenCalled();
+        } finally {
+            streamSpy.mockRestore();
         }
     });
 });

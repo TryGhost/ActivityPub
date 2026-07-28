@@ -1,6 +1,5 @@
-import { behindProxy } from 'x-forwarded-fetch';
-
 import { isLocalEnvironment } from '@/helpers/environment';
+import { behindProxy } from '@/http/x-forwarded-request';
 
 type FetchHandler = (request: Request) => Response | Promise<Response>;
 
