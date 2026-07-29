@@ -1,0 +1,17 @@
+.git
+.github
+**/node_modules
+dist
+coverage
+
+adr
+docs
+dev
+features
+cucumber.js
+migrate
+
+*.md
+.env*
+.vscode
+.idea

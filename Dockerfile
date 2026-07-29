@@ -1,26 +1,52 @@
-FROM node:22.23.2-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
+FROM node:22.23.2-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
 
-RUN apk add python3 g++ make
-RUN apk add --no-cache ca-certificates
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /opt/activitypub
 
 RUN corepack enable
 
-COPY package.json .
-COPY pnpm-lock.yaml .
+# All dependencies (prod + dev). Shared by the dev/test image and the build.
+# pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
+# settings, so pnpm needs it present to resolve the lockfile.
+FROM base AS deps
 
-RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-COPY tsconfig.json .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
 
+# Production-only dependencies, for the runtime image.
+FROM base AS prod-deps
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts --prod
+
+# Image used by docker compose for local dev and the test suites. Also produces
+# the bundle that the production image ships — `build:watch` needs dist/app.js
+# to exist before it starts, so the bundle is baked in here either way.
+FROM deps AS dev
+
+COPY tsconfig.json vitest.config.ts ./
 COPY src ./src
-COPY vitest.config.ts vitest.config.ts
 
-ENV NODE_ENV=production
 RUN pnpm build
 
-RUN apk del python3 g++ make
+EXPOSE 8080
+
+CMD ["pnpm", "build:watch"]
+
+FROM base AS production
+
+ENV NODE_ENV=production
+
+# package.json is needed at runtime for its `"type": "module"` — the bundle is ESM.
+COPY package.json ./
+COPY --from=prod-deps /opt/activitypub/node_modules ./node_modules
+COPY --from=dev /opt/activitypub/dist ./dist
 
 EXPOSE 8080
 
