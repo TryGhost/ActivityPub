@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 if [ -n "$MYSQL_DB" ]; then
-    echo "Running migrate -path migrations -database $MYSQL_DB up"
+    echo "Running migrate -path migrations -database <REDACTED> up"
     migrate -path migrations -database "$MYSQL_DB" up
 elif [ -n "$DB_HOST" ]; then
     echo "Running migrate -path migrations -database mysql://$DB_USER:<REDACTED>@tcp($DB_HOST:$DB_PORT)/$DB_NAME up"

@@ -1,18 +1,13 @@
-FROM docker.io/library/debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
-ARG TARGETARCH
+FROM docker.io/library/alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
-RUN apt-get update -y && \
-    apt-get install -y curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -O https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-${TARGETARCH}.tar.gz && \
-    curl -fsSL -O https://github.com/golang-migrate/migrate/releases/download/v4.17.1/sha256sum.txt && \
-    grep " migrate.linux-${TARGETARCH}.tar.gz$" sha256sum.txt | sha256sum -c - && \
-    tar xvzf migrate.linux-${TARGETARCH}.tar.gz migrate && \
-    rm migrate.linux-${TARGETARCH}.tar.gz sha256sum.txt && \
-    mv migrate /usr/bin/
+# Binary is copied from golang-migrate's published image rather than their
+# release tarball so Renovate tracks the digest. Not used as a base: it sets
+# ENTRYPOINT ["migrate"] and runs on a different version of Alpine.
+COPY --from=docker.io/migrate/migrate:v4.17.1@sha256:de154de4b7f9d0d751aacb1ec6023f5fc96f874eb88b65d050f761a33376aa4b /usr/local/bin/migrate /usr/bin/migrate
 
 COPY bin /usr/local/bin
 
+# bin/up and bin/create use a relative `migrations` path, so cwd stays at /.
 COPY ./migrations /migrations
 
 ENV MYSQL_DB=""
