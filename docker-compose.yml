@@ -1,6 +1,8 @@
 services:
   activitypub:
-    build: .
+    build:
+      context: .
+      target: dev
     ports:
       - "8080:8080"
       - "9229:9229"
@@ -124,7 +126,9 @@ services:
   activitypub-testing:
     networks:
       - test_network
-    build: .
+    build:
+      context: .
+      target: dev
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
@@ -188,7 +192,9 @@ services:
   cucumber-tests:
     networks:
       - test_network
-    build: .
+    build:
+      context: .
+      target: dev
     volumes:
       - ./features:/opt/activitypub/features
       - ./cucumber.js:/opt/activitypub/cucumber.js
