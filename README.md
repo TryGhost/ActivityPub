@@ -116,7 +116,7 @@ See [AGENTS.md](AGENTS.md) for the full list and testing conventions.
 
 Run `pnpm migrate` to apply pending `up` migrations against your dev db (this also happens automatically on `pnpm dev`). For the testing db, use `docker compose run migrate-testing up`.
 
-To run other `migrate` commands, drop into a shell with `docker compose exec -it migrate /bin/bash` (or `migrate-testing`). The `migrate` binary is available there, along with a `MYSQL_DB` environment variable correctly formatted for the `-database` argument.
+To run other `migrate` commands, drop into a shell with `docker compose exec -it migrate /bin/sh` (or `migrate-testing`). The `migrate` binary is available there, along with a `MYSQL_DB` environment variable correctly formatted for the `-database` argument.
 
 &nbsp;
 
