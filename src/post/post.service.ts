@@ -39,7 +39,7 @@ import type { KnexPostRepository, Outbox } from '@/post/post.repository.knex';
 import type { VerificationError } from '@/storage/adapters/storage-adapter';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 
-export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
+type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
 type InteractionError = 'cannot-interact';
 
