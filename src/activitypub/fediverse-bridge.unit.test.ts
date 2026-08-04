@@ -15,6 +15,7 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
+import { mockGetObjectUri } from '@/test/fedify-context-test-helpers';
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
@@ -43,11 +44,7 @@ describe('FediverseBridge', () => {
             getById: vi.fn(),
         } as unknown as KnexPostRepository;
         context = {
-            getObjectUri: vi.fn().mockImplementation((object, { id }) => {
-                return new URL(
-                    `https://example.com/${object.name.toLowerCase()}/${id}`,
-                );
-            }),
+            getObjectUri: mockGetObjectUri(),
             async sendActivity() {},
             data: {
                 globaldb: {

@@ -20,6 +20,7 @@ import {
     createTestExternalAccount,
     createTestInternalAccount,
 } from '@/test/account-entity-test-helpers';
+import { mockGetObjectUri } from '@/test/fedify-context-test-helpers';
 
 vi.mock('node:crypto', async (importOriginal) => {
     const actual = await importOriginal<typeof import('node:crypto')>();
@@ -33,11 +34,7 @@ describe('Build activity', () => {
     let context: FedifyContext;
     beforeEach(() => {
         context = {
-            getObjectUri: vi.fn().mockImplementation((object, { id }) => {
-                return new URL(
-                    `https://example.com/${object.name.toLowerCase()}/${id}`,
-                );
-            }),
+            getObjectUri: mockGetObjectUri(),
             data: {
                 globaldb: {
                     set: vi.fn(),
