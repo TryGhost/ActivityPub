@@ -61,7 +61,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "concurrently": "10.0.4",
     "esbuild": "0.28.1",
-    "nock": "14.0.16",
+    "nock": "14.0.17",
     "typescript": "7.0.2",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.1.10",
