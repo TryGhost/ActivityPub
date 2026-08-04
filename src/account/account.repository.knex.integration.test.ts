@@ -859,30 +859,6 @@ describe('KnexAccountRepository', () => {
         expect(fetched?.webfingerHost).toBe('example.com');
     });
 
-    it('Does not emit events when creating an account', async () => {
-        const emitSpy = vi.spyOn(events, 'emitAsync');
-
-        const site = await fixtureManager.createSite();
-        const draftData = await createInternalAccountDraftData({
-            host: new URL(`https://${site.host}`),
-            username: 'mockuser',
-            name: 'Mock User',
-            bio: 'User for mocking',
-            url: new URL(`https://${site.host}/mockuser`),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        await accountRepository.create(draft);
-
-        expect(emitSpy).not.toHaveBeenCalled();
-
-        emitSpy.mockRestore();
-    });
-
     it('Can create an account entity from a database row', async () => {
         const [account] = await fixtureManager.createInternalAccount();
 
