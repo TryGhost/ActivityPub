@@ -94,7 +94,7 @@ export class KnexAccountRepository {
                 });
             }
 
-            return AccountEntity.fromDraft(draft, accountId);
+            return AccountEntity.create({ id: accountId, ...draft });
         });
     }
 

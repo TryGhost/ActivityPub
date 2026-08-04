@@ -763,33 +763,6 @@ describe('KnexAccountRepository', () => {
         );
     });
 
-    it('uses AccountEntity.fromDraft when creating an account', async () => {
-        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
-
-        const site = await fixtureManager.createSite();
-        const draftData = await createInternalAccountDraftData({
-            host: new URL(`https://${site.host}`),
-            username: 'testuser',
-            name: 'Test User',
-            bio: 'Test bio',
-            url: new URL(`https://${site.host}/user`),
-            avatarUrl: new URL(`https://${site.host}/avatar.png`),
-            bannerImageUrl: new URL(`https://${site.host}/banner.png`),
-            customFields: {
-                foo: 'bar',
-            },
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        const createdAccount = await accountRepository.create(draft);
-
-        expect(fromDraftSpy).toHaveBeenCalledWith(draft, createdAccount.id);
-        expect(fromDraftSpy).toHaveBeenCalledTimes(1);
-
-        fromDraftSpy.mockRestore();
-    });
-
     it('persists and resolves a custom WebFinger host', async () => {
         const site = await fixtureManager.createSite('blog.example.com');
         const draftData = await createInternalAccountDraftData({

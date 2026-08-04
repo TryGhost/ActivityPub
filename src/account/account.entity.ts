@@ -132,10 +132,6 @@ export class AccountEntity implements Account {
         );
     }
 
-    static fromDraft(draft: AccountDraft, id: number): AccountEntity {
-        return AccountEntity.create({ ...draft, id });
-    }
-
     static draft(from: AccountDraftData): AccountDraft {
         const uuid = randomUUID();
         const apId = !from.isInternal
