@@ -36,6 +36,25 @@
       ]
     },
 
+    // ioredis is the client underneath @fedify/redis, whose updates are
+    // already held for manual review above — but an ioredis bump rides in its
+    // own PR, so a major can silently re-pair @fedify/redis with a client
+    // version outside its declared peer range (pnpm only warns). ioredis
+    // majors also change wire-level behaviour (e.g. v6 switched the default
+    // protocol to RESP3) that CI can't fully vet: the e2e Redis is a
+    // plaintext single-node cluster, so TLS and multi-node redirect paths
+    // are only ever exercised in production. Minors/patches still automerge.
+    {
+      description: 'Require manual review for ioredis major updates',
+      matchPackageNames: [
+        'ioredis',
+      ],
+      matchUpdateTypes: [
+        'major',
+      ],
+      automerge: false,
+    },
+
     // CI installs Node from .nvmrc while production runs the Dockerfile base
     // image, so any update that moves one without the other leaves CI testing
     // a runtime production doesn't run. Group ALL Node updates (base image +
