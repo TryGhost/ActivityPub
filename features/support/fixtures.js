@@ -67,6 +67,7 @@ export async function createObject(
     content,
     tags = [],
     inReplyTo = null,
+    extraProps = {},
 ) {
     if (typeof content === 'object') {
         return createObject(
@@ -75,6 +76,7 @@ export async function createObject(
             content.content,
             content.tags,
             content.inReplyTo,
+            content.extraProps,
         );
     }
     const object = generateObject(type, content, tags, inReplyTo);
@@ -84,6 +86,8 @@ export async function createObject(
     }
 
     object.attributedTo = actor.id;
+
+    Object.assign(object, extraProps);
 
     const url = new URL(object.id);
 

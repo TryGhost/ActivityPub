@@ -67,11 +67,51 @@ async function activityCreatedByWithContent(
     }
 }
 
+async function sensitiveActivityCreatedBy(
+    activityDef,
+    name,
+    actorName,
+    summary,
+) {
+    const { activity: activityType, object: objectName } =
+        parseActivityString(activityDef);
+    if (!activityType) {
+        throw new Error(`could not match ${activityDef} to an activity`);
+    }
+
+    const actor = this.actors[actorName];
+    const object = await createObject(objectName, actor, undefined, [], null, {
+        '@context': [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/data-integrity/v1',
+            { sensitive: 'as:sensitive' },
+        ],
+        sensitive: true,
+        summary,
+    });
+
+    const activity = await createActivity(activityType, object, actor);
+
+    const parsed = parseActivityString(name);
+    if (parsed.activity === null || parsed.object === null) {
+        this.activities[name] = activity;
+        this.objects[name] = object;
+    } else {
+        this.activities[parsed.activity] = activity;
+        this.objects[parsed.object] = object;
+    }
+}
+
 Given('a {string} Activity {string} by {string}', activityCreatedBy);
 
 Given(
     'a {string} Activity {string} by {string} with content {string}',
     activityCreatedByWithContent,
+);
+
+Given(
+    'a sensitive {string} Activity {string} by {string} with content warning {string}',
+    sensitiveActivityCreatedBy,
 );
 
 Given(

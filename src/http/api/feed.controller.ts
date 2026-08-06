@@ -162,6 +162,8 @@ export class FeedController {
                 title: normalizePlainText(result.post_title ?? ''),
                 excerpt: result.post_excerpt ?? '',
                 summary: result.post_summary ?? null,
+                sensitive: Boolean(result.post_sensitive),
+                contentWarning: result.post_content_warning ?? null,
                 content: result.post_content ?? '',
                 url: result.post_url,
                 featureImageUrl: result.post_image_url ?? null,

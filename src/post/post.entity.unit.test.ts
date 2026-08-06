@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getValue, isError, type Ok } from '@/core/result';
 import {
     Audience,
+    classifySummary,
     Post,
     type PostData,
     PostSummary,
@@ -1317,5 +1318,35 @@ describe('Post', () => {
                 expect(post.repostCount).toBe(5);
             });
         });
+    });
+});
+
+describe('classifySummary', () => {
+    it('treats the summary as a content warning when sensitive', () => {
+        const result = classifySummary(true, 'Eye contact');
+
+        expect(result.summary).toBeNull();
+        expect(result.contentWarning).toBe('Eye contact');
+    });
+
+    it('keeps the summary and derives no content warning when not sensitive', () => {
+        const result = classifySummary(false, 'A post summary');
+
+        expect(result.summary).toBe('A post summary');
+        expect(result.contentWarning).toBeNull();
+    });
+
+    it('handles a null summary when sensitive', () => {
+        const result = classifySummary(true, null);
+
+        expect(result.summary).toBeNull();
+        expect(result.contentWarning).toBeNull();
+    });
+
+    it('handles a null summary when not sensitive', () => {
+        const result = classifySummary(false, null);
+
+        expect(result.summary).toBeNull();
+        expect(result.contentWarning).toBeNull();
     });
 });

@@ -38,6 +38,7 @@ vi.mock('@/post/content', () => ({
         updateMentions: vi.fn(
             (content: string) => `${content} [mentions updated]`,
         ),
+        regenerateContentWarning: vi.fn((html: string) => html),
     },
 }));
 
@@ -107,6 +108,8 @@ describe('Account Posts View', () => {
                 title: 'Test Post',
                 excerpt: '',
                 summary: null,
+                sensitive: false,
+                contentWarning: null,
                 content: 'Test Content',
                 url: 'https://example.com/posts/123',
                 featureImageUrl: 'https://example.com/image.jpg',
@@ -202,6 +205,8 @@ describe('Account Posts View', () => {
                 title: 'Original Post',
                 excerpt: '',
                 summary: null,
+                sensitive: false,
+                contentWarning: null,
                 content: 'Original Content',
                 url: 'https://example.com/posts/123',
                 featureImageUrl: 'https://example.com/image.jpg',
@@ -264,6 +269,40 @@ describe('Account Posts View', () => {
 
             expect(result.author.followedByMe).toBe(true);
             expect(result.repostedBy?.followedByMe).toBe(true);
+        });
+
+        it('should map sensitive and content warning from remote post activities', () => {
+            const activity = {
+                type: 'Create',
+                object: {
+                    id: 'https://example.com/posts/123',
+                    type: 'Note',
+                    summary: 'Sensitive topic',
+                    sensitive: true,
+                    content: 'Test Content',
+                    url: 'https://example.com/posts/123',
+                    published: '2024-03-20T12:00:00Z',
+                    attachment: [],
+                    attributedTo: {
+                        id: 'https://example.com/users/1',
+                        name: 'Test User',
+                        preferredUsername: 'testuser',
+                    },
+                },
+                actor: {
+                    id: 'https://example.com/users/1',
+                    name: 'Test User',
+                    preferredUsername: 'testuser',
+                },
+            };
+
+            const result = view.mapActivityToPostDTO(activity);
+
+            expect(result).toMatchObject({
+                sensitive: true,
+                summary: null,
+                contentWarning: 'Sensitive topic',
+            });
         });
     });
 

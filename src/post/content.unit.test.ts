@@ -464,6 +464,45 @@ describe('ContentPreparer', () => {
         });
     });
 
+    describe('regenerateContentWarning', () => {
+        it('returns plain text unchanged', () => {
+            const result = preparer.regenerateContentWarning('Death, gore');
+
+            expect(result).toEqual('Death, gore');
+        });
+
+        it('strips inline HTML from the content warning', () => {
+            const result = preparer.regenerateContentWarning(
+                '<b>Death</b>, <i>gore</i>',
+            );
+
+            expect(result).toEqual('Death, gore');
+        });
+
+        it('strips script and style content', () => {
+            const result = preparer.regenerateContentWarning(
+                'Politics<script>alert(1)</script><style>.a{}</style>',
+            );
+
+            expect(result).toEqual('Politics');
+        });
+
+        it('collapses whitespace to a single line', () => {
+            const result = preparer.regenerateContentWarning(
+                '<p>US</p>\n\n<p>politics</p>',
+            );
+
+            expect(result).toEqual('US politics');
+        });
+
+        it('truncates to 500 characters without an ellipsis', () => {
+            const result = preparer.regenerateContentWarning('a'.repeat(600));
+
+            expect(result.length).toEqual(500);
+            expect(result.endsWith('...')).toBe(false);
+        });
+    });
+
     describe('parseMentions', () => {
         it('should parse valid ActivityPub handles', () => {
             const content =
