@@ -39,27 +39,18 @@ import type { KnexPostRepository, Outbox } from '@/post/post.repository.knex';
 import type { VerificationError } from '@/storage/adapters/storage-adapter';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 
-export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
+type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
-export type InteractionError = 'cannot-interact';
+type InteractionError = 'cannot-interact';
 
-export type GetPostsError =
-    | 'invalid-next-parameter'
-    | 'error-getting-outbox'
-    | 'no-page-found'
-    | 'not-an-actor';
-
-export type RepostError =
-    | GetByApIdError
-    | 'already-reposted'
-    | InteractionError;
+type RepostError = GetByApIdError | 'already-reposted' | InteractionError;
 
 export type DeletePostError = GetByApIdError | 'not-author';
 
-export type UpdatePostError = 'post-not-found' | 'not-author';
+type UpdatePostError = 'post-not-found' | 'not-author';
 
 export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
-export type UpdateInteractionCountsError =
+type UpdateInteractionCountsError =
     | 'post-not-found'
     | 'post-is-internal'
     | 'upstream-error'

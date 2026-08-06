@@ -67,7 +67,7 @@ type RemoteAccountFetchError =
     | 'network-failure'
     | 'not-found';
 
-export type AccountAliasError =
+type AccountAliasError =
     | 'invalid-handle'
     | 'lookup-failed'
     | 'not-an-actor'
@@ -736,46 +736,6 @@ export class AccountService {
             .count('*', { as: 'count' });
 
         return Number(result[0].count);
-    }
-
-    /**
-     * Get the number of posts liked by the account
-     *
-     * @param accountId id of the account
-     */
-    async getLikedCount(accountId: number | null): Promise<number> {
-        if (!accountId) {
-            return 0;
-        }
-
-        const result = await this.db('likes')
-            .join('posts', 'likes.post_id', 'posts.id')
-            .where('likes.account_id', accountId)
-            .whereNull('posts.in_reply_to')
-            .count('*', { as: 'count' });
-
-        return Number(result[0].count);
-    }
-
-    /**
-     * Get the number of posts created by the account
-     *
-     * @param accountId id of the account
-     */
-    async getPostCount(accountId: number | null): Promise<number> {
-        if (!accountId) {
-            return 0;
-        }
-
-        const posts = await this.db('posts')
-            .where('author_id', accountId)
-            .count('*', { as: 'count' });
-
-        const reposts = await this.db('reposts')
-            .where('account_id', accountId)
-            .count('*', { as: 'count' });
-
-        return Number(posts[0].count) + Number(reposts[0].count);
     }
 
     /**

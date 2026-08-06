@@ -23,12 +23,12 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { DeletePostError, PostService } from '@/post/post.service';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 
-export type GhostPostError =
+type GhostPostError =
     | CreatePostError
     | 'post-already-exists'
     | 'failed-to-create-post';
 
-export type DeleteGhostPostError = DeletePostError | 'post-not-found';
+type DeleteGhostPostError = DeletePostError | 'post-not-found';
 
 export class GhostPostService {
     constructor(

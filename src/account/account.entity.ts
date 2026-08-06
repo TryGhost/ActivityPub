@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import {
     AccountAliasedEvent,
     AccountBlockedEvent,
-    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnaliasedEvent,
     AccountUnblockedEvent,
@@ -75,7 +74,7 @@ export interface AccountDraft {
     webfingerHost: string | null;
 }
 
-export type AccountEvent = {
+type AccountEvent = {
     getName(): string;
 };
 
@@ -129,30 +128,6 @@ export class AccountEntity implements Account {
             data.isInternal,
             data.customFields,
             data.webfingerHost,
-            events,
-        );
-    }
-
-    static fromDraft(draft: AccountDraft, id: number): AccountEntity {
-        const events: AccountEvent[] = [new AccountCreatedEvent(id)];
-        return new AccountEntity(
-            id,
-            draft.uuid,
-            draft.username,
-            draft.name,
-            draft.bio,
-            draft.url,
-            draft.avatarUrl,
-            draft.bannerImageUrl,
-            draft.apId,
-            draft.apFollowers,
-            draft.apInbox,
-            draft.apOutbox,
-            draft.apFollowing,
-            draft.apLiked,
-            draft.isInternal,
-            draft.customFields,
-            draft.webfingerHost,
             events,
         );
     }

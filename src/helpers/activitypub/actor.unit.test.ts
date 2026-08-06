@@ -6,8 +6,6 @@ import type { AccountService } from '@/account/account.service';
 import type { Account, Site } from '@/account/types';
 import {
     getAttachments,
-    getFollowerCount,
-    getFollowingCount,
     getHandle,
     isFollowedByDefaultSiteAccount,
     isHandle,
@@ -89,42 +87,6 @@ describe('getAttachments', () => {
                 value: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;',
             },
         ]);
-    });
-});
-
-describe('getFollowerCount', () => {
-    it('should return the follower count for the actor', async () => {
-        const actor = {
-            getFollowers: vi.fn().mockResolvedValue({ totalItems: 100 }),
-        } as unknown as Actor;
-
-        expect(await getFollowerCount(actor)).toBe(100);
-    });
-
-    it('should return 0 if the actor followers are not available', async () => {
-        const actor = {
-            getFollowers: vi.fn().mockResolvedValue(null),
-        } as unknown as Actor;
-
-        expect(await getFollowerCount(actor)).toBe(0);
-    });
-});
-
-describe('getFollowingCount', () => {
-    it('should return the following count for the actor', async () => {
-        const actor = {
-            getFollowing: vi.fn().mockResolvedValue({ totalItems: 100 }),
-        } as unknown as Actor;
-
-        expect(await getFollowingCount(actor)).toBe(100);
-    });
-
-    it('should return 0 if the actor following is not available', async () => {
-        const actor = {
-            getFollowing: vi.fn().mockResolvedValue(null),
-        } as unknown as Actor;
-
-        expect(await getFollowingCount(actor)).toBe(0);
     });
 });
 

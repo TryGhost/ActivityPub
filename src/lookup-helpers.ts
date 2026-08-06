@@ -12,7 +12,7 @@ import type { FedifyContext } from '@/app';
 import { error, ok, type Result } from '@/core/result';
 import { isLocalEnvironment } from '@/helpers/environment';
 
-export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
+type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
 export async function lookupActor(
     ctx: FedifyContext,
