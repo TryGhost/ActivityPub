@@ -161,6 +161,9 @@ export class PostService {
      */
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
+        // Return the stored post as-is. Sensitive/content-warning (like
+        // content and attachments) are classified at first ingest and not
+        // refreshed from later remote Updates.
         if (post) {
             return ok(post);
         }

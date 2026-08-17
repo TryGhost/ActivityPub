@@ -196,10 +196,7 @@ describe('KnexPostRepository', () => {
 
     describe('Sensitive media', () => {
         it('saves and retrieves sensitive posts', async () => {
-            const site = await siteService.initialiseSiteForHost(
-                'testing-sensitive-posts.com',
-            );
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccount('testing-sensitive-posts.com');
             const post = Post.createFromData(account, {
                 type: PostType.Note,
                 content: 'Sensitive media attached',
@@ -227,11 +224,36 @@ describe('KnexPostRepository', () => {
             expect(retrievedPost?.sensitive).toBe(true);
         });
 
-        it('defaults new posts to not sensitive', async () => {
-            const site = await siteService.initialiseSiteForHost(
-                'testing-not-sensitive-posts.com',
+        it('saves and retrieves content warnings', async () => {
+            const account = await getAccount(
+                'testing-content-warning-posts.com',
             );
-            const account = await accountRepository.getBySite(site);
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Sensitive media attached',
+                sensitive: true,
+                contentWarning: 'Eye contact',
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive', 'content_warning', 'summary')
+                .first();
+            expect(rowInDb.sensitive).toBe(1);
+            expect(rowInDb.content_warning).toBe('Eye contact');
+            expect(rowInDb.summary).toBeNull();
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(true);
+            expect(retrievedPost?.contentWarning).toBe('Eye contact');
+            expect(retrievedPost?.summary).toBeNull();
+        });
+
+        it('defaults new posts to not sensitive', async () => {
+            const account = await getAccount('testing-not-sensitive-posts.com');
             const post = Post.createFromData(account, {
                 type: PostType.Note,
                 content: 'Regular post',

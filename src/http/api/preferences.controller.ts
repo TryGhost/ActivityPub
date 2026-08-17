@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
 import type { AppContext } from '@/app';
-import { getValue, isError } from '@/core/result';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
-import type { UserService } from '@/user/user.service';
+import type {
+    UserNotFoundError,
+    UserPreferencesError,
+    UserService,
+} from '@/user/user.service';
 
 const UpdatePreferencesSchema = z.strictObject({
     showSensitiveMedia: z.boolean(),
@@ -22,14 +26,14 @@ export class PreferencesController {
             account.id,
         );
         if (isError(userResult)) {
-            return new Response(null, { status: 500 });
+            return this.userLookupErrorResponse(ctx, getError(userResult));
         }
 
         const preferences = await this.userService.getPreferences(
             getValue(userResult).id,
         );
         if (isError(preferences)) {
-            return new Response(null, { status: 500 });
+            return this.preferencesErrorResponse(ctx, getError(preferences));
         }
 
         return Response.json(getValue(preferences));
@@ -57,7 +61,7 @@ export class PreferencesController {
             account.id,
         );
         if (isError(userResult)) {
-            return new Response(null, { status: 500 });
+            return this.userLookupErrorResponse(ctx, getError(userResult));
         }
 
         const preferences = await this.userService.updatePreferences(
@@ -65,9 +69,38 @@ export class PreferencesController {
             parsed.data,
         );
         if (isError(preferences)) {
-            return new Response(null, { status: 500 });
+            return this.preferencesErrorResponse(ctx, getError(preferences));
         }
 
         return Response.json(getValue(preferences));
+    }
+
+    private userLookupErrorResponse(ctx: AppContext, err: UserNotFoundError) {
+        ctx.get('logger')?.error('User not found for account', {
+            accountId: err.accountId,
+        });
+        return new Response(null, { status: 500 });
+    }
+
+    private preferencesErrorResponse(
+        ctx: AppContext,
+        err: UserPreferencesError,
+    ) {
+        switch (err.type) {
+            case 'user-not-found':
+                ctx.get('logger')?.error('Preferences user not found', {
+                    userId: err.userId,
+                });
+                return new Response(null, { status: 500 });
+            case 'unexpected-error':
+                ctx.get('logger')?.error('Failed to {operation} preferences', {
+                    operation: err.operation,
+                    userId: err.userId,
+                    error: err.error,
+                });
+                return new Response(null, { status: 500 });
+            default:
+                return exhaustiveCheck(err);
+        }
     }
 }

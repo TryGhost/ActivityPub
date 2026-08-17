@@ -8,12 +8,14 @@ import type {
 
 export type UserNotFoundError = { type: 'user-not-found'; accountId: number };
 
-export type UserPreferencesError = {
-    type: 'unexpected-error';
-    operation: 'get-preferences' | 'update-preferences';
-    userId: number;
-    error: unknown;
-};
+export type UserPreferencesError =
+    | { type: 'user-not-found'; userId: number }
+    | {
+          type: 'unexpected-error';
+          operation: 'get-preferences' | 'update-preferences';
+          userId: number;
+          error: unknown;
+      };
 
 export class UserService {
     constructor(private readonly userRepository: KnexUserRepository) {}
@@ -34,7 +36,14 @@ export class UserService {
         userId: number,
     ): Promise<Result<PreferencesDTO, UserPreferencesError>> {
         try {
-            return ok(await this.userRepository.getPreferences(userId));
+            const preferences =
+                await this.userRepository.getPreferences(userId);
+
+            if (preferences === null) {
+                return error({ type: 'user-not-found', userId });
+            }
+
+            return ok(preferences);
         } catch (err) {
             return error({
                 type: 'unexpected-error',
@@ -50,7 +59,14 @@ export class UserService {
         preferences: PreferencesDTO,
     ): Promise<Result<PreferencesDTO, UserPreferencesError>> {
         try {
-            await this.userRepository.updatePreferences(userId, preferences);
+            const updated = await this.userRepository.updatePreferences(
+                userId,
+                preferences,
+            );
+
+            if (!updated) {
+                return error({ type: 'user-not-found', userId });
+            }
 
             return ok(preferences);
         } catch (err) {

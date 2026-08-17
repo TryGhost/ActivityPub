@@ -38,6 +38,9 @@ export const PostContentWarning = z
  * Platforms such as Mastodon overload the `summary` field to carry a content
  * warning for sensitive posts. When a post is marked sensitive, its summary is
  * treated as a content warning rather than a post excerpt.
+ *
+ * This runs at first ingest only. Later remote Update activities for
+ * Notes/Articles are not applied, matching other remote post fields.
  */
 export function classifySummary(
     sensitive: boolean,

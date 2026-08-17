@@ -30,23 +30,38 @@ export class KnexUserRepository {
         };
     }
 
-    async getPreferences(userId: number): Promise<PreferencesDTO> {
+    async getPreferences(userId: number): Promise<PreferencesDTO | null> {
         const row = await this.db('users')
             .select('show_sensitive_media')
             .where({ id: userId })
             .first();
 
+        if (!row) {
+            return null;
+        }
+
         return {
-            showSensitiveMedia: Boolean(row?.show_sensitive_media),
+            showSensitiveMedia: Boolean(row.show_sensitive_media),
         };
     }
 
     async updatePreferences(
         userId: number,
         preferences: PreferencesDTO,
-    ): Promise<void> {
+    ): Promise<boolean> {
+        const userExists = await this.db('users')
+            .select('id')
+            .where({ id: userId })
+            .first();
+
+        if (!userExists) {
+            return false;
+        }
+
         await this.db('users').where({ id: userId }).update({
             show_sensitive_media: preferences.showSensitiveMedia,
         });
+
+        return true;
     }
 }
