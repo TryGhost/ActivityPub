@@ -33,8 +33,8 @@ importers:
         specifier: 7.21.0
         version: 7.21.0(supports-color@11.0.0)
       '@hono/node-server':
-        specifier: 2.1.0
-        version: 2.1.0(hono@4.13.1)
+        specifier: 2.1.1
+        version: 2.1.1(hono@4.13.1)
       '@js-temporal/polyfill':
         specifier: 0.5.1
         version: 0.5.1
@@ -620,8 +620,8 @@ packages:
     resolution: {integrity: sha512-XRrFsPxrx1fOL5cQyfbVk8LDWfZTKSp4ZcdEbmZTrP82aFON/rO+aTuScW9FPpKGAd8pYIfXTIkljaM81Nslbg==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
-  '@hono/node-server@2.1.0':
-    resolution: {integrity: sha512-XovyyCCnBzW+zKu+z/zq8hwNs4KOR5rEMAOxo2f40Q5xoOI37IMm6MIg2COOUtUApo0i6850MTBKH2u4QLGIqg==}
+  '@hono/node-server@2.1.1':
+    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -4397,7 +4397,7 @@ snapshots:
     dependencies:
       '@logtape/logtape': 1.3.11
 
-  '@hono/node-server@2.1.0(hono@4.13.1)':
+  '@hono/node-server@2.1.1(hono@4.13.1)':
     dependencies:
       hono: 4.13.1
 
