@@ -32,7 +32,7 @@ All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-kn
 4. **Start the ActivityPub Service**
     - Run `pnpm dev && pnpm logs` in the root directory of this project
 5. **Start Ghost**
-    - Run `yarn dev` in the Ghost monorepo
+    - Run `pnpm dev` in the Ghost monorepo
     - If you were already running Ghost locally, make sure to restart it!
 
 ## 🏗️ Architecture & Development Guidelines
