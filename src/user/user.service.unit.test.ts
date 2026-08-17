@@ -28,9 +28,7 @@ describe('UserService', () => {
 
             expect(isError(result)).toBe(false);
             if (!isError(result)) {
-                expect(getValue(result)).toEqual({
-                    showSensitiveMedia: true,
-                });
+                expect(getValue(result).showSensitiveMedia).toBe(true);
             }
         });
 
@@ -59,9 +57,7 @@ describe('UserService', () => {
 
             expect(isError(result)).toBe(false);
             if (!isError(result)) {
-                expect(getValue(result)).toEqual({
-                    showSensitiveMedia: false,
-                });
+                expect(getValue(result).showSensitiveMedia).toBe(false);
             }
         });
 

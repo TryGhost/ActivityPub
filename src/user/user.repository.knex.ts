@@ -49,19 +49,14 @@ export class KnexUserRepository {
         userId: number,
         preferences: PreferencesDTO,
     ): Promise<boolean> {
-        const userExists = await this.db('users')
-            .select('id')
+        // mysql2 reports matched rows (CLIENT_FOUND_ROWS), so an unchanged
+        // value still returns > 0 for an existing user.
+        const updatedRows = await this.db('users')
             .where({ id: userId })
-            .first();
+            .update({
+                show_sensitive_media: preferences.showSensitiveMedia,
+            });
 
-        if (!userExists) {
-            return false;
-        }
-
-        await this.db('users').where({ id: userId }).update({
-            show_sensitive_media: preferences.showSensitiveMedia,
-        });
-
-        return true;
+        return updatedRows > 0;
     }
 }
