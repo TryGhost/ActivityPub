@@ -76,7 +76,7 @@ importers:
         version: 9.0.3
       knex:
         specifier: 3.3.0
-        version: 3.3.0(mysql2@3.23.2(@types/node@22.20.1))(supports-color@11.0.0)
+        version: 3.3.0(mysql2@3.23.3(@types/node@22.20.1))(supports-color@11.0.0)
       ky:
         specifier: 2.0.2
         version: 2.0.2
@@ -87,8 +87,8 @@ importers:
         specifier: 4.3.3
         version: 4.3.3
       mysql2:
-        specifier: 3.23.2
-        version: 3.23.2(@types/node@22.20.1)
+        specifier: 3.23.3
+        version: 3.23.3(@types/node@22.20.1)
       node-html-parser:
         specifier: 9.0.1
         version: 9.0.1
@@ -2908,8 +2908,8 @@ packages:
     resolution: {integrity: sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==}
     engines: {node: ^18.17.0 || >=20.5.0}
 
-  mysql2@3.23.2:
-    resolution: {integrity: sha512-fxh3HpQ8vJtu/Mmnd4Xsur19jGjHGzRLMxptiDtOkbX7EVBgnafGSGDx1WGGVmJLClVh2LeeBMMo24IFv8wCyQ==}
+  mysql2@3.23.3:
+    resolution: {integrity: sha512-ehp9HEKr4wVJaBOUVxNFa+CNrsCCCZ6363/jbGhb7WpEmSRNIXjHBjFs5K2s2cXn7j/RhDieejsQJ6nfUwD6vQ==}
     engines: {node: '>= 8.0'}
     peerDependencies:
       '@types/node': '>= 8'
@@ -6510,7 +6510,7 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  knex@3.3.0(mysql2@3.23.2(@types/node@22.20.1))(supports-color@11.0.0):
+  knex@3.3.0(mysql2@3.23.3(@types/node@22.20.1))(supports-color@11.0.0):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
@@ -6527,7 +6527,7 @@ snapshots:
       tarn: 3.1.2
       tildify: 2.0.0
     optionalDependencies:
-      mysql2: 3.23.2(@types/node@22.20.1)
+      mysql2: 3.23.3(@types/node@22.20.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -6727,11 +6727,10 @@ snapshots:
 
   mute-stream@2.0.0: {}
 
-  mysql2@3.23.2(@types/node@22.20.1):
+  mysql2@3.23.3(@types/node@22.20.1):
     dependencies:
       '@types/node': 22.20.1
       aws-ssl-profiles: 1.1.2
-      denque: 2.1.0
       generate-function: 2.3.1
       iconv-lite: 0.7.3
       long: 5.3.2
