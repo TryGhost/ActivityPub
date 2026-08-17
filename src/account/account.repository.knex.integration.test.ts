@@ -7,7 +7,6 @@ import type { Knex } from 'knex';
 
 import { AccountEntity } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
-import { AccountCreatedEvent } from '@/account/events';
 import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import { AsyncEvents } from '@/core/events';
 import type { Site } from '@/site/site.service';
@@ -75,13 +74,26 @@ describe('KnexAccountRepository', () => {
 
         const account = await accountRepository.getBySite(site);
 
+        assert(account, 'An Account should have been fetched');
         assert(account.uuid !== null, 'Account should have a uuid');
+    });
+
+    it('Returns null when getting by a site that has no user', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        await client('users').where('site_id', site.id).del();
+
+        const account = await accountRepository.getBySite(site);
+
+        assert(account === null, 'No Account should have been fetched');
     });
 
     it('Can get by apId', async () => {
         const [, site] = await fixtureManager.createInternalAccount();
 
         const account = await accountRepository.getBySite(site);
+
+        assert(account, 'An Account should have been fetched');
 
         const row = await client('accounts')
             .where({ id: account.id })
@@ -180,6 +192,8 @@ describe('KnexAccountRepository', () => {
             id: 1,
         } as Site);
 
+        assert(accountEntity, 'An Account should have been fetched');
+
         const updated = accountEntity.updateProfile({
             name: 'Updated Name',
             bio: 'Updated Bio',
@@ -223,6 +237,8 @@ describe('KnexAccountRepository', () => {
         const accountEntity = await accountRepository.getBySite({
             id: 1,
         } as Site);
+
+        assert(accountEntity, 'An Account should have been fetched');
 
         const firstUpdated = accountEntity.updateProfile({
             avatarUrl: new URL('https://example.com/avatar.png'),
@@ -747,33 +763,6 @@ describe('KnexAccountRepository', () => {
         );
     });
 
-    it('uses AccountEntity.fromDraft when creating an account', async () => {
-        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
-
-        const site = await fixtureManager.createSite();
-        const draftData = await createInternalAccountDraftData({
-            host: new URL(`https://${site.host}`),
-            username: 'testuser',
-            name: 'Test User',
-            bio: 'Test bio',
-            url: new URL(`https://${site.host}/user`),
-            avatarUrl: new URL(`https://${site.host}/avatar.png`),
-            bannerImageUrl: new URL(`https://${site.host}/banner.png`),
-            customFields: {
-                foo: 'bar',
-            },
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        const createdAccount = await accountRepository.create(draft);
-
-        expect(fromDraftSpy).toHaveBeenCalledWith(draft, createdAccount.id);
-        expect(fromDraftSpy).toHaveBeenCalledTimes(1);
-
-        fromDraftSpy.mockRestore();
-    });
-
     it('persists and resolves a custom WebFinger host', async () => {
         const site = await fixtureManager.createSite('blog.example.com');
         const draftData = await createInternalAccountDraftData({
@@ -841,37 +830,6 @@ describe('KnexAccountRepository', () => {
         expect(fetched?.username).toBe('alice');
         expect(fetched?.apId.pathname.endsWith('/index')).toBe(true);
         expect(fetched?.webfingerHost).toBe('example.com');
-    });
-
-    it('Handles events when creating an account', async () => {
-        const emitSpy = vi.spyOn(events, 'emitAsync');
-
-        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
-
-        const site = await fixtureManager.createSite();
-        const draftData = await createInternalAccountDraftData({
-            host: new URL(`https://${site.host}`),
-            username: 'mockuser',
-            name: 'Mock User',
-            bio: 'User for mocking',
-            url: new URL(`https://${site.host}/mockuser`),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        await accountRepository.create(draft);
-
-        expect(emitSpy).toHaveBeenCalledWith(
-            AccountCreatedEvent.getName(),
-            expect.any(AccountCreatedEvent),
-        );
-        expect(emitSpy).toHaveBeenCalledTimes(1);
-
-        emitSpy.mockRestore();
-        fromDraftSpy.mockRestore();
     });
 
     it('Can create an account entity from a database row', async () => {

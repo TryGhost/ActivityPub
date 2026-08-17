@@ -1,6 +1,8 @@
 services:
   activitypub:
-    build: .
+    build:
+      context: .
+      target: dev
     ports:
       - "8080:8080"
       - "9229:9229"
@@ -34,7 +36,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
-    command: yarn build:watch
+    command: pnpm build:watch
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,7 +76,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.10@sha256:d36d39a64cd12a5c1cc9e6aa2bfb5f8d4c81a2f6586e0a04a9ae13939db02209
+    image: mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -88,7 +90,7 @@ services:
       retries: 120
 
   redis:
-    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -124,7 +126,9 @@ services:
   activitypub-testing:
     networks:
       - test_network
-    build: .
+    build:
+      context: .
+      target: dev
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
@@ -155,7 +159,7 @@ services:
       - REDIS_HOST=redis-testing
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
-    command: yarn build:watch
+    command: pnpm build:watch
     depends_on:
       migrate-testing:
         condition: service_completed_successfully
@@ -188,7 +192,9 @@ services:
   cucumber-tests:
     networks:
       - test_network
-    build: .
+    build:
+      context: .
+      target: dev
     volumes:
       - ./features:/opt/activitypub/features
       - ./cucumber.js:/opt/activitypub/cucumber.js
@@ -216,7 +222,7 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.10@sha256:d36d39a64cd12a5c1cc9e6aa2bfb5f8d4c81a2f6586e0a04a9ae13939db02209
+    image: mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -230,7 +236,7 @@ services:
   redis-testing:
     networks:
       - test_network
-    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -272,7 +278,7 @@ services:
           - bob.test
           - charlie.test
           - fake-external-activitypub.test
-    image: caddy:2@sha256:af5fdcd76f2db5e4e974ee92f96ee8c0fc3edb55bd4ba5032547cbf3f65e486d
+    image: caddy:2@sha256:844f60b64e4724a5aa8245e019dace0d3f199f7433ce6c57676cb30a920dbad9
     ports:
       - "444:443"
     volumes:

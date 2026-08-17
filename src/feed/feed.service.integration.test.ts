@@ -45,6 +45,10 @@ describe('FeedService', () => {
         const site = await siteService.initialiseSiteForHost(host);
         const account = await accountRepository.getBySite(site);
 
+        if (!account) {
+            throw new Error(`No account found for site: ${site.host}`);
+        }
+
         accountSitesMap.set(Number(account.id), site);
 
         return account;

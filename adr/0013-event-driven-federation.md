@@ -31,7 +31,7 @@ This applies to federation that is a **side effect of a domain operation** (e.g.
 
 ### Consolidation
 
-The `FedifyActivitySender` class in `src/activitypub/activity.ts` is a separate abstraction that also wraps `sendActivity`. Once all federation is routed through the `FediverseBridge`, `FedifyActivitySender` should be removed to avoid having two places that send activities.
+The `FedifyActivitySender` class in `src/activitypub/activity.ts` was a separate abstraction that also wrapped `sendActivity`. It has since been removed (it was unused), so the `FediverseBridge` is the only remaining abstraction that sends activities.
 
 ## Implementation
 

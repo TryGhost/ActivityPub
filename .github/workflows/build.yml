@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Biome
         uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
@@ -40,21 +40,24 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
-  check-yarn-lock:
-    name: Check yarn.lock
+  check-lockfile:
+    name: Check pnpm-lock.yaml
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: lts/*
-          cache: yarn
+          node-version-file: .nvmrc
+          cache: pnpm
 
-      - name: Check yarn.lock
-        run: yarn install --frozen-lockfile
+      - name: Check pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
   build-main-images:
     name: Build Docker Images (${{ matrix.platform }}, ${{ matrix.platform_slug }})
@@ -89,16 +92,16 @@ jobs:
 
       - name: Checkout
         if: steps.should-build.outputs.skip != 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Docker Buildx
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: ActivityPub Docker metadata for private registry
         if: steps.should-build.outputs.skip != 'true'
         id: activitypub-docker-metadata-private
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
             europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
@@ -121,7 +124,7 @@ jobs:
       - name: ActivityPub Docker metadata for public registry
         id: activitypub-docker-metadata-public
         if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
             ghcr.io/tryghost/activitypub
@@ -142,7 +145,7 @@ jobs:
       - name: Migrations Docker meta for private registry
         if: steps.should-build.outputs.skip != 'true'
         id: activitypub-migrations-docker-metadata-private
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
             europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
@@ -158,7 +161,7 @@ jobs:
       - name: ActivityPub Migrations Docker metadata for public registry
         id: activitypub-migrations-docker-metadata-public
         if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
             ghcr.io/tryghost/activitypub-migrations
@@ -203,7 +206,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: matrix.platform == 'linux/arm64' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -269,23 +272,23 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check for changes in reconcile account topics job
         id: changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         with:
           filters: |
             reconcile-account-topics:
               - 'jobs/reconcile-account-topics/**'
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Docker metadata
         if: steps.changes.outputs.reconcile-account-topics == 'true'
         id: reconcile-account-topics-meta
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: europe-docker.pkg.dev/ghost-activitypub/activitypub/reconcile-account-topics
           tags: |
@@ -303,7 +306,7 @@ jobs:
 
       - name: Login to GCP Artifact Registry
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: europe-docker.pkg.dev
           username: oauth2accesstoken

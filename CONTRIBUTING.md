@@ -8,7 +8,7 @@ For architectural patterns, code standards, and development guidelines, please s
 
 1. Create a feature branch from `main`
 2. Make your changes following the patterns documented in README
-3. Ensure tests pass: `yarn test`
+3. Ensure tests pass: `pnpm test`
 4. Submit a pull request with a clear description
 
 ## Code Review Process

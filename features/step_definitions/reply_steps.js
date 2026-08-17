@@ -1,4 +1,4 @@
-import { Given, Then, When } from '@cucumber/cucumber';
+import { Then, When } from '@cucumber/cucumber';
 
 import assert from 'node:assert';
 
@@ -6,10 +6,6 @@ import { waitForItemInFeed } from '../support/feed.js';
 import { createActivity, createObject } from '../support/fixtures.js';
 import { waitForItemInNotifications } from '../support/notifications.js';
 import { fetchActivityPub } from '../support/request.js';
-
-Given('{string} is a reply to {string}', async function (objectA, objectB) {
-    this.objects[objectA].inReplyTo = this.objects[objectB].id;
-});
 
 When('{string} sends us a reply to our article', async function (actorName) {
     if (!this.articleId) {
@@ -80,16 +76,6 @@ Then('the reply is in our notifications', async function () {
         );
     }
     const found = await waitForItemInNotifications(this.replyId);
-    assert(found);
-});
-
-Then('the reply is in our feed', async function () {
-    if (!this.replyId) {
-        throw new Error(
-            'You need to call a step which creates a reply before this',
-        );
-    }
-    const found = await waitForItemInFeed(this.replyId);
     assert(found);
 });
 

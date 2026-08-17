@@ -1,0 +1,16 @@
+# pnpm 11 refuses to install unless every dependency with a build script is
+# explicitly allowed or denied here. Both are denied to match the production
+# image, which installs with --ignore-scripts (see Dockerfile) and so has never
+# run them. pnpm 10 blocked them by default, so this is the existing behaviour
+# made explicit, not a change.
+allowBuilds:
+  esbuild: false
+  protobufjs: false
+
+# pnpm 11 rejects any lockfile entry published within the last 24 hours. Fedify
+# patches are exempt because we ship them by hand, immediately, when they carry
+# a security fix — that path does not go through Renovate, so Renovate's own
+# release-age rule cannot grant the exemption. Every other package keeps the
+# 24h check. Fedify updates are reviewed by a human before merge.
+minimumReleaseAgeExclude:
+  - '@fedify/*'

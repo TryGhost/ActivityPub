@@ -9,7 +9,7 @@ import {
     asFunction,
     asValue,
 } from 'awilix';
-import Redis from 'ioredis';
+import Redis, { type Cluster } from 'ioredis';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -48,6 +48,7 @@ import { FeedService } from '@/feed/feed.service';
 import { FeedUpdateService } from '@/feed/feed-update.service';
 import { FlagService } from '@/flag/flag.service';
 import { GhostPostService } from '@/ghost/ghost-post.service';
+import { isLocalEnvironment } from '@/helpers/environment';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
@@ -97,6 +98,89 @@ import { ImageStorageService } from '@/storage/image-storage.service';
 import { KnexUserRepository } from '@/user/user.repository.knex';
 import { UserService } from '@/user/user.service';
 
+type RedisMode = 'cluster' | 'standalone';
+
+function getRedisMode(): RedisMode {
+    const mode = process.env.REDIS_MODE || 'cluster';
+
+    if (mode !== 'cluster' && mode !== 'standalone') {
+        throw new Error(
+            `Invalid REDIS_MODE "${mode}". Expected "cluster" or "standalone".`,
+        );
+    }
+
+    return mode;
+}
+
+function getRedisPort(): number {
+    const rawPort = process.env.REDIS_PORT;
+
+    if (!rawPort) {
+        return 6379;
+    }
+
+    const port = Number(rawPort);
+
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error(
+            `Invalid REDIS_PORT "${rawPort}". Expected a port number between 1 and 65535.`,
+        );
+    }
+
+    return port;
+}
+
+/**
+ * Create a Redis connection for use as Fedify's KvStore.
+ *
+ * Defaults to a Redis Cluster connection (the historical behaviour). Set
+ * `REDIS_MODE=standalone` to connect to a single-node Redis server, e.g. a
+ * plain `redis:alpine` container.
+ */
+export function createRedisConnection(logging: Logger): Redis | Cluster {
+    const mode = getRedisMode();
+
+    const host = process.env.REDIS_HOST || 'localhost';
+    const port = getRedisPort();
+    const tls = process.env.REDIS_TLS_CERT
+        ? { ca: process.env.REDIS_TLS_CERT }
+        : undefined;
+
+    const retryStrategy = (times: number) => {
+        const delay = Math.min(times * 50, 2000);
+        logging.warn(
+            `Redis connection retry attempt ${times}, delay ${delay}ms`,
+        );
+        return delay;
+    };
+
+    if (mode === 'standalone') {
+        logging.info('Connecting to Redis in standalone mode');
+
+        return new Redis({
+            host,
+            port,
+            retryStrategy,
+            enableOfflineQueue: true,
+            maxRetriesPerRequest: 3,
+            enableReadyCheck: true,
+            tls,
+        });
+    }
+
+    logging.info('Connecting to Redis in cluster mode');
+
+    return new Redis.Cluster([{ host, port }], {
+        clusterRetryStrategy: retryStrategy,
+        enableOfflineQueue: true,
+        redisOptions: {
+            maxRetriesPerRequest: 3,
+            enableReadyCheck: true,
+            tls,
+        },
+    });
+}
+
 export function registerDependencies(
     container: AwilixContainer,
     deps: {
@@ -119,38 +203,8 @@ export function registerDependencies(
 
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
-                const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 6379;
 
-                const redis = new Redis.Cluster(
-                    [
-                        {
-                            host,
-                            port,
-                        },
-                    ],
-                    {
-                        clusterRetryStrategy: (times: number) => {
-                            const delay = Math.min(times * 50, 2000);
-                            logging.warn(
-                                `Redis connection retry attempt ${times}, delay ${delay}ms`,
-                            );
-                            return delay;
-                        },
-                        enableOfflineQueue: true,
-                        redisOptions: {
-                            maxRetriesPerRequest: 3,
-                            enableReadyCheck: true,
-                            tls: process.env.REDIS_TLS_CERT
-                                ? {
-                                      ca: process.env.REDIS_TLS_CERT,
-                                  }
-                                : undefined,
-                        },
-                    },
-                );
-
-                return new RedisKvStore(redis);
+                return new RedisKvStore(createRedisConnection(logging));
             }
 
             logging.info('Using MySQL KvStore for Fedify');
@@ -259,14 +313,10 @@ export function registerDependencies(
                 circuitBreaker: false,
                 skipSignatureVerification:
                     process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
-                    ['development', 'testing'].includes(
-                        process.env.NODE_ENV || '',
-                    ),
+                    isLocalEnvironment(process.env.NODE_ENV),
                 allowPrivateAddress:
                     process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-                    ['development', 'testing'].includes(
-                        process.env.NODE_ENV || '',
-                    ),
+                    isLocalEnvironment(process.env.NODE_ENV),
                 firstKnock: 'draft-cavage-http-signatures-12',
             });
         }).singleton(),

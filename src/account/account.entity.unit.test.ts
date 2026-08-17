@@ -4,7 +4,6 @@ import { AccountEntity } from '@/account/account.entity';
 import {
     AccountAliasedEvent,
     AccountBlockedEvent,
-    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnaliasedEvent,
     AccountUnblockedEvent,
@@ -73,7 +72,7 @@ describe('AccountEntity', () => {
         );
     });
 
-    describe('fromDraft', () => {
+    describe('creating an entity from a draft', () => {
         it('should create an AccountEntity from a draft with correct properties', async () => {
             const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
@@ -88,7 +87,7 @@ describe('AccountEntity', () => {
 
             const draft = AccountEntity.draft(draftData);
             const id = 42;
-            const account = AccountEntity.fromDraft(draft, id);
+            const account = AccountEntity.create({ id, ...draft });
 
             expect(account).toBeInstanceOf(AccountEntity);
             expect(account.id).toBe(id);
@@ -105,26 +104,6 @@ describe('AccountEntity', () => {
             expect(account.isInternal).toBe(draft.isInternal);
         });
 
-        it('should create an AccountEntity with AccountCreatedEvent', async () => {
-            const draftData = await createInternalAccountDraftData({
-                host: new URL('http://example.com'),
-                username: 'testuser',
-                name: 'Test User',
-                bio: 'A test user bio',
-                url: new URL('http://example.com/user'),
-                avatarUrl: new URL('http://example.com/avatar.png'),
-                bannerImageUrl: new URL('http://example.com/banner.png'),
-                customFields: null,
-            });
-
-            const draft = AccountEntity.draft(draftData);
-            const account = AccountEntity.fromDraft(draft, 123);
-
-            const events = AccountEntity.pullEvents(account);
-            expect(events).toHaveLength(1);
-            expect(events[0]).toBeInstanceOf(AccountCreatedEvent);
-        });
-
         it('should handle null values correctly', async () => {
             const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
@@ -138,7 +117,7 @@ describe('AccountEntity', () => {
             });
 
             const draft = AccountEntity.draft(draftData);
-            const account = AccountEntity.fromDraft(draft, 999);
+            const account = AccountEntity.create({ id: 999, ...draft });
 
             expect(account.bio).toBeNull();
             expect(account.avatarUrl).toBeNull();

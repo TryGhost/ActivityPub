@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Federation } from '@fedify/fedify';
 
 import type { AccountEntity } from '@/account/account.entity';
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
 import { error, ok } from '@/core/result';
@@ -25,7 +24,6 @@ describe('Post API', () => {
     let account: AccountEntity;
     let postService: PostService;
     let accountService: AccountService;
-    let accountRepository: KnexAccountRepository;
     let postRepository: KnexPostRepository;
     let postController: PostController;
     let fedify: Federation<ContextData>;
@@ -112,13 +110,11 @@ describe('Post API', () => {
         accountService = {
             checkIfAccountIsFollowing: vi.fn().mockResolvedValue(false),
         } as unknown as AccountService;
-        accountRepository = {} as unknown as KnexAccountRepository;
         postRepository = {} as unknown as KnexPostRepository;
         fedify = {} as unknown as Federation<ContextData>;
         postController = new PostController(
             postService,
             accountService,
-            accountRepository,
             postRepository,
             fedify,
         );

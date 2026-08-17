@@ -155,9 +155,7 @@ export class AccountController {
             return new Response(null, { status: 404 });
         }
 
-        const siteDefaultAccount = await this.accountRepository.getBySite(
-            ctx.get('site'),
-        );
+        const siteDefaultAccount = ctx.get('account');
 
         let accountDto: AccountDTO | null = null;
 
@@ -197,7 +195,6 @@ export class AccountController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
-        const site = ctx.get('site');
 
         const handle = requireParam(ctx, 'handle');
 
@@ -206,7 +203,7 @@ export class AccountController {
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = await this.accountRepository.getBySite(site);
+        const siteDefaultAccount = ctx.get('account');
 
         const queryNext = ctx.req.query('next');
         const next = queryNext ? decodeURIComponent(queryNext) : null;
@@ -304,12 +301,10 @@ export class AccountController {
         }
 
         const logger = ctx.get('logger');
-        const site = ctx.get('site');
 
         const handle = requireParam(ctx, 'handle');
 
-        const currentContextAccount =
-            await this.accountRepository.getBySite(site);
+        const currentContextAccount = ctx.get('account');
 
         let accountPosts: AccountPosts;
 

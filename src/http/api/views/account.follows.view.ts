@@ -21,7 +21,7 @@ import type { ModerationService } from '@/moderation/moderation.service';
  */
 const FOLLOWS_LIMIT = 20;
 
-export type GetFollowsError =
+type GetFollowsError =
     | 'invalid-next-parameter'
     | 'error-getting-follows'
     | 'not-an-actor';

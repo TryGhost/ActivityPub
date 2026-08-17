@@ -143,13 +143,6 @@ Given(
     },
 );
 
-Given('{string} has Object {string}', function (activityName, objectName) {
-    const activity = this.activities[activityName];
-    const object = this.objects[objectName];
-
-    this.activities[activityName] = { ...activity, object };
-});
-
 When('we request the outbox', async function () {
     this.response = await fetchActivityPub(
         'https://self.test/.ghost/activitypub/outbox/index',
@@ -331,45 +324,36 @@ async function getFollowers() {
     );
 }
 
-Then(
-    'A {string} Activity is sent to all followers',
-    async function (activityString) {
-        const [match, activity, object] = activityString.match(
-            /(\w+)\((\w+)\)/,
-        ) || [null];
+Then('A {string} Activity is sent to all followers', async (activityString) => {
+    const [match, activity, object] = activityString.match(
+        /(\w+)\((\w+)\)/,
+    ) || [null];
 
-        if (!match) {
-            throw new Error(`Could not match ${activityString} to an activity`);
-        }
+    if (!match) {
+        throw new Error(`Could not match ${activityString} to an activity`);
+    }
 
-        const followers = await getFollowers();
+    const followers = await getFollowers();
 
-        const promises = followers.map((follower) =>
-            waitForRequest('POST', follower.inbox.pathname, (call) => {
-                const json = JSON.parse(call.request.body);
+    const promises = followers.map((follower) =>
+        waitForRequest('POST', follower.inbox.pathname, (call) => {
+            const json = JSON.parse(call.request.body);
 
-                return json.type === activity && json.object.type === object;
-            }).then((activity) => ({ activity })),
+            return json.type === activity && json.object.type === object;
+        }).then((activity) => ({ activity })),
+    );
+
+    const results = await Promise.allSettled(promises);
+
+    results.forEach((result, i) => {
+        const followerName = followers[i].name;
+
+        assert(
+            result.status === 'fulfilled' && result.value.activity,
+            `Activity "${activityString}" was not sent to "${followerName}"`,
         );
-
-        const results = await Promise.allSettled(promises);
-
-        if (!this.found) {
-            this.found = {};
-        }
-
-        results.forEach((result, i) => {
-            const followerName = followers[i].name;
-
-            assert(
-                result.status === 'fulfilled' && result.value.activity,
-                `Activity "${activityString}" was not sent to "${followerName}"`,
-            );
-
-            this.found[activityString] = result.value.activity;
-        });
-    },
-);
+    });
+});
 
 Then(
     'Activity with object {string} is sent to all followers',
@@ -396,38 +380,6 @@ Then(
                 `Activity with object "${objectName}" was not sent to "${followerName}"`,
             );
         });
-    },
-);
-
-Then('the found {string} as {string}', function (foundName, name) {
-    const found = this.found[foundName];
-
-    const { activity, object } = parseActivityString(name);
-
-    this.activities[activity] = found;
-    this.objects[object] = found.object;
-});
-
-Then('the found {string} has property {string}', function (name, prop) {
-    const found = this.found[name];
-
-    const property = prop
-        .split('.')
-        .reduce((thing, key) => thing?.[key], found);
-
-    assert.ok(property);
-});
-
-Then(
-    'the found {string} has property {string} of type {string}',
-    function (name, prop, type) {
-        const found = this.found[name];
-
-        const property = prop
-            .split('.')
-            .reduce((thing, key) => thing?.[key], found);
-
-        assert.equal(typeof property, type);
     },
 );
 

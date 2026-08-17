@@ -49,7 +49,7 @@ export class KnexAccountRepository {
     ) {}
 
     async create(draft: AccountDraft): Promise<Account> {
-        const account = await this.db.transaction(async (transaction) => {
+        return await this.db.transaction(async (transaction) => {
             const [accountId] = await transaction('accounts').insert({
                 uuid: draft.uuid,
                 username: draft.username,
@@ -94,18 +94,8 @@ export class KnexAccountRepository {
                 });
             }
 
-            const account = AccountEntity.fromDraft(draft, accountId);
-
-            return account;
+            return AccountEntity.create({ id: accountId, ...draft });
         });
-
-        const events = AccountEntity.pullEvents(account);
-
-        for (const event of events) {
-            await this.events.emitAsync(event.getName(), event);
-        }
-
-        return account;
     }
 
     async createFromRow(row: AccountRow): Promise<Account> {
@@ -251,13 +241,17 @@ export class KnexAccountRepository {
     }
 
     /**
-     * @deprecated
-     * Use `ctx.get('account')` instead
+     * Get the account for a site, or null if the site has no user.
+     *
+     * In request handlers prefer `ctx.get('account')` — the host
+     * middleware has already loaded it. This method exists for resolving
+     * the account of a site outside of the request's own host context
+     * (e.g. WebFinger resolution).
      */
-    async getBySite(site: Site): Promise<Account> {
+    async getBySite(site: Site): Promise<Account | null> {
         const users = await this.db('users').where('site_id', site.id);
         if (users.length === 0) {
-            throw new Error(`No user found for site: ${site.id}`);
+            return null;
         }
 
         if (users.length > 1) {

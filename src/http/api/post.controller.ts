@@ -13,7 +13,6 @@ import {
 } from '@fedify/vocab';
 import { z } from 'zod';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
@@ -44,7 +43,6 @@ export class PostController {
     constructor(
         private readonly postService: PostService,
         private readonly accountService: AccountService,
-        private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
     ) {}
@@ -143,7 +141,7 @@ export class PostController {
             });
         }
 
-        const account = await this.accountRepository.getBySite(ctx.get('site'));
+        const account = ctx.get('account');
         const deleteResult = await this.postService.deleteByApId(
             idAsUrl,
             account,

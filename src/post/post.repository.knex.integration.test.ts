@@ -29,7 +29,7 @@ import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
-import { SiteService } from '@/site/site.service';
+import { type Site, SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -44,9 +44,19 @@ describe('KnexPostRepository', () => {
     let client: Knex;
     let fixtureManager: FixtureManager;
 
+    const getAccountForSite = async (site: Site) => {
+        const account = await accountRepository.getBySite(site);
+
+        if (!account) {
+            throw new Error(`No account found for site: ${site.host}`);
+        }
+
+        return account;
+    };
+
     const getAccount = async (host: string) => {
         const site = await siteService.initialiseSiteForHost(host);
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
 
         return account;
     };
@@ -108,7 +118,7 @@ describe('KnexPostRepository', () => {
     describe('Events', () => {
         it('Waits for the post to be added to feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
@@ -137,7 +147,7 @@ describe('KnexPostRepository', () => {
 
         it('Waits for the deleted post to be removed from feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
@@ -245,7 +255,7 @@ describe('KnexPostRepository', () => {
         it('Can handle a deleted post', async () => {
             const site =
                 await siteService.initialiseSiteForHost('testing-delete.com');
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
@@ -293,7 +303,7 @@ describe('KnexPostRepository', () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-deleted-reply.com',
             );
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
@@ -372,7 +382,7 @@ describe('KnexPostRepository', () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-atomic-delete.com',
             );
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
 
             // Create parent with 3 replies
             const parentPost = Post.createNote(account, 'Parent post content');
@@ -430,8 +440,8 @@ describe('KnexPostRepository', () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-delete-likes.com',
             );
-            const account = await accountRepository.getBySite(site);
-            const likerAccount = await accountRepository.getBySite(
+            const account = await getAccountForSite(site);
+            const likerAccount = await getAccountForSite(
                 await siteService.initialiseSiteForHost('liker-site.com'),
             );
 
@@ -477,7 +487,7 @@ describe('KnexPostRepository', () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-new-deleted.com',
             );
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: randomUUID(),
@@ -510,7 +520,7 @@ describe('KnexPostRepository', () => {
     it('Can save a Post created with out of bounds fields', async () => {
         const site =
             await siteService.initialiseSiteForHost('testing-saving.com');
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const post = Post.createFromData(account, {
             type: PostType.Article,
             content: 'Hello, world!',
@@ -538,7 +548,7 @@ describe('KnexPostRepository', () => {
     it('Can save a Post', async () => {
         const site =
             await siteService.initialiseSiteForHost('testing-saving.com');
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
@@ -569,7 +579,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-saving-multiple-posts-same-ap-id.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postApId = new URL(`https://${site.host}/hello-world`);
 
         const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
@@ -624,7 +634,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-post-created-event.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
 
         const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
@@ -654,7 +664,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-post-update.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
 
         const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
@@ -682,7 +692,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-by-apid.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
@@ -713,7 +723,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-by-apid.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
@@ -744,7 +754,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-account-uuid.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
 
         if (!account.id) {
             throw new Error('Expected account to have an id');
@@ -788,7 +798,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-deleted-tombstone.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
@@ -1211,7 +1221,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-attachments.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const attachments = [
             {
                 type: 'Document',
@@ -1252,7 +1262,7 @@ describe('KnexPostRepository', () => {
             'testing-is-liked-by-account.com',
         );
 
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
@@ -1293,8 +1303,8 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-is-reposted-by-account.com',
         );
-        const account = await accountRepository.getBySite(site);
-        const reposterAccount = await accountRepository.getBySite(
+        const account = await getAccountForSite(site);
+        const reposterAccount = await getAccountForSite(
             await siteService.initialiseSiteForHost('reposter-site.com'),
         );
 
@@ -1416,7 +1426,7 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-metadata.com',
         );
-        const account = await accountRepository.getBySite(site);
+        const account = await getAccountForSite(site);
 
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
@@ -2082,7 +2092,7 @@ describe('KnexPostRepository', () => {
         it('should handle updating a post with new parameters', async () => {
             const site =
                 await siteService.initialiseSiteForHost('testing-update.com');
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
 
             // Original post
             const postResult = await Post.createArticleFromGhostPost(account, {
@@ -2204,7 +2214,7 @@ describe('KnexPostRepository', () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-no-update.com',
             );
-            const account = await accountRepository.getBySite(site);
+            const account = await getAccountForSite(site);
 
             const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Original Title',

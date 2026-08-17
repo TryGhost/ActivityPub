@@ -10,7 +10,7 @@ Data is ephemeral and will be lost when the script is stopped
 ## Prerequisites
 
 - Ensure you have `cloudflared` installed
-- Ensure you have the main project containers running (`yarn dev`)
+- Ensure you have the main project containers running (`pnpm dev`)
 
 ## Usage
 
