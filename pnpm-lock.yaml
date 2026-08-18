@@ -121,8 +121,8 @@ importers:
         specifier: 13.2.1
         version: 13.2.1
       '@faker-js/faker':
-        specifier: 10.5.0
-        version: 10.5.0
+        specifier: 10.6.0
+        version: 10.6.0
       '@fedify/cli':
         specifier: 2.3.4
         version: 2.3.4(@jimp/custom@0.22.12)(@types/node@22.20.1)(supports-color@11.0.0)(typescript@7.0.2)
@@ -505,8 +505,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@faker-js/faker@10.5.0':
-    resolution: {integrity: sha512-bsxD8WLS5lIj7aaoCx1YJkktqYj5vlBUE6HWzu2Q51ksrGJ0H737ECCKlFU7Yf8Br45z9t99frBp/J7kzbMPAg==}
+  '@faker-js/faker@10.6.0':
+    resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@fedify/cli@2.3.4':
@@ -4155,7 +4155,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@faker-js/faker@10.5.0': {}
+  '@faker-js/faker@10.6.0': {}
 
   '@fedify/cli@2.3.4(@jimp/custom@0.22.12)(@types/node@22.20.1)(supports-color@11.0.0)(typescript@7.0.2)':
     dependencies:
