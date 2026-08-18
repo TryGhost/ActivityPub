@@ -30,8 +30,8 @@ importers:
         specifier: 6.0.1
         version: 6.0.1(supports-color@11.0.0)
       '@google-cloud/storage':
-        specifier: 7.21.0
-        version: 7.21.0(supports-color@11.0.0)
+        specifier: 8.0.0
+        version: 8.0.0(supports-color@11.0.0)
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.2)
@@ -603,9 +603,9 @@ packages:
     resolution: {integrity: sha512-Ms/cE5wyxWoHHj6IUWZO67j7nDhAKa7eAUkUYBJjRie0Yr1V82NclaaIntdqAmmpOgXbIzdDlrIyWXLVMeGSDg==}
     engines: {node: '>=22'}
 
-  '@google-cloud/storage@7.21.0':
-    resolution: {integrity: sha512-l+IFTkd+6Y5LoAuXyYCKNAKtw/Ci+rAMqgdTB1jv4iZiLhw0rtq+0qjIRbBizXkNzEFmXiXUW0H7sZQQvk1ffA==}
-    engines: {node: '>=14'}
+  '@google-cloud/storage@8.0.0':
+    resolution: {integrity: sha512-hSxyCimnjmPSinVHOQv+TUzIdaH4cei6cnHmnXnEs6UuI25jcdVuVcEAFYU3/crBivOkd2Fe2WBBwDKcoS6VVA==}
+    engines: {node: '>=22'}
 
   '@grpc/grpc-js@1.14.4':
     resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
@@ -4245,7 +4245,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/storage@7.21.0(supports-color@11.0.0)':
+  '@google-cloud/storage@8.0.0(supports-color@11.0.0)':
     dependencies:
       '@google-cloud/paginator': 5.0.2
       '@google-cloud/projectify': 4.0.0
