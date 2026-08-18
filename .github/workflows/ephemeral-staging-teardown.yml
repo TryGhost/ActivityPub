@@ -18,6 +18,11 @@ permissions:
 jobs:
   destroy-pr:
     runs-on: ubuntu-latest
+    # Skip for PRs from forks — cicd.yml doesn't push/deploy those, so there's
+    # nothing staged to tear down.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     environment: staging
     steps:
       - name: "Checkout"
