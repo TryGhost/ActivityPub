@@ -42,6 +42,9 @@ interface BaseGetNotificationsDataResultRow {
     post_ap_id: string;
     post_type: string;
     post_title: string;
+    post_summary: string | null;
+    post_sensitive: 0 | 1 | boolean | null;
+    post_content_warning: string | null;
     post_content: string;
     post_url: string;
     post_like_count: number;
@@ -60,6 +63,9 @@ interface BaseGetNotificationsDataResultRow {
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
+    in_reply_to_post_summary: string | null;
+    in_reply_to_post_sensitive: 0 | 1 | boolean | null;
+    in_reply_to_post_content_warning: string | null;
     in_reply_to_post_content: string;
     in_reply_to_post_url: string;
 }
@@ -117,6 +123,9 @@ export class NotificationService {
                 'post.ap_id as post_ap_id',
                 'post.type as post_type',
                 'post.title as post_title',
+                'post.summary as post_summary',
+                'post.sensitive as post_sensitive',
+                'post.content_warning as post_content_warning',
                 'post.content as post_content',
                 'post.url as post_url',
                 'post.like_count as post_like_count',
@@ -139,6 +148,9 @@ export class NotificationService {
                 'in_reply_to_post.ap_id as in_reply_to_post_ap_id',
                 'in_reply_to_post.type as in_reply_to_post_type',
                 'in_reply_to_post.title as in_reply_to_post_title',
+                'in_reply_to_post.summary as in_reply_to_post_summary',
+                'in_reply_to_post.sensitive as in_reply_to_post_sensitive',
+                'in_reply_to_post.content_warning as in_reply_to_post_content_warning',
                 'in_reply_to_post.content as in_reply_to_post_content',
                 'in_reply_to_post.url as in_reply_to_post_url',
             )

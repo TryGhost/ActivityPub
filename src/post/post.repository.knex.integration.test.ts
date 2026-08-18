@@ -194,6 +194,85 @@ describe('KnexPostRepository', () => {
         });
     });
 
+    describe('Sensitive media', () => {
+        it('saves and retrieves sensitive posts', async () => {
+            const account = await getAccount('testing-sensitive-posts.com');
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Sensitive media attached',
+                sensitive: true,
+                attachments: [
+                    {
+                        type: 'Image',
+                        mediaType: 'image/jpeg',
+                        name: 'Example image',
+                        url: new URL('https://example.com/sensitive.jpg'),
+                    },
+                ],
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive')
+                .first();
+            expect(rowInDb.sensitive).toBe(1);
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(true);
+        });
+
+        it('saves and retrieves content warnings', async () => {
+            const account = await getAccount(
+                'testing-content-warning-posts.com',
+            );
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Sensitive media attached',
+                sensitive: true,
+                contentWarning: 'Eye contact',
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive', 'content_warning', 'summary')
+                .first();
+            expect(rowInDb.sensitive).toBe(1);
+            expect(rowInDb.content_warning).toBe('Eye contact');
+            expect(rowInDb.summary).toBeNull();
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(true);
+            expect(retrievedPost?.contentWarning).toBe('Eye contact');
+            expect(retrievedPost?.summary).toBeNull();
+        });
+
+        it('defaults new posts to not sensitive', async () => {
+            const account = await getAccount('testing-not-sensitive-posts.com');
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Regular post',
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive')
+                .first();
+            expect(rowInDb.sensitive).toBe(0);
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(false);
+        });
+    });
+
     describe('Delete', () => {
         it('Can handle a deleted post', async () => {
             const site =

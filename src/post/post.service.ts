@@ -28,6 +28,7 @@ import {
 import type { ModerationService } from '@/moderation/moderation.service';
 import { ContentPreparer } from '@/post/content';
 import {
+    classifySummary,
     type ImageAttachment,
     type Mention,
     Post,
@@ -160,6 +161,9 @@ export class PostService {
      */
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
+        // Return the stored post as-is. Sensitive/content-warning (like
+        // content and attachments) are classified at first ingest and not
+        // refreshed from later remote Updates.
         if (post) {
             return ok(post);
         }
@@ -230,10 +234,18 @@ export class PostService {
 
         const mentions = await this.getMentionedAccounts(foundObject);
 
+        const sensitive = foundObject.sensitive === true;
+        const { summary, contentWarning } = classifySummary(
+            sensitive,
+            foundObject.summary?.toString() ?? null,
+        );
+
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
-            summary: foundObject.summary?.toString() ?? null,
+            summary,
+            sensitive,
+            contentWarning,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
             publishedAt: new Date(foundObject.published?.toString() || ''),

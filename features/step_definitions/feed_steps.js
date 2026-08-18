@@ -3,6 +3,7 @@ import { Then } from '@cucumber/cucumber';
 import assert from 'node:assert';
 
 import { waitForAPObjectInFeed } from '../support/feed.js';
+import { waitForAPObjectInInbox } from '../support/inbox.js';
 
 Then('the note {string} is in our feed', async function (noteName) {
     const note = this.objects[noteName];
@@ -74,3 +75,20 @@ Then('the article {string} is not in our feed', async function (articleName) {
         );
     }
 });
+
+Then(
+    'the {string} in our feed is sensitive with content warning {string}',
+    async function (objectName, contentWarning) {
+        const object = this.objects[objectName];
+
+        const found =
+            object.type === 'Article'
+                ? await waitForAPObjectInInbox(object.id)
+                : await waitForAPObjectInFeed(object.id);
+
+        assert(found);
+        assert.equal(found.sensitive, true);
+        assert.equal(found.contentWarning, contentWarning);
+        assert.equal(found.summary, null);
+    },
+);
