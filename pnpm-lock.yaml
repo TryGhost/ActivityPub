@@ -78,8 +78,8 @@ importers:
         specifier: 3.3.0
         version: 3.3.0(mysql2@3.24.2(@types/node@22.20.1))(supports-color@11.0.0)
       ky:
-        specifier: 2.0.2
-        version: 2.0.2
+        specifier: 2.1.0
+        version: 2.1.0
       linkify-html:
         specifier: 4.3.3
         version: 4.3.3(linkifyjs@4.3.3)
@@ -2482,8 +2482,8 @@ packages:
     resolution: {integrity: sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==}
     engines: {node: '>=18'}
 
-  ky@2.0.2:
-    resolution: {integrity: sha512-/GmXpo9F9W+f8n4Ivr2iH+7h7wL7jLbLKWkMlpflcCRb6kGjBfTlASEXaZ9qUgNTn4VgS0P2pwxxzQ4EM6Ulgg==}
+  ky@2.1.0:
+    resolution: {integrity: sha512-nIKwelw+7qVqKOlX4Eht6GXfEXlDHcdIjyLWV3s119kYt5s+70ayTnYS+0fRNmtgGRRAfqdeWQbh8YizqkS0ng==}
     engines: {node: '>=22'}
 
   launder@1.7.1:
@@ -6046,7 +6046,7 @@ snapshots:
 
   ky@1.14.3: {}
 
-  ky@2.0.2: {}
+  ky@2.1.0: {}
 
   launder@1.7.1:
     dependencies:
