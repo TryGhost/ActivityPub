@@ -2,14 +2,14 @@
   extends: [
     'github>tryghost/renovate-config',
     'docker:pinDigests',
-    'docker:disableMajor',
   ],
-  // Automerge during EU office hours only (Monday - Thursday, 07:00 - 16:59 UTC)
-  // Why? Merging to main ships to production, so we want to avoid automerging when no engineer is online
+  // Only automerge during EU office hours (Monday–Thursday, 07:00–16:59 UTC).
+  // Merging to main ships straight to production, so we don't want anything
+  // landing while there's no engineer around to pick it up.
   //
-  // Notes:
-  // - this schedule doesn't restrict when the PRs are opened by Renovate, only when they are merged
-  // - automerge schedule works only if we're using Renovate automerge over platform automerge (Github)
+  // Two things to know. The schedule controls when PRs merge, not when
+  // Renovate opens them. And it only works while we use Renovate's own
+  // automerge rather than GitHub's, which is what platformAutomerge turns off.
   platformAutomerge: false,
   automergeSchedule: [
     '* 7-16 * * 1,2,3,4',
@@ -26,7 +26,7 @@
       automerge: true,
     },
 
-    // Group Fedify updates together and require a manual review
+    // Fedify packages move together, and we review every update by hand.
     {
       groupName: 'Fedify packages',
       groupSlug: 'fedify',
@@ -36,17 +36,43 @@
       ]
     },
 
-    // ioredis is the client underneath @fedify/redis, whose updates are
-    // already held for manual review above — but an ioredis bump rides in its
-    // own PR, so a major can silently re-pair @fedify/redis with a client
-    // version outside its declared peer range (pnpm only warns). ioredis
-    // majors also change wire-level behaviour (e.g. v6 switched the default
-    // protocol to RESP3) that CI can't fully vet: the e2e Redis is a
-    // plaintext single-node cluster, so TLS and multi-node redirect paths
-    // are only ever exercised in production. Minors/patches still automerge.
+    // MySQL, Redis, and Node back real production services, so we review
+    // their majors by hand.
+    //
+    // Everything else in docker-compose is test scaffolding — wiremock,
+    // caddy, jaeger, the Pub/Sub emulator. When one of those breaks, CI goes
+    // red and we know right away, so their majors can automerge. These three
+    // are different: production pins their versions outside this repo, so
+    // bumping an image here keeps CI green while quietly testing against a
+    // runtime we don't run. That's the drift worth catching.
+    //
+    // Each server is grouped with its client so the pair moves in one PR.
+    // Minors and patches still automerge.
     {
-      description: 'Require manual review for ioredis major updates',
-      matchPackageNames: [
+      description: 'Review MySQL majors by hand — server image and mysql2 client move together',
+      groupName: 'MySQL',
+      groupSlug: 'mysql',
+      matchDepNames: [
+        'mysql',
+        'mysql2',
+      ],
+      matchUpdateTypes: [
+        'major',
+      ],
+      automerge: false,
+    },
+
+    // Redis needs the extra care. ioredis is the client under @fedify/redis,
+    // and a major can pair it with a version outside that peer range — pnpm
+    // only warns. Majors also change wire-level behavior: v6 switched the
+    // default protocol to RESP3. Our e2e Redis is a plaintext single-node
+    // cluster, so TLS and multi-node redirects only ever run in production.
+    {
+      description: 'Review Redis majors by hand — server image and ioredis client move together',
+      groupName: 'Redis',
+      groupSlug: 'redis',
+      matchDepNames: [
+        'redis',
         'ioredis',
       ],
       matchUpdateTypes: [
@@ -55,14 +81,13 @@
       automerge: false,
     },
 
-    // CI installs Node from .nvmrc while production runs the Dockerfile base
-    // image, so any update that moves one without the other leaves CI testing
-    // a runtime production doesn't run. Group ALL Node updates (base image +
-    // .nvmrc) into a single, manually reviewed PR: enabled overrides
-    // docker:disableMajor for majors, and automerge overrides the blanket
-    // docker automerge rule above so a base-image bump can't ship on its own.
+    // Node gets the strictest treatment of the three. CI installs Node from
+    // .nvmrc, production runs the Dockerfile base image, and moving one
+    // without the other leaves CI testing a runtime we don't ship. So every
+    // Node update lands in one reviewed PR — not just majors — and a
+    // base-image bump can never go out on its own.
     {
-      description: 'Group Node.js updates (Dockerfile base image + .nvmrc)',
+      description: 'Review every Node update by hand — base image and .nvmrc move together',
       groupName: 'Node.js',
       groupSlug: 'node',
       matchDepNames: [
@@ -72,14 +97,13 @@
         'docker',
         'node-version',
       ],
-      enabled: true,
       automerge: false,
     },
 
-    // Pin @types/node to the deployed Node runtime major (see Dockerfile and
-    // .nvmrc). Bumping the typings ahead of the runtime lets the compiler
-    // accept newer-Node APIs that don't exist in the production runtime. Bump
-    // allowedVersions in lockstep when the Node base image is upgraded.
+    // Keep @types/node on the Node major we actually deploy (see Dockerfile
+    // and .nvmrc). Typings ahead of the runtime let the compiler accept APIs
+    // that production doesn't have. When the Node base image moves, bump
+    // allowedVersions with it.
     {
       description: 'Pin @types/node to the deployed Node runtime major',
       matchPackageNames: [
