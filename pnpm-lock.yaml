@@ -16,7 +16,7 @@ importers:
         version: 2.3.6(@fedify/fedify@2.3.6)(hono@4.13.5)
       '@fedify/redis':
         specifier: 2.3.6
-        version: 2.3.6(@fedify/fedify@2.3.6)(ioredis@5.11.1(supports-color@11.0.0))
+        version: 2.3.6(@fedify/fedify@2.3.6)(ioredis@6.0.0(supports-color@11.0.0))
       '@fedify/vocab':
         specifier: 2.3.6
         version: 2.3.6
@@ -69,8 +69,8 @@ importers:
         specifier: 10.0.1
         version: 10.0.1
       ioredis:
-        specifier: 5.11.1
-        version: 5.11.1(supports-color@11.0.0)
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@11.0.0)
       jsonwebtoken:
         specifier: 9.0.3
         version: 9.0.3
@@ -907,8 +907,8 @@ packages:
       '@types/node':
         optional: true
 
-  '@ioredis/commands@1.10.0':
-    resolution: {integrity: sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==}
+  '@ioredis/commands@2.0.0':
+    resolution: {integrity: sha512-vrx0AE/T0h7cRZwfo1M39Cr+ZhZrkf0V8mQN75wucKCxCLD9l/VX6no3gFvrLqD1IlG/1LtzWovqEw3t0Vr9zg==}
 
   '@jimp/bmp@0.22.12':
     resolution: {integrity: sha512-aeI64HD0npropd+AR76MCcvvRaa+Qck6loCOS03CkkxGHN5/r336qTM5HPUdHKMDOGzqknuVPA8+kK1t03z12g==}
@@ -2316,9 +2316,9 @@ packages:
     resolution: {integrity: sha512-Ju0Bz/cEia55xDwUWEa8+olFpCiQoypjnQySseKtmjNrnps3P+xfpUmGr90T7yjlVJmOtybRvPXhKMbHr+fWnw==}
     engines: {node: '>= 0.10'}
 
-  ioredis@5.11.1:
-    resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
-    engines: {node: '>=12.22.0'}
+  ioredis@6.0.0:
+    resolution: {integrity: sha512-f+Dtubxfpf6KYFq7WVXJoOLn0bk4TJrMrN9SzeE+jrWrCWj7XX3fA6vkryafhADX+GMymRxgDJDOI33COkJc0w==}
+    engines: {node: '>=20.0.0'}
 
   is-core-module@2.16.2:
     resolution: {integrity: sha512-evOr8xfXKxE6qSR0hSXL2r3sd7ALj8+7jQEUvPYcm5sgZFdJ+AYzT6yNmJenvIYQBgIGwfwz08sL8zoL7yq2BA==}
@@ -2963,10 +2963,6 @@ packages:
 
   redis-errors@1.2.0:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
-    engines: {node: '>=4'}
-
-  redis-parser@3.0.0:
-    resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
 
   reflect-metadata@0.2.2:
@@ -3971,12 +3967,12 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@fedify/redis@2.3.6(@fedify/fedify@2.3.6)(ioredis@5.11.1(supports-color@11.0.0))':
+  '@fedify/redis@2.3.6(@fedify/fedify@2.3.6)(ioredis@6.0.0(supports-color@11.0.0))':
     dependencies:
       '@fedify/fedify': 2.3.6
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.3.2
-      ioredis: 5.11.1(supports-color@11.0.0)
+      ioredis: 6.0.0(supports-color@11.0.0)
 
   '@fedify/relay@2.3.6':
     dependencies:
@@ -4367,7 +4363,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.20.1
 
-  '@ioredis/commands@1.10.0': {}
+  '@ioredis/commands@2.0.0': {}
 
   '@jimp/bmp@0.22.12(@jimp/custom@0.22.12)':
     dependencies:
@@ -5865,14 +5861,13 @@ snapshots:
 
   interpret@2.2.0: {}
 
-  ioredis@5.11.1(supports-color@11.0.0):
+  ioredis@6.0.0(supports-color@11.0.0):
     dependencies:
-      '@ioredis/commands': 1.10.0
+      '@ioredis/commands': 2.0.0
       cluster-key-slot: 1.1.1
       debug: 4.4.3(supports-color@11.0.0)
       denque: 2.1.0
       redis-errors: 1.2.0
-      redis-parser: 3.0.0
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
@@ -6492,10 +6487,6 @@ snapshots:
       resolve: 1.22.12
 
   redis-errors@1.2.0: {}
-
-  redis-parser@3.0.0:
-    dependencies:
-      redis-errors: 1.2.0
 
   reflect-metadata@0.2.2: {}
 
