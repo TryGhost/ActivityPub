@@ -79,6 +79,7 @@
         'major',
       ],
       automerge: false,
+      recreateWhen: 'never',
     },
 
     // Node gets the strictest treatment of the three. CI installs Node from
