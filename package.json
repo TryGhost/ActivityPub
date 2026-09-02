@@ -7,7 +7,7 @@
   "main": "src/app.ts",
   "type": "module",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "packageManager": "pnpm@11.25.0",
   "scripts": {
