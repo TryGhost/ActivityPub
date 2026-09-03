@@ -311,6 +311,48 @@ describe('FeedService', () => {
             ]);
         });
 
+        it('should not return posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const userAccount = await createInternalAccount(
+                'future-filter-user.com',
+            );
+            const followedAccount = await createInternalAccount(
+                'future-filter-followed.com',
+            );
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            const pastPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(pastPost);
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            await feedService.addPostToFeeds(pastPost as PublicPost);
+            await feedService.addPostToFeeds(futurePost as PublicPost);
+
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            expect(feed.results).toHaveLength(1);
+            expect(feed.results[0].post_id).toEqual(pastPost.id);
+        });
+
         it('should correctly set followedByMe flag for authors', async () => {
             const feedService = new FeedService(client, moderationService);
 
@@ -674,6 +716,55 @@ describe('FeedService', () => {
             expect(businessFeed.results).toHaveLength(2);
             expect(businessFeed.results[0].post_id).toBe(businessPost2.id); // Jan 4
             expect(businessFeed.results[1].post_id).toBe(businessPost1.id); // Jan 2
+        });
+
+        it('should not return posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount = await createInternalAccount(
+                'discovery-future-viewer.com',
+            );
+            const authorAccount = await createInternalAccount(
+                'discovery-future-author.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            const pastPost = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(pastPost);
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            await feedService.addPostToDiscoveryFeeds(pastPost as PublicPost);
+            await feedService.addPostToDiscoveryFeeds(futurePost as PublicPost);
+
+            const feed = await feedService.getDiscoveryFeedData(
+                topicId,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results).toHaveLength(1);
+            expect(feed.results[0].post_id).toEqual(pastPost.id);
         });
 
         it('should sanitize posts before rendering in discovery feeds', async () => {

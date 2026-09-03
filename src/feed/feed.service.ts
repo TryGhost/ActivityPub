@@ -238,6 +238,11 @@ export class FeedService {
             })
             .whereRaw('feeds.user_id = ?', [userId])
             .where('feeds.post_type', postType)
+            // Publishers control the published date of their posts, so a post
+            // can claim a date in the future — such posts are hidden until
+            // their claimed date passes, otherwise they would stick to the
+            // top of the feed
+            .where('feeds.published_at', '<=', new Date())
             .modify((query) => {
                 if (options.cursor) {
                     query.where('feeds.published_at', '<', options.cursor);
@@ -376,6 +381,11 @@ export class FeedService {
             })
             .whereRaw('discovery_feeds.topic_id = ?', [topicId])
             .where('discovery_feeds.post_type', postType)
+            // Publishers control the published date of their posts, so a post
+            // can claim a date in the future — such posts are hidden until
+            // their claimed date passes, otherwise they would stick to the
+            // top of the feed
+            .where('discovery_feeds.published_at', '<=', new Date())
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
             .modify((query) => {
