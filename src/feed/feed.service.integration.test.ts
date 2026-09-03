@@ -1569,6 +1569,33 @@ describe('FeedService', () => {
             expect(feedEntry).toBeTruthy();
             expect(feedEntry.published_at).toEqual(originalPublishDate);
         });
+
+        it('should cap a future published date at the current time', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'future-post-author.com',
+            );
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const post = await createPost(authorAccount, {
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(post);
+
+            await feedService.addPostToFeeds(post as PublicPost);
+
+            const feed = await getFeedDataForAccount(authorAccount);
+
+            expect(feed).toHaveLength(1);
+            expect(feed[0].published_at.getTime()).toBeLessThanOrEqual(
+                Date.now(),
+            );
+            expect(feed[0].published_at.getTime()).toBeGreaterThan(
+                Date.now() - 60 * 1000,
+            );
+        });
     });
 
     describe('addPostToDiscoveryFeeds', () => {
@@ -1629,6 +1656,47 @@ describe('FeedService', () => {
                 author_id: authorAccount.id,
                 post_type: PostType.Article,
             });
+        });
+
+        it('should cap a future published date at the current time', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'discovery-future-author.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const article = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(article);
+
+            await feedService.addPostToDiscoveryFeeds(article as PublicPost);
+
+            const discoveryFeeds = await client('discovery_feeds').where(
+                'post_id',
+                article.id,
+            );
+
+            expect(discoveryFeeds).toHaveLength(1);
+            expect(
+                discoveryFeeds[0].published_at.getTime(),
+            ).toBeLessThanOrEqual(Date.now());
+            expect(discoveryFeeds[0].published_at.getTime()).toBeGreaterThan(
+                Date.now() - 60 * 1000,
+            );
         });
 
         it('should NOT add notes to discovery feeds', async () => {

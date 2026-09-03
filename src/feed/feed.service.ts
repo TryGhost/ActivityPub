@@ -10,6 +10,17 @@ import {
 } from '@/post/post.entity';
 export type FeedType = 'Inbox' | 'Feed';
 
+/**
+ * Publishers control the published date of their posts, so a post can claim a
+ * date in the future — capping the feed ranking timestamp prevents such posts
+ * from sticking to the top of feeds until real time catches up with them
+ */
+function capAtNow(date: Date): Date {
+    const now = new Date();
+
+    return date > now ? now : date;
+}
+
 interface GetFeedDataOptions {
     /**
      * ID of the account associated with the user to get the feed for
@@ -426,7 +437,7 @@ export class FeedService {
 
         const discoveryFeedEntries = topics.map((t) => ({
             post_type: post.type,
-            published_at: post.publishedAt,
+            published_at: capAtNow(post.publishedAt),
             topic_id: t.topic_id,
             post_id: post.id,
             author_id: post.author.id,
@@ -534,7 +545,9 @@ export class FeedService {
         const feedEntries = userIds.map((userId) => ({
             post_type: post.type,
             published_at:
-                repostedBy && repost ? repost.created_at : post.publishedAt,
+                repostedBy && repost
+                    ? repost.created_at
+                    : capAtNow(post.publishedAt),
             audience: post.audience,
             user_id: userId,
             post_id: post.id,
