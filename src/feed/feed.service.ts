@@ -10,6 +10,15 @@ import {
 } from '@/post/post.entity';
 export type FeedType = 'Inbox' | 'Feed';
 
+/**
+ * Publishers control published_at and can claim a future date — hide such
+ * posts until that date passes so they cannot pin themselves to the top
+ * of a feed
+ */
+function excludePostsClaimingFutureDates(query: Knex.QueryBuilder) {
+    query.where('posts.published_at', '<=', new Date());
+}
+
 interface GetFeedDataOptions {
     /**
      * ID of the account associated with the user to get the feed for
@@ -238,14 +247,7 @@ export class FeedService {
             })
             .whereRaw('feeds.user_id = ?', [userId])
             .where('feeds.post_type', postType)
-            // Publishers control the published date of their posts, so a post
-            // can claim a date in the future — such posts are hidden until
-            // their claimed date passes, otherwise they would stick to the
-            // top of the feed
-            .where('feeds.published_at', '<=', new Date())
-            // For reposts, feeds.published_at holds the repost date, so the
-            // post's own claimed date needs checking too
-            .where('posts.published_at', '<=', new Date())
+            .modify(excludePostsClaimingFutureDates)
             .modify((query) => {
                 if (options.cursor) {
                     query.where('feeds.published_at', '<', options.cursor);
@@ -384,11 +386,7 @@ export class FeedService {
             })
             .whereRaw('discovery_feeds.topic_id = ?', [topicId])
             .where('discovery_feeds.post_type', postType)
-            // Publishers control the published date of their posts, so a post
-            // can claim a date in the future — such posts are hidden until
-            // their claimed date passes, otherwise they would stick to the
-            // top of the feed
-            .where('discovery_feeds.published_at', '<=', new Date())
+            .modify(excludePostsClaimingFutureDates)
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
             .modify((query) => {
