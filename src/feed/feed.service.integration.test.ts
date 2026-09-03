@@ -322,8 +322,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount,
+                userAccount,
             );
 
             const pastPost = await createPost(followedAccount, {
