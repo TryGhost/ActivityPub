@@ -14,6 +14,7 @@ import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import type { MinimalAccountDTO } from '@/http/api/types';
+import { resolveExternalWebfingerHost } from '@/lookup-helpers';
 import type { ModerationService } from '@/moderation/moderation.service';
 
 /**
@@ -406,12 +407,22 @@ export class AccountFollowsView {
                         continue;
                     }
 
+                    const actorId = new URL(followsActor.id);
+                    const resolution = await resolveExternalWebfingerHost(
+                        followsActor.preferredUsername,
+                        actorId,
+                    );
+                    const handleHost =
+                        resolution.type === 'custom'
+                            ? resolution.host
+                            : actorId.host;
+
                     accounts.push({
                         id: followsActor.id,
                         apId: followsActor.id,
                         name: followsActor.name,
                         handle: getAccountHandle(
-                            new URL(followsActor.id).host,
+                            handleHost,
                             followsActor.preferredUsername,
                         ),
                         avatarUrl: followsActor.icon.url,

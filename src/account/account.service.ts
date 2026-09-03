@@ -37,6 +37,7 @@ import { isHandle } from '@/helpers/activitypub/actor';
 import {
     lookupObject as lookupActivityPubObject,
     lookupActorProfile,
+    resolveExternalWebfingerHost,
 } from '@/lookup-helpers';
 
 interface GetFollowingAccountsOptions {
@@ -110,7 +111,7 @@ export class AccountService {
     async getByApId(id: URL): Promise<Account | null> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
-            return account;
+            return this.refreshExternalWebfingerHostIfMissing(account);
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -133,6 +134,10 @@ export class AccountService {
         }
 
         const data = await mapActorToExternalAccountData(potentialActor);
+        data.webfinger_host = await this.resolveWebfingerHostForExternal(
+            data.username,
+            new URL(data.ap_id),
+        );
 
         await this.createExternalAccount(data);
 
@@ -144,7 +149,9 @@ export class AccountService {
     ): Promise<Result<Account, RemoteAccountFetchError>> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
-            return ok(account);
+            return ok(
+                await this.refreshExternalWebfingerHostIfMissing(account),
+            );
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -188,6 +195,11 @@ export class AccountService {
         } catch (_err) {
             return error('invalid-data');
         }
+
+        data.webfinger_host = await this.resolveWebfingerHostForExternal(
+            data.username,
+            new URL(data.ap_id),
+        );
 
         await this.createExternalAccount(data);
 
@@ -423,6 +435,89 @@ export class AccountService {
     }
 
     /**
+     * Resolve the WebFinger handle host for a remote actor.
+     *
+     * Returns the custom subject host when present. When WebFinger confirms the
+     * actor host is canonical, returns that host so callers can persist it and
+     * skip re-resolving on later ensureByApId calls. Returns null only when
+     * lookup fails (caller should leave any existing value unchanged).
+     */
+    private async resolveWebfingerHostForExternal(
+        username: string,
+        apId: URL,
+    ): Promise<string | null> {
+        const resolution = await resolveExternalWebfingerHost(username, apId);
+        if (resolution.type === 'custom') {
+            return resolution.host;
+        }
+        if (resolution.type === 'default') {
+            return normalizeWebfingerHost(apId.host);
+        }
+        return null;
+    }
+
+    /**
+     * One-shot backfill for external accounts that predate remote WebFinger
+     * persistence. Once a host is stored (custom or confirmed default), further
+     * ensureByApId calls skip the lookup. custom→custom changes still arrive via
+     * actor Update → {@link refreshExternalWebfingerHost}.
+     */
+    private async refreshExternalWebfingerHostIfMissing(
+        account: Account,
+    ): Promise<Account> {
+        if (account.isInternal || account.webfingerHost !== null) {
+            return account;
+        }
+
+        return this.refreshExternalWebfingerHost(account);
+    }
+
+    /**
+     * Re-resolve and persist the WebFinger subject host for an external account.
+     * Lookup failures leave the stored value unchanged.
+     */
+    async refreshExternalWebfingerHost(account: Account): Promise<Account> {
+        if (account.isInternal) {
+            return account;
+        }
+
+        const nextHost = await this.resolveWebfingerHostForExternal(
+            account.username,
+            account.apId,
+        );
+
+        if (nextHost === null || nextHost === account.webfingerHost) {
+            return account;
+        }
+
+        const actorHost = normalizeWebfingerHost(account.apId.host);
+        if (nextHost !== actorHost) {
+            const conflict =
+                await this.accountRepository.hasWebfingerHandleConflict(
+                    account.username,
+                    nextHost,
+                    account.id,
+                );
+
+            if (conflict) {
+                return account;
+            }
+        }
+
+        const updated = account.setWebfingerHost(nextHost);
+        try {
+            await this.accountRepository.save(updated);
+        } catch (err) {
+            if (isDuplicateEntryError(err)) {
+                return account;
+            }
+            throw err;
+        }
+
+        return updated;
+    }
+
+    /**
      * Create an internal account
      *
      * An internal account is an account that is linked to a user
@@ -562,7 +657,7 @@ export class AccountService {
             uuid: randomUUID(),
             ap_private_key: null,
             domain: new URL(accountData.ap_id).host,
-            webfinger_host: null,
+            webfinger_host: accountData.webfinger_host ?? null,
         };
 
         try {
@@ -579,10 +674,20 @@ export class AccountService {
                     ])
                     .first<AccountType>();
 
-                if (!existingAccount) {
-                    throw error;
+                if (existingAccount) {
+                    return existingAccount;
                 }
-                return existingAccount;
+
+                // Likely a webfinger_host uniqueness conflict — retry without
+                // the custom host rather than failing account creation.
+                if (dataToInsert.webfinger_host) {
+                    return this.createExternalAccount({
+                        ...accountData,
+                        webfinger_host: null,
+                    });
+                }
+
+                throw error;
             }
             throw error;
         }
@@ -930,6 +1035,10 @@ export class AccountService {
         const updated = account.updateProfile(profileData);
 
         await this.accountRepository.save(updated);
+
+        if (!account.isInternal) {
+            await this.refreshExternalWebfingerHost(updated);
+        }
 
         return ok(true);
     }

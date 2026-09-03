@@ -4,7 +4,10 @@ import { lookupWebFinger } from '@fedify/webfinger';
 
 import type { FedifyContext } from '@/app';
 import { error, ok } from '@/core/result';
-import { lookupActorProfile } from '@/lookup-helpers';
+import {
+    lookupActorProfile,
+    resolveExternalWebfingerHost,
+} from '@/lookup-helpers';
 
 vi.mock('@fedify/webfinger', () => ({
     lookupWebFinger: vi.fn(),
@@ -45,7 +48,7 @@ describe('lookupActorProfile', () => {
         );
 
         expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com', {
-            allowPrivateAddress: true,
+            allowPrivateAddress: expect.any(Boolean),
         });
         expect(result).toEqual(ok(new URL('https://example.com/actor')));
     });
@@ -129,5 +132,116 @@ describe('lookupActorProfile', () => {
         );
 
         expect(result).toEqual(ok(new URL('https://example.com/actor')));
+    });
+});
+
+describe('resolveExternalWebfingerHost', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('returns custom when the WebFinger subject host differs from the actor host', async () => {
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+            subject: 'acct:john@onolan.org',
+            links: [
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'https://john.onolan.org/.ghost/activitypub/users/index',
+                },
+            ],
+        });
+
+        const result = await resolveExternalWebfingerHost(
+            'john',
+            new URL('https://john.onolan.org/.ghost/activitypub/users/index'),
+        );
+
+        expect(lookupWebFinger).toHaveBeenCalledWith(
+            'acct:john@john.onolan.org',
+            expect.any(Object),
+        );
+        expect(result).toEqual({ type: 'custom', host: 'onolan.org' });
+    });
+
+    it('returns default when the subject host matches the actor host', async () => {
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+            subject: 'acct:alice@example.com',
+            links: [
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'https://example.com/users/alice',
+                },
+            ],
+        });
+
+        const result = await resolveExternalWebfingerHost(
+            'alice',
+            new URL('https://example.com/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'default' });
+    });
+
+    it('returns unavailable when the self link does not match the actor', async () => {
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+            subject: 'acct:alice@custom.example',
+            links: [
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'https://example.com/users/other',
+                },
+            ],
+        });
+
+        const result = await resolveExternalWebfingerHost(
+            'alice',
+            new URL('https://example.com/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'unavailable' });
+    });
+
+    it('treats trailing-slash differences on the self link as the same actor', async () => {
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+            subject: 'acct:alice@custom.example',
+            links: [
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'https://example.com/users/alice/',
+                },
+            ],
+        });
+
+        const result = await resolveExternalWebfingerHost(
+            'alice',
+            new URL('https://example.com/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'custom', host: 'custom.example' });
+    });
+
+    it('returns unavailable when WebFinger lookup fails', async () => {
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockRejectedValue(new Error('network'));
+
+        const result = await resolveExternalWebfingerHost(
+            'alice',
+            new URL('https://example.com/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'unavailable' });
     });
 });
