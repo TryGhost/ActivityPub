@@ -353,6 +353,49 @@ describe('FeedService', () => {
             expect(feed.results[0].post_id).toEqual(pastPost.id);
         });
 
+        it('should not return reposts of posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const userAccount = await createInternalAccount(
+                'future-repost-user.com',
+            );
+            const reposterAccount = await createInternalAccount(
+                'future-repost-reposter.com',
+            );
+            const authorAccount = await createInternalAccount(
+                'future-repost-author.com',
+            );
+
+            await accountService.recordAccountFollow(
+                reposterAccount,
+                userAccount,
+            );
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(authorAccount, {
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            futurePost.addRepost(reposterAccount);
+            await postRepository.save(futurePost);
+
+            await feedService.addPostToFeeds(
+                futurePost as PublicPost,
+                reposterAccount.id,
+            );
+
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            expect(feed.results).toHaveLength(0);
+        });
+
         it('should correctly set followedByMe flag for authors', async () => {
             const feedService = new FeedService(client, moderationService);
 

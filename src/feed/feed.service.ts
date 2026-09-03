@@ -243,6 +243,9 @@ export class FeedService {
             // their claimed date passes, otherwise they would stick to the
             // top of the feed
             .where('feeds.published_at', '<=', new Date())
+            // For reposts, feeds.published_at holds the repost date, so the
+            // post's own claimed date needs checking too
+            .where('posts.published_at', '<=', new Date())
             .modify((query) => {
                 if (options.cursor) {
                     query.where('feeds.published_at', '<', options.cursor);
