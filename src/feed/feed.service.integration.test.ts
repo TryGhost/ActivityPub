@@ -311,91 +311,6 @@ describe('FeedService', () => {
             ]);
         });
 
-        it('should not return posts with a published date in the future', async () => {
-            const feedService = new FeedService(client, moderationService);
-
-            const userAccount = await createInternalAccount(
-                'future-filter-user.com',
-            );
-            const followedAccount = await createInternalAccount(
-                'future-filter-followed.com',
-            );
-
-            await accountService.recordAccountFollow(
-                followedAccount,
-                userAccount,
-            );
-
-            const pastPost = await createPost(followedAccount, {
-                audience: Audience.Public,
-                publishedAt: new Date('2024-01-01T10:00:00Z'),
-            });
-            await postRepository.save(pastPost);
-
-            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-            const futurePost = await createPost(followedAccount, {
-                audience: Audience.Public,
-                publishedAt: oneDayFromNow,
-            });
-            await postRepository.save(futurePost);
-
-            await feedService.addPostToFeeds(pastPost as PublicPost);
-            await feedService.addPostToFeeds(futurePost as PublicPost);
-
-            const feed = await feedService.getFeedData({
-                accountId: userAccount.id!,
-                feedType: 'Inbox',
-                limit: 10,
-                cursor: null,
-            });
-
-            expect(feed.results).toHaveLength(1);
-            expect(feed.results[0].post_id).toEqual(pastPost.id);
-        });
-
-        it('should not return reposts of posts with a published date in the future', async () => {
-            const feedService = new FeedService(client, moderationService);
-
-            const userAccount = await createInternalAccount(
-                'future-repost-user.com',
-            );
-            const reposterAccount = await createInternalAccount(
-                'future-repost-reposter.com',
-            );
-            const authorAccount = await createInternalAccount(
-                'future-repost-author.com',
-            );
-
-            await accountService.recordAccountFollow(
-                reposterAccount,
-                userAccount,
-            );
-
-            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-            const futurePost = await createPost(authorAccount, {
-                audience: Audience.Public,
-                publishedAt: oneDayFromNow,
-            });
-            await postRepository.save(futurePost);
-
-            futurePost.addRepost(reposterAccount);
-            await postRepository.save(futurePost);
-
-            await feedService.addPostToFeeds(
-                futurePost as PublicPost,
-                reposterAccount.id,
-            );
-
-            const feed = await feedService.getFeedData({
-                accountId: userAccount.id!,
-                feedType: 'Inbox',
-                limit: 10,
-                cursor: null,
-            });
-
-            expect(feed.results).toHaveLength(0);
-        });
-
         it('should correctly set followedByMe flag for authors', async () => {
             const feedService = new FeedService(client, moderationService);
 
@@ -759,55 +674,6 @@ describe('FeedService', () => {
             expect(businessFeed.results).toHaveLength(2);
             expect(businessFeed.results[0].post_id).toBe(businessPost2.id); // Jan 4
             expect(businessFeed.results[1].post_id).toBe(businessPost1.id); // Jan 2
-        });
-
-        it('should not return posts with a published date in the future', async () => {
-            const feedService = new FeedService(client, moderationService);
-
-            const viewerAccount = await createInternalAccount(
-                'discovery-future-viewer.com',
-            );
-            const authorAccount = await createInternalAccount(
-                'discovery-future-author.com',
-            );
-
-            const [topicId] = await client('topics').insert({
-                name: 'Technology',
-                slug: 'technology',
-            });
-
-            await client('account_topics').insert({
-                account_id: authorAccount.id,
-                topic_id: topicId,
-            });
-
-            const pastPost = await createPost(authorAccount, {
-                type: PostType.Article,
-                audience: Audience.Public,
-                publishedAt: new Date('2024-01-01T10:00:00Z'),
-            });
-            await postRepository.save(pastPost);
-
-            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-            const futurePost = await createPost(authorAccount, {
-                type: PostType.Article,
-                audience: Audience.Public,
-                publishedAt: oneDayFromNow,
-            });
-            await postRepository.save(futurePost);
-
-            await feedService.addPostToDiscoveryFeeds(pastPost as PublicPost);
-            await feedService.addPostToDiscoveryFeeds(futurePost as PublicPost);
-
-            const feed = await feedService.getDiscoveryFeedData(
-                topicId,
-                viewerAccount.id,
-                10,
-                null,
-            );
-
-            expect(feed.results).toHaveLength(1);
-            expect(feed.results[0].post_id).toEqual(pastPost.id);
         });
 
         it('should sanitize posts before rendering in discovery feeds', async () => {
@@ -1379,6 +1245,67 @@ describe('FeedService', () => {
     });
 
     describe('addPostToFeeds', () => {
+        it('should not add posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'future-post-author.com',
+            );
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(authorAccount, {
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            const updatedUserIds = await feedService.addPostToFeeds(
+                futurePost as PublicPost,
+            );
+
+            expect(updatedUserIds).toHaveLength(0);
+
+            const feedEntries = await client('feeds').where(
+                'post_id',
+                futurePost.id,
+            );
+            expect(feedEntries).toHaveLength(0);
+        });
+
+        it('should not add reposts of posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'future-repost-author.com',
+            );
+            const reposterAccount = await createInternalAccount(
+                'future-repost-reposter.com',
+            );
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(authorAccount, {
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            futurePost.addRepost(reposterAccount);
+            await postRepository.save(futurePost);
+
+            const updatedUserIds = await feedService.addPostToFeeds(
+                futurePost as PublicPost,
+                reposterAccount.id,
+            );
+
+            expect(updatedUserIds).toHaveLength(0);
+
+            const feedEntries = await client('feeds').where(
+                'post_id',
+                futurePost.id,
+            );
+            expect(feedEntries).toHaveLength(0);
+        });
+
         it('should add a post to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client, moderationService);
 
@@ -1763,6 +1690,40 @@ describe('FeedService', () => {
                 author_id: authorAccount.id,
                 post_type: PostType.Article,
             });
+        });
+
+        it('should not add posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'discovery-future-author.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const futurePost = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: oneDayFromNow,
+            });
+            await postRepository.save(futurePost);
+
+            await feedService.addPostToDiscoveryFeeds(futurePost as PublicPost);
+
+            const discoveryFeeds = await client('discovery_feeds').where(
+                'post_id',
+                futurePost.id,
+            );
+            expect(discoveryFeeds).toHaveLength(0);
         });
 
         it('should NOT add notes to discovery feeds', async () => {

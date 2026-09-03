@@ -11,12 +11,11 @@ import {
 export type FeedType = 'Inbox' | 'Feed';
 
 /**
- * Publishers control published_at and can claim a future date — hide such
- * posts until that date passes so they cannot pin themselves to the top
- * of a feed
+ * Publishers control published_at and can claim a future date — such posts
+ * are never added to feeds, otherwise they would pin themselves to the top
  */
-function excludePostsClaimingFutureDates(query: Knex.QueryBuilder) {
-    query.where('posts.published_at', '<=', new Date());
+function claimsFutureDate(post: PublicPost | FollowersOnlyPost): boolean {
+    return post.publishedAt > new Date();
 }
 
 interface GetFeedDataOptions {
@@ -247,7 +246,6 @@ export class FeedService {
             })
             .whereRaw('feeds.user_id = ?', [userId])
             .where('feeds.post_type', postType)
-            .modify(excludePostsClaimingFutureDates)
             .modify((query) => {
                 if (options.cursor) {
                     query.where('feeds.published_at', '<', options.cursor);
@@ -386,7 +384,6 @@ export class FeedService {
             })
             .whereRaw('discovery_feeds.topic_id = ?', [topicId])
             .where('discovery_feeds.post_type', postType)
-            .modify(excludePostsClaimingFutureDates)
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
             .modify((query) => {
@@ -424,6 +421,10 @@ export class FeedService {
         }
 
         if (post.inReplyTo) {
+            return [];
+        }
+
+        if (claimsFutureDate(post)) {
             return [];
         }
 
@@ -480,6 +481,10 @@ export class FeedService {
 
         // If the post is a reply, we should not add it to any feeds
         if (post.inReplyTo) {
+            return [];
+        }
+
+        if (claimsFutureDate(post)) {
             return [];
         }
 
