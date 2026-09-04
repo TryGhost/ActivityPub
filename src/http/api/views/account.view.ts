@@ -8,7 +8,11 @@ import { getError, getValue, isError } from '@/core/result';
 import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
-import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
+import {
+    lookupActorProfile,
+    lookupObject,
+    resolveExternalWebfingerHost,
+} from '@/lookup-helpers';
 
 /**
  * Additional context that can be passed to the view
@@ -235,20 +239,22 @@ export class AccountView {
         let blockedByMe = false;
         let domainBlockedByMe = false;
 
-        if (context.requestUserAccount?.id) {
-            const externalAccount = await this.db('accounts')
-                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
-                .select('id', 'ap_id')
-                .first();
+        const storedAccount = await this.db('accounts')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+            .select('id', 'ap_id', 'webfinger_host')
+            .first<{
+                id: number;
+                ap_id: string;
+                webfinger_host: string | null;
+            }>();
 
-            if (externalAccount) {
-                ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
-                    await this.getRequestUserContextData(
-                        context.requestUserAccount.id,
-                        externalAccount.id,
-                        new URL(externalAccount.ap_id).hostname,
-                    ));
-            }
+        if (context.requestUserAccount?.id && storedAccount) {
+            ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    storedAccount.id,
+                    new URL(storedAccount.ap_id).hostname,
+                ));
         }
 
         const icon = await actor.getIcon();
@@ -269,11 +275,35 @@ export class AccountView {
                 ]);
         }
 
+        const handle = await (async () => {
+            const username = actor.preferredUsername?.toString();
+            if (!actor.id || !username) {
+                return getHandle(actor);
+            }
+
+            // Prefer a previously persisted host so transient WebFinger failures
+            // cannot regress a correct handle, and so we skip a redundant lookup.
+            if (storedAccount?.webfinger_host) {
+                return getAccountHandle(storedAccount.webfinger_host, username);
+            }
+
+            const resolution = await resolveExternalWebfingerHost(
+                username,
+                actor.id,
+            );
+
+            if (resolution.type === 'custom') {
+                return getAccountHandle(resolution.host, username);
+            }
+
+            return getHandle(actor);
+        })();
+
         return {
             id: actor.id?.toString() || '',
             apId: actor.id?.toString() || '',
             name: actor.name?.toString() || '',
-            handle: getHandle(actor),
+            handle,
             bio: sanitizeHtml(actor.summary?.toString() || ''),
             url: actor.url?.toString() || '',
             avatarUrl: icon?.url?.toString() || '',

@@ -23,6 +23,9 @@ vi.mock('@fedify/vocab', async () => {
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
+    resolveExternalWebfingerHost: vi.fn().mockResolvedValue({
+        type: 'unavailable',
+    }),
 }));
 
 describe('AccountService', () => {
@@ -593,8 +596,11 @@ describe('AccountService', () => {
 
     describe('updateAccountByApId', () => {
         it('should update the account with the provided data', async () => {
-            const updated = {} as unknown as AccountEntity;
+            const updated = {
+                isInternal: true,
+            } as unknown as AccountEntity;
             const account = {
+                isInternal: true,
                 updateProfile: vi.fn().mockReturnValue(updated),
             } as unknown as AccountEntity;
 
@@ -631,7 +637,10 @@ describe('AccountService', () => {
 
         it('should handle empty values for avatarUrl, bannerImageUrl, url, and customFields', async () => {
             const account = {
-                updateProfile: vi.fn(),
+                isInternal: true,
+                updateProfile: vi.fn().mockReturnValue({
+                    isInternal: true,
+                }),
             } as unknown as AccountEntity;
 
             vi.mocked(knexAccountRepository.getByApId).mockImplementation(() =>
@@ -657,6 +666,149 @@ describe('AccountService', () => {
                 url: null,
                 customFields: null,
             });
+        });
+
+        it('refreshes webfinger host for external accounts after profile update', async () => {
+            const withWebfinger = {
+                isInternal: false,
+                webfingerHost: 'custom.example',
+            } as unknown as AccountEntity;
+            const afterProfile = {
+                isInternal: false,
+                webfingerHost: null,
+                username: 'alice',
+                apId: new URL('https://blog.example.com/users/alice'),
+                id: 9,
+                setWebfingerHost: vi.fn().mockReturnValue(withWebfinger),
+            } as unknown as AccountEntity;
+            const account = {
+                isInternal: false,
+                updateProfile: vi.fn().mockReturnValue(afterProfile),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
+                account,
+            );
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(false);
+            vi.mocked(
+                lookupHelpers.resolveExternalWebfingerHost,
+            ).mockResolvedValue({
+                type: 'custom',
+                host: 'custom.example',
+            });
+
+            await accountService.updateAccountByApId(
+                new URL('https://blog.example.com/users/alice'),
+                {
+                    name: 'Alice',
+                    bio: 'bio',
+                    username: 'alice',
+                    avatarUrl: '',
+                    bannerImageUrl: '',
+                    url: '',
+                    customFields: null,
+                },
+            );
+
+            expect(
+                lookupHelpers.resolveExternalWebfingerHost,
+            ).toHaveBeenCalledWith('alice', afterProfile.apId);
+            expect(afterProfile.setWebfingerHost).toHaveBeenCalledWith(
+                'custom.example',
+            );
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                withWebfinger,
+            );
+        });
+    });
+
+    describe('ensureByApId webfinger refresh', () => {
+        it('backfills webfinger_host for an existing external account with a null host', async () => {
+            const refreshed = {
+                isInternal: false,
+                webfingerHost: 'onolan.org',
+            } as unknown as AccountEntity;
+            const account = {
+                isInternal: false,
+                id: 1,
+                username: 'john',
+                apId: new URL(
+                    'https://john.onolan.org/.ghost/activitypub/users/index',
+                ),
+                webfingerHost: null,
+                setWebfingerHost: vi.fn().mockReturnValue(refreshed),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
+                account,
+            );
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(false);
+            vi.mocked(
+                lookupHelpers.resolveExternalWebfingerHost,
+            ).mockResolvedValue({
+                type: 'custom',
+                host: 'onolan.org',
+            });
+
+            const result = await accountService.ensureByApId(account.apId);
+
+            expect(result).toEqual(ok(refreshed));
+            expect(account.setWebfingerHost).toHaveBeenCalledWith('onolan.org');
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(refreshed);
+        });
+
+        it('skips WebFinger when webfinger_host is already set', async () => {
+            const account = {
+                isInternal: false,
+                webfingerHost: 'onolan.org',
+                apId: new URL(
+                    'https://john.onolan.org/.ghost/activitypub/users/index',
+                ),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
+                account,
+            );
+
+            const result = await accountService.ensureByApId(account.apId);
+
+            expect(result).toEqual(ok(account));
+            expect(
+                lookupHelpers.resolveExternalWebfingerHost,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('stores the actor host when WebFinger confirms the default', async () => {
+            const refreshed = {
+                webfingerHost: 'blog.example.com',
+            } as unknown as AccountEntity;
+            const account = {
+                isInternal: false,
+                id: 2,
+                username: 'alice',
+                apId: new URL('https://blog.example.com/users/alice'),
+                webfingerHost: null,
+                setWebfingerHost: vi.fn().mockReturnValue(refreshed),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
+                account,
+            );
+            vi.mocked(
+                lookupHelpers.resolveExternalWebfingerHost,
+            ).mockResolvedValue({
+                type: 'default',
+            });
+
+            await accountService.ensureByApId(account.apId);
+
+            expect(account.setWebfingerHost).toHaveBeenCalledWith(
+                'blog.example.com',
+            );
         });
     });
 

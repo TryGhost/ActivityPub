@@ -18,6 +18,9 @@ import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
+    resolveExternalWebfingerHost: vi.fn().mockResolvedValue({
+        type: 'unavailable',
+    }),
 }));
 
 describe('AccountView', () => {
