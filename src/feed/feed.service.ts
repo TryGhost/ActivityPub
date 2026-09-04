@@ -5,19 +5,10 @@ import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
-    type Post,
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
 export type FeedType = 'Inbox' | 'Feed';
-
-/**
- * Posts with a published_at date set in the future are not rendered on
- * feeds, else they would pin themselves to the top
- */
-function publishedDateInFuture(post: Post): boolean {
-    return post.publishedAt > new Date();
-}
 
 interface GetFeedDataOptions {
     /**
@@ -425,7 +416,9 @@ export class FeedService {
             return [];
         }
 
-        if (publishedDateInFuture(post)) {
+        // Posts with a published_at date set in the future are not rendered
+        // on feeds, else they would pin themselves to the top
+        if (post.publishedAt > new Date()) {
             return [];
         }
 
@@ -485,7 +478,9 @@ export class FeedService {
             return [];
         }
 
-        if (publishedDateInFuture(post)) {
+        // Posts with a published_at date set in the future are not rendered
+        // on feeds, else they would pin themselves to the top
+        if (post.publishedAt > new Date()) {
             return [];
         }
 
