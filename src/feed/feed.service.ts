@@ -5,16 +5,17 @@ import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
+    type Post,
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
 export type FeedType = 'Inbox' | 'Feed';
 
 /**
- * Publishers control published_at and can claim a future date — such posts
- * are never added to feeds, otherwise they would pin themselves to the top
+ * Posts with a published_at date set in the future are not rendered on
+ * feeds, else they would pin themselves to the top
  */
-function claimsFutureDate(post: PublicPost | FollowersOnlyPost): boolean {
+function publishedDateInFuture(post: Post): boolean {
     return post.publishedAt > new Date();
 }
 
@@ -424,7 +425,7 @@ export class FeedService {
             return [];
         }
 
-        if (claimsFutureDate(post)) {
+        if (publishedDateInFuture(post)) {
             return [];
         }
 
@@ -484,7 +485,7 @@ export class FeedService {
             return [];
         }
 
-        if (claimsFutureDate(post)) {
+        if (publishedDateInFuture(post)) {
             return [];
         }
 
