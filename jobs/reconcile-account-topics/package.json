@@ -4,6 +4,6 @@
     "dependencies": {
         "@fedify/vocab": "2.3.6",
         "@fedify/webfinger": "2.3.6",
-        "mysql2": "3.24.2"
+        "mysql2": "3.24.3"
     }
 }
