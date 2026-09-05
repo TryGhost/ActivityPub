@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - uses: tryghost/actions/actions/slack-build@79137a8de25f8218a743dcd288eca2b906bfafde # main
+      - uses: tryghost/actions/actions/slack-build@2ad8c9a006b0f0b320bfb8c935706b645ca9409c # main
         if: contains(needs.*.result, 'failure') && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           status: failure
