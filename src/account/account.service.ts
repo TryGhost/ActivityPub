@@ -6,6 +6,7 @@ import {
     isActor,
     lookupObject as lookupFedifyObject,
 } from '@fedify/vocab';
+import { getLogger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
 import { type Account, AccountEntity } from '@/account/account.entity';
@@ -37,7 +38,7 @@ import { isHandle } from '@/helpers/activitypub/actor';
 import {
     lookupObject as lookupActivityPubObject,
     lookupActorProfile,
-    resolveExternalWebfingerHost,
+    resolveCustomWebfingerHost,
 } from '@/lookup-helpers';
 
 interface GetFollowingAccountsOptions {
@@ -111,7 +112,7 @@ export class AccountService {
     async getByApId(id: URL): Promise<Account | null> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
-            return this.refreshExternalWebfingerHostIfMissing(account);
+            return account;
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -134,7 +135,7 @@ export class AccountService {
         }
 
         const data = await mapActorToExternalAccountData(potentialActor);
-        data.webfinger_host = await this.resolveWebfingerHostForExternal(
+        data.webfinger_host = await this.resolveCustomWebfingerHostForExternal(
             data.username,
             new URL(data.ap_id),
         );
@@ -149,9 +150,7 @@ export class AccountService {
     ): Promise<Result<Account, RemoteAccountFetchError>> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
-            return ok(
-                await this.refreshExternalWebfingerHostIfMissing(account),
-            );
+            return ok(account);
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -196,7 +195,7 @@ export class AccountService {
             return error('invalid-data');
         }
 
-        data.webfinger_host = await this.resolveWebfingerHostForExternal(
+        data.webfinger_host = await this.resolveCustomWebfingerHostForExternal(
             data.username,
             new URL(data.ap_id),
         );
@@ -435,63 +434,69 @@ export class AccountService {
     }
 
     /**
-     * Resolve the WebFinger handle host for a remote actor.
+     * Resolve the custom WebFinger handle host to store for a remote actor.
      *
-     * Returns the custom subject host when present. When WebFinger confirms the
-     * actor host is canonical, returns that host so callers can persist it and
-     * skip re-resolving on later ensureByApId calls. Returns null only when
-     * lookup fails (caller should leave any existing value unchanged).
+     * Only a verified custom host is ever returned. A null `webfinger_host`
+     * already means "use the actor host" for every reader of the column, so the
+     * actor host is never written back into it.
      */
-    private async resolveWebfingerHostForExternal(
+    private async resolveCustomWebfingerHostForExternal(
         username: string,
         apId: URL,
     ): Promise<string | null> {
-        const resolution = await resolveExternalWebfingerHost(username, apId);
-        if (resolution.type === 'custom') {
-            return resolution.host;
+        const resolution = await resolveCustomWebfingerHost(username, apId);
+
+        if (resolution.type !== 'custom') {
+            return null;
         }
-        if (resolution.type === 'default') {
-            return normalizeWebfingerHost(apId.host);
+
+        const conflict =
+            await this.accountRepository.hasWebfingerHandleConflict(
+                username,
+                resolution.host,
+                0,
+            );
+
+        if (conflict) {
+            getLogger(['activitypub']).warn(
+                'WebFinger handle @{username}@{host} for {apId} is already held by another account, storing default host',
+                { username, host: resolution.host, apId: apId.href },
+            );
+
+            return null;
         }
-        return null;
+
+        return resolution.host;
     }
 
     /**
-     * One-shot backfill for external accounts that predate remote WebFinger
-     * persistence. Once a host is stored (custom or confirmed default), further
-     * ensureByApId calls skip the lookup. custom→custom changes still arrive via
-     * actor Update → {@link refreshExternalWebfingerHost}.
+     * Re-resolve and persist the custom WebFinger host for an external account.
+     *
+     * Only the `webfinger_host` column is written, so this cannot clobber
+     * profile fields updated concurrently. A failed lookup leaves the stored
+     * value unchanged; a successful lookup that finds no custom host clears it.
      */
-    private async refreshExternalWebfingerHostIfMissing(
-        account: Account,
-    ): Promise<Account> {
-        if (account.isInternal || account.webfingerHost !== null) {
-            return account;
-        }
-
-        return this.refreshExternalWebfingerHost(account);
-    }
-
-    /**
-     * Re-resolve and persist the WebFinger subject host for an external account.
-     * Lookup failures leave the stored value unchanged.
-     */
-    async refreshExternalWebfingerHost(account: Account): Promise<Account> {
+    async refreshExternalWebfingerHost(account: Account): Promise<void> {
         if (account.isInternal) {
-            return account;
+            return;
         }
 
-        const nextHost = await this.resolveWebfingerHostForExternal(
+        const resolution = await resolveCustomWebfingerHost(
             account.username,
             account.apId,
         );
 
-        if (nextHost === null || nextHost === account.webfingerHost) {
-            return account;
+        if (resolution.type === 'unavailable') {
+            return;
         }
 
-        const actorHost = normalizeWebfingerHost(account.apId.host);
-        if (nextHost !== actorHost) {
+        const nextHost = resolution.type === 'custom' ? resolution.host : null;
+
+        if (nextHost === account.webfingerHost) {
+            return;
+        }
+
+        if (nextHost !== null) {
             const conflict =
                 await this.accountRepository.hasWebfingerHandleConflict(
                     account.username,
@@ -500,21 +505,30 @@ export class AccountService {
                 );
 
             if (conflict) {
-                return account;
+                getLogger(['activitypub']).warn(
+                    'WebFinger handle @{username}@{host} for {apId} is already held by another account, leaving host unchanged',
+                    {
+                        username: account.username,
+                        host: nextHost,
+                        apId: account.apId.href,
+                    },
+                );
+
+                return;
             }
         }
 
-        const updated = account.setWebfingerHost(nextHost);
         try {
-            await this.accountRepository.save(updated);
+            await this.accountRepository.updateWebfingerHost(
+                account.id,
+                nextHost,
+            );
         } catch (err) {
             if (isDuplicateEntryError(err)) {
-                return account;
+                return;
             }
             throw err;
         }
-
-        return updated;
     }
 
     /**
@@ -678,9 +692,19 @@ export class AccountService {
                     return existingAccount;
                 }
 
-                // Likely a webfinger_host uniqueness conflict — retry without
-                // the custom host rather than failing account creation.
+                // The handle was free when it was checked, so another insert
+                // took it in between. Fall back to the actor host rather than
+                // failing to ingest the account.
                 if (dataToInsert.webfinger_host) {
+                    getLogger(['activitypub']).warn(
+                        'WebFinger handle @{username}@{host} for {apId} was claimed concurrently, storing default host',
+                        {
+                            username: accountData.username,
+                            host: dataToInsert.webfinger_host,
+                            apId: accountData.ap_id,
+                        },
+                    );
+
                     return this.createExternalAccount({
                         ...accountData,
                         webfinger_host: null,
@@ -1036,9 +1060,10 @@ export class AccountService {
 
         await this.accountRepository.save(updated);
 
-        if (!account.isInternal) {
-            await this.refreshExternalWebfingerHost(updated);
-        }
+        // An actor Update is the only federation signal we get for a remote
+        // handle domain change, since the custom host lives in WebFinger rather
+        // than on the actor document.
+        await this.refreshExternalWebfingerHost(updated);
 
         return ok(true);
     }

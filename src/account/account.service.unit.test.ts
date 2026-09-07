@@ -23,7 +23,7 @@ vi.mock('@fedify/vocab', async () => {
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
-    resolveExternalWebfingerHost: vi.fn().mockResolvedValue({
+    resolveCustomWebfingerHost: vi.fn().mockResolvedValue({
         type: 'unavailable',
     }),
 }));
@@ -49,6 +49,7 @@ describe('AccountService', () => {
             getByApId: vi.fn(),
             getByInboxUrl: vi.fn(),
             hasWebfingerHandleConflict: vi.fn().mockResolvedValue(false),
+            updateWebfingerHost: vi.fn(),
         } as unknown as KnexAccountRepository;
         fedifyContext = {};
         fedifyContextFactory = {
@@ -669,17 +670,12 @@ describe('AccountService', () => {
         });
 
         it('refreshes webfinger host for external accounts after profile update', async () => {
-            const withWebfinger = {
-                isInternal: false,
-                webfingerHost: 'custom.example',
-            } as unknown as AccountEntity;
             const afterProfile = {
                 isInternal: false,
                 webfingerHost: null,
                 username: 'alice',
                 apId: new URL('https://blog.example.com/users/alice'),
                 id: 9,
-                setWebfingerHost: vi.fn().mockReturnValue(withWebfinger),
             } as unknown as AccountEntity;
             const account = {
                 isInternal: false,
@@ -693,7 +689,7 @@ describe('AccountService', () => {
                 knexAccountRepository.hasWebfingerHandleConflict,
             ).mockResolvedValue(false);
             vi.mocked(
-                lookupHelpers.resolveExternalWebfingerHost,
+                lookupHelpers.resolveCustomWebfingerHost,
             ).mockResolvedValue({
                 type: 'custom',
                 host: 'custom.example',
@@ -713,24 +709,21 @@ describe('AccountService', () => {
             );
 
             expect(
-                lookupHelpers.resolveExternalWebfingerHost,
+                lookupHelpers.resolveCustomWebfingerHost,
             ).toHaveBeenCalledWith('alice', afterProfile.apId);
-            expect(afterProfile.setWebfingerHost).toHaveBeenCalledWith(
-                'custom.example',
-            );
-            expect(knexAccountRepository.save).toHaveBeenCalledWith(
-                withWebfinger,
-            );
+            // Only the host column is written, so a concurrent profile update
+            // cannot be clobbered by this stale entity
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(9, 'custom.example');
         });
     });
 
-    describe('ensureByApId webfinger refresh', () => {
-        it('backfills webfinger_host for an existing external account with a null host', async () => {
-            const refreshed = {
-                isInternal: false,
-                webfingerHost: 'onolan.org',
-            } as unknown as AccountEntity;
-            const account = {
+    describe('refreshExternalWebfingerHost', () => {
+        const externalAccount = (
+            overrides: Partial<Record<string, unknown>> = {},
+        ) =>
+            ({
                 isInternal: false,
                 id: 1,
                 username: 'john',
@@ -738,33 +731,98 @@ describe('AccountService', () => {
                     'https://john.onolan.org/.ghost/activitypub/users/index',
                 ),
                 webfingerHost: null,
-                setWebfingerHost: vi.fn().mockReturnValue(refreshed),
-            } as unknown as AccountEntity;
+                ...overrides,
+            }) as unknown as AccountEntity;
 
-            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
-                account,
+        it('persists a verified custom host', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'custom', host: 'onolan.org' });
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount(),
             );
-            vi.mocked(
-                knexAccountRepository.hasWebfingerHandleConflict,
-            ).mockResolvedValue(false);
-            vi.mocked(
-                lookupHelpers.resolveExternalWebfingerHost,
-            ).mockResolvedValue({
-                type: 'custom',
-                host: 'onolan.org',
-            });
 
-            const result = await accountService.ensureByApId(account.apId);
-
-            expect(result).toEqual(ok(refreshed));
-            expect(account.setWebfingerHost).toHaveBeenCalledWith('onolan.org');
-            expect(knexAccountRepository.save).toHaveBeenCalledWith(refreshed);
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, 'onolan.org');
         });
 
-        it('skips WebFinger when webfinger_host is already set', async () => {
+        it('never writes the actor host, so null keeps meaning "use the actor host"', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'none' });
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount(),
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('clears a stored host once the custom handle stops resolving', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'none' });
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({ webfingerHost: 'onolan.org' }),
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
+        });
+
+        it('leaves a stored host alone when the lookup is unavailable', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'unavailable' });
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({ webfingerHost: 'onolan.org' }),
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('does not take a handle already held by another account', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'custom', host: 'onolan.org' });
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(true);
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount(),
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('ignores internal accounts, whose host is set by the site owner', async () => {
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({ isInternal: true }),
+            );
+
+            expect(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('ensureByApId', () => {
+        it('does not hit the network for an account already in the database', async () => {
             const account = {
                 isInternal: false,
-                webfingerHost: 'onolan.org',
+                webfingerHost: null,
                 apId: new URL(
                     'https://john.onolan.org/.ghost/activitypub/users/index',
                 ),
@@ -778,37 +836,9 @@ describe('AccountService', () => {
 
             expect(result).toEqual(ok(account));
             expect(
-                lookupHelpers.resolveExternalWebfingerHost,
+                lookupHelpers.resolveCustomWebfingerHost,
             ).not.toHaveBeenCalled();
-        });
-
-        it('stores the actor host when WebFinger confirms the default', async () => {
-            const refreshed = {
-                webfingerHost: 'blog.example.com',
-            } as unknown as AccountEntity;
-            const account = {
-                isInternal: false,
-                id: 2,
-                username: 'alice',
-                apId: new URL('https://blog.example.com/users/alice'),
-                webfingerHost: null,
-                setWebfingerHost: vi.fn().mockReturnValue(refreshed),
-            } as unknown as AccountEntity;
-
-            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
-                account,
-            );
-            vi.mocked(
-                lookupHelpers.resolveExternalWebfingerHost,
-            ).mockResolvedValue({
-                type: 'default',
-            });
-
-            await accountService.ensureByApId(account.apId);
-
-            expect(account.setWebfingerHost).toHaveBeenCalledWith(
-                'blog.example.com',
-            );
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
         });
     });
 

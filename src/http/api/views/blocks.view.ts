@@ -2,16 +2,15 @@ import type { Knex } from 'knex';
 
 import { getAccountHandle } from '@/account/utils';
 import type { BlockedDomainDTO, MinimalAccountDTO } from '@/http/api/types';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 export class BlocksView {
     constructor(private readonly db: Knex) {}
 
     async getBlockedAccounts(accountId: number): Promise<MinimalAccountDTO[]> {
-        const effectiveDomainHash = this.db.raw(
-            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
-        );
+        const db = this.db;
 
-        const results = await this.db('blocks')
+        const results = await db('blocks')
             .select([
                 'accounts.ap_id',
                 'accounts.name',
@@ -26,7 +25,7 @@ export class BlocksView {
             )
             .innerJoin('accounts', 'accounts.id', 'blocks.blocked_id')
             .leftJoin('domain_blocks', function () {
-                this.on('domain_blocks.domain_hash', effectiveDomainHash);
+                this.on(domainBlockMatchesAccount(db));
             })
             .where('blocks.blocker_id', accountId);
 

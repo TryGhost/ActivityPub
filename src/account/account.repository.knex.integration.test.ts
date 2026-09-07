@@ -799,6 +799,25 @@ describe('KnexAccountRepository', () => {
         ).resolves.toBe(false);
     });
 
+    it('does not resolve a WebFinger handle held by an external account', async () => {
+        const externalAccount = await fixtureManager.createExternalAccount(
+            'https://john.onolan.org/',
+        );
+
+        await client('accounts')
+            .update({ webfinger_host: 'onolan.org' })
+            .where('id', externalAccount.id);
+
+        // We do not host this account, so answering WebFinger for its handle
+        // would point callers at another server from our own domain
+        const fetched = await accountRepository.getByWebfingerHandle(
+            externalAccount.username,
+            'onolan.org',
+        );
+
+        expect(fetched).toBeNull();
+    });
+
     it('resolves a custom WebFinger host by stable actor username', async () => {
         const site = await fixtureManager.createSite('blog.example.com');
         const draftData = await createInternalAccountDraftData({

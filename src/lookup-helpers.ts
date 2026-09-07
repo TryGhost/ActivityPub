@@ -6,7 +6,7 @@ import {
     isActor,
     type Note,
 } from '@fedify/vocab';
-import { lookupWebFinger } from '@fedify/webfinger';
+import { lookupWebFinger, type ResourceDescriptor } from '@fedify/webfinger';
 
 import { normalizeWebfingerHost } from '@/account/utils';
 import type { FedifyContext } from '@/app';
@@ -15,16 +15,26 @@ import { isLocalEnvironment } from '@/helpers/environment';
 
 type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
-export type ExternalWebfingerHostResolution =
+/**
+ * Outcome of resolving a remote actor's custom WebFinger handle host.
+ *
+ * `none` and `unavailable` are distinct so callers can tell "this actor has no
+ * custom handle" from "we could not find out", and avoid clearing a stored host
+ * because of a transient network failure.
+ */
+export type CustomWebfingerHostResolution =
     | { type: 'custom'; host: string }
-    | { type: 'default' }
+    | { type: 'none' }
     | { type: 'unavailable' };
+
+const WEBFINGER_LOOKUP_TIMEOUT_MS = 5000;
 
 function getWebFingerLookupOptions() {
     return {
         allowPrivateAddress:
             process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
             isLocalEnvironment(process.env.NODE_ENV),
+        signal: AbortSignal.timeout(WEBFINGER_LOOKUP_TIMEOUT_MS),
     };
 }
 
@@ -129,111 +139,139 @@ export async function lookupActorProfile(
 }
 
 /**
- * Resolve the canonical WebFinger handle host for a remote actor.
- *
- * Custom handle domains (Mastodon `web_domain` / Ghost alternate WebFinger
- * hosts) are advertised only in the WebFinger `subject`, not on the actor
- * document. Looking up `acct:{username}@{apId.host}` and reading the subject
- * host is how remotes discover `@user@custom.example` when the actor lives at
- * `user.example`.
- *
- * Returns:
- * - `custom` when the subject host differs from the actor host
- * - `default` when WebFinger confirms the actor host is canonical
- * - `unavailable` when WebFinger cannot be resolved or does not verify the actor
+ * Canonical form of an actor id, so trailing-slash and `www.` differences
+ * between a WebFinger self link and an actor id do not read as different actors
  */
-export async function resolveExternalWebfingerHost(
-    username: string,
-    apId: URL,
-): Promise<ExternalWebfingerHostResolution> {
-    if (!username) {
-        return { type: 'unavailable' };
-    }
+function canonicalActorId(url: URL): string {
+    const canonical = new URL(url.href);
 
-    const actorHost = normalizeWebfingerHost(apId.host);
-    if (!actorHost) {
-        return { type: 'unavailable' };
+    canonical.pathname = canonical.pathname.replace(/\/+$/, '');
+    canonical.host = normalizeWebfingerHost(canonical.host) ?? canonical.host;
+
+    return canonical.href;
+}
+
+function describesActor(webfingerData: ResourceDescriptor, apId: URL): boolean {
+    const selfLink = webfingerData.links?.find(
+        (link) =>
+            link.rel === 'self' && link.type === 'application/activity+json',
+    );
+
+    if (!selfLink?.href) {
+        return false;
     }
 
     try {
-        const webfingerData = await lookupWebFinger(
-            `acct:${username}@${actorHost}`,
-            getWebFingerLookupOptions(),
+        return (
+            canonicalActorId(new URL(selfLink.href)) === canonicalActorId(apId)
         );
+    } catch {
+        return false;
+    }
+}
 
-        if (!webfingerData?.links) {
-            return { type: 'unavailable' };
-        }
+/**
+ * Parse an `acct:` WebFinger subject. The scheme is matched case-insensitively
+ * because URI schemes are case-insensitive, even though producers emit `acct:`
+ */
+function parseAcctSubject(
+    subject: string | undefined,
+): { username: string; host: string } | null {
+    if (typeof subject !== 'string') {
+        return null;
+    }
 
-        const selfLink = webfingerData.links.find(
-            (link) =>
-                link.rel === 'self' &&
-                link.type === 'application/activity+json',
-        );
+    const match = /^acct:([^@]+)@(.+)$/i.exec(subject.trim());
+    if (!match) {
+        return null;
+    }
 
-        if (!selfLink?.href) {
-            return { type: 'unavailable' };
-        }
+    const host = normalizeWebfingerHost(match[2]);
+    if (!host) {
+        return null;
+    }
 
-        let selfUrl: URL;
-        try {
-            selfUrl = new URL(selfLink.href);
-        } catch {
-            return { type: 'unavailable' };
-        }
+    return { username: match[1].toLowerCase(), host };
+}
 
-        if (selfUrl.href !== apId.href) {
-            // Tolerate trailing-slash / www differences that still refer to the
-            // same actor document.
-            const normalizedSelf = new URL(selfUrl.href);
-            const normalizedApId = new URL(apId.href);
-            normalizedSelf.pathname = normalizedSelf.pathname.replace(
-                /\/+$/,
-                '',
-            );
-            normalizedApId.pathname = normalizedApId.pathname.replace(
-                /\/+$/,
-                '',
-            );
-            normalizedSelf.host =
-                normalizeWebfingerHost(normalizedSelf.host) ??
-                normalizedSelf.host;
-            normalizedApId.host =
-                normalizeWebfingerHost(normalizedApId.host) ??
-                normalizedApId.host;
+type WebfingerFetch =
+    | { type: 'ok'; data: ResourceDescriptor }
+    | { type: 'unavailable' };
 
-            if (normalizedSelf.href !== normalizedApId.href) {
-                return { type: 'unavailable' };
-            }
-        }
+async function fetchWebfinger(resource: string): Promise<WebfingerFetch> {
+    let data: ResourceDescriptor | null;
 
-        if (
-            typeof webfingerData.subject !== 'string' ||
-            !webfingerData.subject.startsWith('acct:')
-        ) {
-            return { type: 'default' };
-        }
-
-        const subjectParts = webfingerData.subject
-            .slice('acct:'.length)
-            .split('@');
-        if (subjectParts.length !== 2 || !subjectParts[1]) {
-            return { type: 'default' };
-        }
-
-        const subjectHost = normalizeWebfingerHost(subjectParts[1]);
-        if (!subjectHost) {
-            return { type: 'default' };
-        }
-
-        if (subjectHost === actorHost) {
-            return { type: 'default' };
-        }
-
-        return { type: 'custom', host: subjectHost };
+    try {
+        data = await lookupWebFinger(resource, getWebFingerLookupOptions());
     } catch {
         return { type: 'unavailable' };
     }
+
+    if (!data) {
+        return { type: 'unavailable' };
+    }
+
+    return { type: 'ok', data };
+}
+
+/**
+ * Resolve a remote actor's custom WebFinger handle host.
+ *
+ * Custom handle domains (Mastodon `web_domain` / Ghost alternate WebFinger
+ * hosts) are advertised only in the WebFinger `subject`, not on the actor
+ * document, so `@user@custom.example` for an actor living on `user.example` is
+ * only discoverable through WebFinger.
+ *
+ * A server can put any domain in its own `subject`, so a differing domain is
+ * only accepted once that domain's own WebFinger points back at the same actor.
+ * Without that second lookup, any instance could claim a handle on a domain it
+ * does not control.
+ */
+export async function resolveCustomWebfingerHost(
+    username: string,
+    apId: URL,
+): Promise<CustomWebfingerHostResolution> {
+    const actorHost = normalizeWebfingerHost(apId.host);
+
+    if (!username || !actorHost) {
+        return { type: 'none' };
+    }
+
+    const claimedLookup = await fetchWebfinger(`acct:${username}@${actorHost}`);
+    if (claimedLookup.type === 'unavailable') {
+        return { type: 'unavailable' };
+    }
+
+    if (!describesActor(claimedLookup.data, apId)) {
+        return { type: 'none' };
+    }
+
+    const claimed = parseAcctSubject(claimedLookup.data.subject);
+    if (!claimed || claimed.host === actorHost) {
+        return { type: 'none' };
+    }
+
+    const confirmedLookup = await fetchWebfinger(
+        `acct:${claimed.username}@${claimed.host}`,
+    );
+    if (confirmedLookup.type === 'unavailable') {
+        return { type: 'unavailable' };
+    }
+
+    if (!describesActor(confirmedLookup.data, apId)) {
+        return { type: 'none' };
+    }
+
+    const confirmed = parseAcctSubject(confirmedLookup.data.subject);
+    if (
+        !confirmed ||
+        confirmed.host !== claimed.host ||
+        confirmed.username !== claimed.username
+    ) {
+        return { type: 'none' };
+    }
+
+    return { type: 'custom', host: claimed.host };
 }
 
 export async function getLikeCountFromRemote(object: Note | Article) {

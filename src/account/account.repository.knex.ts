@@ -445,6 +445,14 @@ export class KnexAccountRepository {
         return rows.map((row) => new URL(row.ap_id));
     }
 
+    /**
+     * Look up an internal account by its WebFinger handle
+     *
+     * Scoped to internal accounts because callers use this to decide what this
+     * server answers WebFinger for, and which handles a new site may claim.
+     * External accounts can also hold a `webfinger_host`, but those handles are
+     * served by the instance the account actually lives on.
+     */
     async getByWebfingerHandle(
         username: string,
         host: string,
@@ -462,7 +470,7 @@ export class KnexAccountRepository {
                 'accounts.webfinger_host_hash = UNHEX(SHA2(LOWER(?), 256))',
                 [host],
             )
-            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .innerJoin('users', 'users.account_id', 'accounts.id')
             .select(
                 'accounts.id',
                 'accounts.uuid',
@@ -489,6 +497,21 @@ export class KnexAccountRepository {
         }
 
         return this.mapRowToAccountEntity(accountRow);
+    }
+
+    /**
+     * Update only the `webfinger_host` column
+     *
+     * Used by refresh paths that resolve the host over the network, so a stale
+     * in-memory entity cannot overwrite concurrently updated profile fields.
+     */
+    async updateWebfingerHost(
+        accountId: number,
+        webfingerHost: string | null,
+    ): Promise<void> {
+        await this.db('accounts')
+            .update({ webfinger_host: webfingerHost })
+            .where({ id: accountId });
     }
 
     async hasWebfingerHandleConflict(
