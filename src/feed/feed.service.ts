@@ -420,6 +420,12 @@ export class FeedService {
             return [];
         }
 
+        // Posts with a published_at date set in the future are not rendered
+        // on feeds, else they would pin themselves to the top
+        if (post.publishedAt > new Date()) {
+            return [];
+        }
+
         const topics = await this.db('account_topics')
             .where('account_id', post.author.id)
             .select('topic_id');
@@ -473,6 +479,12 @@ export class FeedService {
 
         // If the post is a reply, we should not add it to any feeds
         if (post.inReplyTo) {
+            return [];
+        }
+
+        // Posts with a published_at date set in the future are not rendered
+        // on feeds, else they would pin themselves to the top
+        if (post.publishedAt > new Date()) {
             return [];
         }
 
