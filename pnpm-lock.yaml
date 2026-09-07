@@ -140,8 +140,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1
       '@logtape/logtape':
-        specifier: 2.3.2
-        version: 2.3.2
+        specifier: 2.3.3
+        version: 2.3.3
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -1169,8 +1169,8 @@ packages:
   '@logtape/logtape@1.3.11':
     resolution: {integrity: sha512-mxkQOyySbjNGweavPudypBf0qZJxLOTXl2NAXYnsZF/ds5dQpTLA7YMSJbc8uFWlTkG+YjAnVL8tQWivIVPOJg==}
 
-  '@logtape/logtape@2.3.2':
-    resolution: {integrity: sha512-SfxHfSdDlTp6tLpYP5uezNitSCTQUB3FZ1MXDbgDBN9t9kvF+XL0rOGTIa/pJcDMy1o9FELaZ25E/Ypmsf5fNQ==}
+  '@logtape/logtape@2.3.3':
+    resolution: {integrity: sha512-H8AqgCq6M6Wu97FVPyfE5UT4w6H+Wdt9iGzLKPgtJRI/jrG9HbzzNUw9JL1LarkZD8xeKx9FqKfcLaXr0hGJuw==}
 
   '@mswjs/interceptors@0.41.9':
     resolution: {integrity: sha512-VVPPgHyQ6ShqnrmDWuxjmUIsO9gWyOZFmuOfLd9LfBGQJwZfy0gvv9pbHSJuoFNIYC7ZDX9aoFwowjcdSC4E8w==}
@@ -1219,12 +1219,6 @@ packages:
     resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
     engines: {node: '>=8.0.0'}
 
-  '@opentelemetry/core@2.10.0':
-    resolution: {integrity: sha512-/wNZ8twnEQQA4HoHu22+vcsdru6pWPWxW+7w+FlxT6Id7PE/WIbZmVKkte+PF72e0F2dnImFeHD2syyE1Mw6MQ==}
-    engines: {node: ^18.19.0 || >=20.6.0}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.0.0 <1.10.0'
-
   '@opentelemetry/core@2.11.0':
     resolution: {integrity: sha512-7YP44XH0tV6+Mb54x2YGf84i7yi+31MBZlE8JwvozkxyTvXbSp10X7cI7YE49ChJ3shMJoBmCJF3+1QFBJctGA==}
     engines: {node: ^18.19.0 || >=20.6.0}
@@ -1261,12 +1255,6 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.3.0
 
-  '@opentelemetry/resources@2.10.0':
-    resolution: {integrity: sha512-q6MMm2zhggzsHVNbabYwut+a6nbuQQe3URUoxaojM/8K1IBfwwPzvxIjNi2/lI1TFe+fMHMW9MWhrtDLEXEnkA==}
-    engines: {node: ^18.19.0 || >=20.6.0}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.3.0 <1.10.0'
-
   '@opentelemetry/resources@2.11.0':
     resolution: {integrity: sha512-Ie7+8q8MDF4FAEQCKVMTx3ReUvxiIAgIiiW3c9JdmP8+HMcDy20puT+AHjexnExgnbvBxjQ9fjkFDWrikJ2jQA==}
     engines: {node: ^18.19.0 || >=20.6.0}
@@ -1297,20 +1285,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': '>=1.9.0 <1.10.0'
 
-  '@opentelemetry/sdk-trace-base@2.10.0':
-    resolution: {integrity: sha512-GuYQQT7QD2EeO8lcZLRQzcbOyhqAzL+6WWTKTU9mSUBYBazkEDl+VrQcXQhbB08OWM9anD1aHleVadzulpOaUQ==}
-    engines: {node: ^18.19.0 || >=20.6.0}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.3.0 <1.10.0'
-
   '@opentelemetry/sdk-trace-base@2.11.0':
     resolution: {integrity: sha512-H19x/TX/LZdqiYOjM7fqtSxwlplC5pgelavqbQdHbhdq0q/AI/TGkM2dfGuuynTXmJPeF2HoZVoPDu+TGoW78A==}
-    engines: {node: ^18.19.0 || >=20.6.0}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.3.0 <1.10.0'
-
-  '@opentelemetry/sdk-trace@2.10.0':
-    resolution: {integrity: sha512-MfQGq3GRmTh5fM/y+OjaO0vj6+luCB1XO2gfXCalKCfgKw0eHL++sm75DNweC6ohlp+aFvACqeE0fYayqdRaoQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
@@ -3992,8 +3968,8 @@ snapshots:
       '@jimp/core': 1.6.1(supports-color@11.0.0)
       '@jimp/wasm-webp': 1.6.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/file': 2.3.3(@logtape/logtape@2.3.2)
-      '@logtape/logtape': 2.3.2
+      '@logtape/file': 2.3.3(@logtape/logtape@2.3.3)
+      '@logtape/logtape': 2.3.3
       '@optique/config': 1.2.5(@standard-schema/spec@1.1.0)
       '@optique/core': 1.2.5
       '@optique/discover': 1.2.5
@@ -4032,11 +4008,11 @@ snapshots:
       '@fedify/vocab-runtime': 2.3.6
       '@fedify/webfinger': 2.3.6
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.10.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-trace-base': 2.10.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-trace-base': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.43.0
       byte-encodings: 1.0.11
       es-toolkit: 1.46.1
@@ -4055,7 +4031,7 @@ snapshots:
       '@david/dax': dax@0.46.1
       '@fxts/core': 1.28.0
       '@inquirer/prompts': 7.10.1(@types/node@22.20.1)
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       '@optique/core': 1.2.5
       '@optique/run': 1.2.5
       chalk: 5.6.2
@@ -4069,7 +4045,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.3.6
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       ioredis: 5.11.1(supports-color@11.0.0)
 
   '@fedify/relay@2.3.6':
@@ -4077,13 +4053,13 @@ snapshots:
       '@fedify/fedify': 2.3.6
       '@fedify/vocab': 2.3.6
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
 
   '@fedify/sqlite@2.3.6(@fedify/fedify@2.3.6)':
     dependencies:
       '@fedify/fedify': 2.3.6
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       es-toolkit: 1.52.0
 
   '@fedify/uri-template@2.3.6': {}
@@ -4091,7 +4067,7 @@ snapshots:
   '@fedify/vocab-runtime@2.3.6':
     dependencies:
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4112,7 +4088,7 @@ snapshots:
       '@fedify/vocab-tools': 2.3.6
       '@fedify/webfinger': 2.3.6
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4123,7 +4099,7 @@ snapshots:
   '@fedify/webfinger@2.3.6':
     dependencies:
       '@fedify/vocab-runtime': 2.3.6
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.46.1
 
@@ -4739,13 +4715,13 @@ snapshots:
     dependencies:
       wasm-feature-detect: 1.9.0
 
-  '@logtape/file@2.3.3(@logtape/logtape@2.3.2)':
+  '@logtape/file@2.3.3(@logtape/logtape@2.3.3)':
     dependencies:
-      '@logtape/logtape': 2.3.2
+      '@logtape/logtape': 2.3.3
 
   '@logtape/logtape@1.3.11': {}
 
-  '@logtape/logtape@2.3.2': {}
+  '@logtape/logtape@2.3.3': {}
 
   '@mswjs/interceptors@0.41.9':
     dependencies:
@@ -4793,11 +4769,6 @@ snapshots:
 
   '@opentelemetry/api@1.9.1': {}
 
-  '@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/semantic-conventions': 1.43.0
-
   '@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -4840,12 +4811,6 @@ snapshots:
       '@opentelemetry/sdk-metrics': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace': 2.11.0(@opentelemetry/api@1.9.1)
 
-  '@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1)':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.10.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/semantic-conventions': 1.43.0
-
   '@opentelemetry/resources@2.11.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -4878,27 +4843,12 @@ snapshots:
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.7.1(@opentelemetry/api@1.9.1)
 
-  '@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1)':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.10.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.10.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-trace': 2.10.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/semantic-conventions': 1.43.0
-
   '@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace': 2.11.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/semantic-conventions': 1.43.0
-
-  '@opentelemetry/sdk-trace@2.10.0(@opentelemetry/api@1.9.1)':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.10.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.10.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.43.0
 
   '@opentelemetry/sdk-trace@2.11.0(@opentelemetry/api@1.9.1)':
