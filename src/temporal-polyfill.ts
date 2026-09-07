@@ -9,5 +9,12 @@
 import { Temporal } from '@js-temporal/polyfill';
 
 if (typeof (globalThis as { Temporal?: unknown }).Temporal === 'undefined') {
-    (globalThis as { Temporal: unknown }).Temporal = Temporal;
+    // The polyfill's namespace object is frozen, unlike the native one, so
+    // copy it into a mutable object with the same (null) prototype. Fake
+    // timers substitute a clock-backed `Temporal.Now` and cannot redefine a
+    // non-configurable property.
+    (globalThis as { Temporal: unknown }).Temporal = Object.assign(
+        Object.create(null),
+        Temporal,
+    );
 }
