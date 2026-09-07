@@ -50,7 +50,7 @@ describe('sanitizeHtml', () => {
         );
 
         // Restore the mock for subsequent tests
-        vi.mock('sanitize-html');
+        vi.doMock('sanitize-html');
         vi.resetModules();
     });
 });

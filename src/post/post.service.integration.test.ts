@@ -49,6 +49,21 @@ vi.mock('@fedify/vocab', async () => {
     };
 });
 
+vi.mock('@/lookup-helpers', async () => {
+    const original = await vi.importActual('@/lookup-helpers');
+
+    return {
+        ...original,
+        lookupActorProfile: vi.fn().mockImplementation(async (_ctx, handle) => {
+            // Extract username and domain from handle
+            const match = handle.match(/@?([^@]+)@(.+)/);
+            if (!match) return error('lookup-error');
+            const [, username, domain] = match;
+            return ok(new URL(`https://${domain}/${username}`));
+        }),
+    };
+});
+
 describe('PostService', () => {
     let db: Knex;
     let postRepository: KnexPostRepository;
@@ -95,24 +110,6 @@ describe('PostService', () => {
             },
             registerContext: vi.fn(),
         } as unknown as FedifyContextFactory;
-
-        // Mock the lookup functions
-        vi.mock('@/lookup-helpers', async () => {
-            const original = await vi.importActual('@/lookup-helpers');
-
-            return {
-                ...original,
-                lookupActorProfile: vi
-                    .fn()
-                    .mockImplementation(async (_ctx, handle) => {
-                        // Extract username and domain from handle
-                        const match = handle.match(/@?([^@]+)@(.+)/);
-                        if (!match) return error('lookup-error');
-                        const [, username, domain] = match;
-                        return ok(new URL(`https://${domain}/${username}`));
-                    }),
-            };
-        });
 
         imageStorageService = {
             verifyFileUrl: vi.fn().mockResolvedValue(ok(true)),
