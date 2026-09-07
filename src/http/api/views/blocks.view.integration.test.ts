@@ -103,6 +103,29 @@ describe('BlocksView', () => {
             );
             expect(blockedAccounts[0].domainBlockedByMe).toBe(true);
         });
+
+        it("should not report another account's domain block as the viewer's own", async () => {
+            const [blocker] = await fixtureManager.createInternalAccount();
+            const [otherAccount] = await fixtureManager.createInternalAccount();
+            const blockedAccount = await fixtureManager.createExternalAccount(
+                'https://actor-domain.com/',
+            );
+
+            await fixtureManager.createBlock(blocker, blockedAccount);
+            // Somebody else blocks the domain; this must not change what the
+            // viewer is told about their own moderation state
+            await fixtureManager.createDomainBlock(
+                otherAccount,
+                new URL('https://actor-domain.com'),
+            );
+
+            const blockedAccounts = await blocksView.getBlockedAccounts(
+                blocker.id,
+            );
+
+            expect(blockedAccounts).toHaveLength(1);
+            expect(blockedAccounts[0].domainBlockedByMe).toBe(false);
+        });
     });
 
     describe('getBlockedDomains', () => {

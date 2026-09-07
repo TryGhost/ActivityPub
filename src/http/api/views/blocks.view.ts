@@ -24,8 +24,12 @@ export class BlocksView {
                 ),
             )
             .innerJoin('accounts', 'accounts.id', 'blocks.blocked_id')
-            .leftJoin('domain_blocks', function () {
-                this.on(domainBlockMatchesAccount(db));
+            .leftJoin('domain_blocks', (join) => {
+                join.on(domainBlockMatchesAccount(db)).andOnVal(
+                    'domain_blocks.blocker_id',
+                    '=',
+                    accountId.toString(),
+                );
             })
             .where('blocks.blocker_id', accountId);
 
