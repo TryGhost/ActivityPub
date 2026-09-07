@@ -10,11 +10,7 @@ import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
 import { AccountView } from '@/http/api/views/account.view';
-import {
-    lookupActorProfile,
-    lookupObject,
-    resolveCustomWebfingerHost,
-} from '@/lookup-helpers';
+import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 import { Audience, Post, PostType } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { createTestDb } from '@/test/db';
@@ -23,9 +19,6 @@ import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
-    resolveCustomWebfingerHost: vi.fn().mockResolvedValue({
-        type: 'unavailable',
-    }),
 }));
 
 describe('AccountView', () => {
@@ -610,9 +603,24 @@ describe('AccountView', () => {
             const view = await accountView.viewByApId(account.apId.toString());
 
             expect(view!.handle).toBe(`@${account.username}@onolan.org`);
-            // Re-resolving here would cost a WebFinger round trip per profile
-            // load and could regress the handle whenever that lookup failed
-            expect(resolveCustomWebfingerHost).not.toHaveBeenCalled();
+        });
+
+        it('falls back to the actor host for an account we have never stored', async () => {
+            const apId = new URL(
+                'https://john.onolan.org/.ghost/activitypub/users/index',
+            );
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Person({
+                    id: apId,
+                    preferredUsername: 'john',
+                }),
+            );
+
+            const view = await accountView.viewByApId(apId.toString());
+
+            // Custom host waits for ingest / Update — no live WebFinger here
+            expect(view!.handle).toBe('@john@john.onolan.org');
         });
     });
 });

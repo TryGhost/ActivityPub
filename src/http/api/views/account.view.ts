@@ -8,11 +8,7 @@ import { getError, getValue, isError } from '@/core/result';
 import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
-import {
-    lookupActorProfile,
-    lookupObject,
-    resolveCustomWebfingerHost,
-} from '@/lookup-helpers';
+import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 /**
@@ -276,36 +272,19 @@ export class AccountView {
                 ]);
         }
 
-        const handle = await (async () => {
-            // Reading the stored host keeps this handle identical to every
-            // other surface, and stops a transient WebFinger failure from
-            // regressing a correct handle back to the actor host
-            if (storedAccount) {
-                return getAccountHandle(
-                    getAccountHandleHost({
-                        apId: new URL(storedAccount.ap_id),
-                        webfingerHost: storedAccount.webfinger_host,
-                    }),
-                    storedAccount.username,
-                );
-            }
-
-            const username = actor.preferredUsername?.toString();
-            if (!actor.id || !username) {
-                return getHandle(actor);
-            }
-
-            const resolution = await resolveCustomWebfingerHost(
-                username,
-                actor.id,
-            );
-
-            if (resolution.type === 'custom') {
-                return getAccountHandle(resolution.host, username);
-            }
-
-            return getHandle(actor);
-        })();
+        // Stored host only — no live WebFinger here. Resolution belongs on
+        // ingest / actor Update, where the result is verified, conflict-checked
+        // and persisted. An unknown actor falls back to the actor host until
+        // then, matching the follower-list unknown-actor path.
+        const handle = storedAccount
+            ? getAccountHandle(
+                  getAccountHandleHost({
+                      apId: new URL(storedAccount.ap_id),
+                      webfingerHost: storedAccount.webfinger_host,
+                  }),
+                  storedAccount.username,
+              )
+            : getHandle(actor);
 
         return {
             id: actor.id?.toString() || '',
