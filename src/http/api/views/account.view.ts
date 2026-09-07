@@ -13,6 +13,7 @@ import {
     lookupObject,
     resolveCustomWebfingerHost,
 } from '@/lookup-helpers';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 /**
  * Additional context that can be passed to the view
@@ -66,7 +67,6 @@ export class AccountView {
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
-                    new URL(accountData.ap_id).hostname,
                 ));
         }
 
@@ -182,7 +182,6 @@ export class AccountView {
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
-                    new URL(accountData.ap_id).hostname,
                 ));
         }
 
@@ -256,7 +255,6 @@ export class AccountView {
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     storedAccount.id,
-                    new URL(storedAccount.ap_id).hostname,
                 ));
         }
 
@@ -388,7 +386,6 @@ export class AccountView {
     private async getRequestUserContextData(
         requestUserAccountId: number,
         retrievedAccountId: number,
-        retrievedAccountDomain: string,
     ) {
         let followedByMe = false;
         let followsMe = false;
@@ -423,8 +420,9 @@ export class AccountView {
             (
                 await this.db('domain_blocks')
                     .where('blocker_id', requestUserAccountId)
-                    .where('domain', retrievedAccountDomain)
-                    .first()
+                    .join('accounts', domainBlockMatchesAccount(this.db))
+                    .where('accounts.id', retrievedAccountId)
+                    .first('domain_blocks.id')
             )?.id !== undefined;
 
         return {

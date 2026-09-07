@@ -251,6 +251,15 @@ export async function resolveCustomWebfingerHost(
         return { type: 'none' };
     }
 
+    // Callers render the handle from the actor's `preferredUsername`, so a
+    // subject naming a different local-part would have us verify one handle and
+    // display another. On a shared custom host that second handle can belong to
+    // somebody else, who then also loses the (username, host) slot to whichever
+    // row was written first.
+    if (claimed.username !== username.toLowerCase()) {
+        return { type: 'none' };
+    }
+
     const confirmedLookup = await fetchWebfinger(
         `acct:${claimed.username}@${claimed.host}`,
     );

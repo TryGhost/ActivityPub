@@ -2,6 +2,10 @@ import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
 
 import { sanitizeHtml } from '@/helpers/html';
+import {
+    accountMatchesDomain,
+    domainBlockMatchesAccount,
+} from '@/moderation/domain-blocks';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
@@ -276,8 +280,9 @@ export class FeedService {
         cursor: string | null,
     ): Promise<GetFeedDataResult> {
         const postType: PostType = PostType.Article;
+        const db = this.db;
 
-        const results = await this.db('discovery_feeds')
+        const results = await db('discovery_feeds')
             .select(
                 // Post fields
                 'posts.id as post_id',
@@ -364,10 +369,9 @@ export class FeedService {
                     viewerAccountId.toString(),
                 );
             })
-            .leftJoin('domain_blocks', function () {
-                this.on(
-                    'domain_blocks.domain_hash',
-                    'author_account.domain_hash',
+            .leftJoin('domain_blocks', (join) => {
+                join.on(
+                    domainBlockMatchesAccount(db, 'author_account'),
                 ).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',
@@ -654,9 +658,7 @@ export class FeedService {
                 );
             })
             .where('feeds.user_id', user.id)
-            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
-                blockedDomain.host,
-            ])
+            .andWhere(accountMatchesDomain(this.db, blockedDomain.host))
             .delete();
     }
 

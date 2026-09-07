@@ -1,13 +1,18 @@
 import type { Knex } from 'knex';
 
 /**
- * Join condition matching a domain block against an account.
- *
  * An account can be seen under two domains: the host its actor lives on, and
- * the custom handle host from its WebFinger subject. A block is recorded with
- * whichever one the reader was shown, so both have to match, otherwise storing
- * a custom host would silently unblock an account blocked from a surface that
- * displayed the actor host.
+ * the custom handle host from its WebFinger subject.
+ *
+ * A domain block is recorded with whichever one the reader was shown
+ * (`DomainBlockedEvent` carries the displayed host), so every comparison has to
+ * consider both. Matching `domain_hash` alone lets a block taken from a surface
+ * showing a custom handle hide the account from some surfaces while its posts,
+ * follows and notifications survive, which is worse than not blocking at all.
+ */
+
+/**
+ * Join condition matching a domain block against an account.
  */
 export function domainBlockMatchesAccount(
     db: Knex,
@@ -17,4 +22,48 @@ export function domainBlockMatchesAccount(
         `${accountsTable}.domain_hash`,
         `${accountsTable}.webfinger_host_hash`,
     ]);
+}
+
+/**
+ * Condition matching every account visible under `domain`.
+ *
+ * Used at block time, where the blocked domain is known and the accounts it
+ * covers have to be found in order to tear down follows, posts and
+ * notifications.
+ */
+export function accountMatchesDomain(
+    db: Knex,
+    domain: string,
+    accountsTable = 'accounts',
+): Knex.Raw {
+    return db.raw(
+        '(?? = UNHEX(SHA2(LOWER(?), 256)) OR ?? = UNHEX(SHA2(LOWER(?), 256)))',
+        [
+            `${accountsTable}.domain_hash`,
+            domain,
+            `${accountsTable}.webfinger_host_hash`,
+            domain,
+        ],
+    );
+}
+
+/**
+ * Whether a set of blocked domains covers an account seen under either host.
+ *
+ * The in-memory counterpart to `domainBlockMatchesAccount`, for views that
+ * already hold the reader's blocked domains.
+ */
+export function isAccountDomainBlocked(
+    blockedDomains: Set<string>,
+    actorHost: string,
+    webfingerHost: string | null = null,
+): boolean {
+    if (blockedDomains.has(actorHost.toLowerCase())) {
+        return true;
+    }
+
+    return (
+        webfingerHost !== null &&
+        blockedDomains.has(webfingerHost.toLowerCase())
+    );
 }

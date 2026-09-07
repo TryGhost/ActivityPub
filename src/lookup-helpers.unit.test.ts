@@ -206,6 +206,24 @@ describe('resolveCustomWebfingerHost', () => {
         expect(result).toEqual({ type: 'none' });
     });
 
+    it('rejects a subject naming a different local part to the actor', async () => {
+        // The handle is rendered from the actor's preferredUsername, so
+        // accepting this would display @john@onolan.org off the back of a
+        // lookup that only ever verified @someone-else@onolan.org
+        webfingerMock().mockResolvedValueOnce(
+            jrd('acct:someone-else@onolan.org'),
+        );
+
+        const result = await resolveCustomWebfingerHost(
+            'john',
+            new URL(ACTOR_ID),
+        );
+
+        expect(result).toEqual({ type: 'none' });
+        // Rejected on the subject, without spending the confirming lookup
+        expect(webfingerMock()).toHaveBeenCalledTimes(1);
+    });
+
     it('reports unavailable when the confirming lookup fails, so a stored host is kept', async () => {
         webfingerMock()
             .mockResolvedValueOnce(jrd('acct:john@onolan.org'))

@@ -20,6 +20,7 @@ import {
 } from '@/account/events';
 import type { AsyncEvents } from '@/core/events';
 import { parseURL } from '@/core/url';
+import { accountMatchesDomain } from '@/moderation/domain-blocks';
 import type { Site } from '@/site/site.service';
 
 interface AccountRow {
@@ -189,9 +190,8 @@ export class KnexAccountRepository {
                             'accounts.id',
                         )
                         .where('follows.follower_id', blockerId)
-                        .whereRaw(
-                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                            [domainHostname],
+                        .where(
+                            accountMatchesDomain(transaction, domainHostname),
                         )
                         .delete();
 
@@ -204,9 +204,8 @@ export class KnexAccountRepository {
                             'accounts.id',
                         )
                         .where('follows.following_id', blockerId)
-                        .whereRaw(
-                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                            [domainHostname],
+                        .where(
+                            accountMatchesDomain(transaction, domainHostname),
                         )
                         .delete();
                 } else if (event instanceof DomainUnblockedEvent) {
