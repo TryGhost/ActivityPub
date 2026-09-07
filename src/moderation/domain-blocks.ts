@@ -48,22 +48,20 @@ export function accountMatchesDomain(
 }
 
 /**
- * Whether a set of blocked domains covers an account seen under either host.
+ * Whether a set of blocked domains covers an account known under any of
+ * `hosts`.
  *
  * The in-memory counterpart to `domainBlockMatchesAccount`, for views that
- * already hold the reader's blocked domains.
+ * already hold the reader's blocked domains. Pass every host the account can be
+ * seen under — its actor host, its custom handle host, and for an actor
+ * resolved from a collection, the URL the collection listed it under, which a
+ * redirect to a canonical actor id can move to another domain.
  */
 export function isAccountDomainBlocked(
     blockedDomains: Set<string>,
-    actorHost: string,
-    webfingerHost: string | null = null,
+    ...hosts: (string | null | undefined)[]
 ): boolean {
-    if (blockedDomains.has(actorHost.toLowerCase())) {
-        return true;
-    }
-
-    return (
-        webfingerHost !== null &&
-        blockedDomains.has(webfingerHost.toLowerCase())
+    return hosts.some(
+        (host) => !!host && blockedDomains.has(host.toLowerCase()),
     );
 }

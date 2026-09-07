@@ -419,22 +419,27 @@ export class AccountFollowsView {
                     // unknown actor sequentially, and the remote page size is
                     // not ours to bound. Custom hosts show up once the account
                     // is ingested through `ensureByApId`.
+                    const followsActorId = new URL(followsActor.id);
+
                     accounts.push({
                         id: followsActor.id,
                         apId: followsActor.id,
                         name: followsActor.name,
                         handle: getAccountHandle(
-                            new URL(followsActor.id).host,
+                            followsActorId.host,
                             followsActor.preferredUsername,
                         ),
                         avatarUrl: followsActor.icon.url,
                         isFollowing: false,
                         followedByMe: false,
                         blockedByMe: false,
-                        // No stored row yet, so the actor host is the only
-                        // domain this account is known under
+                        // There is no stored row to read a custom host from, so
+                        // the two hosts this actor is known under are its
+                        // canonical id and the URL the collection listed it
+                        // under, which a redirect can move to another domain
                         domainBlockedByMe: isAccountDomainBlocked(
                             blockedDomains,
+                            followsActorId.hostname,
                             item.hostname,
                         ),
                     });
