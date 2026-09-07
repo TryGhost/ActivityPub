@@ -106,6 +106,10 @@ export class KnexAccountRepository {
     async save(account: Account): Promise<void> {
         const events = AccountEntity.pullEvents(account);
         await this.db.transaction(async (transaction) => {
+            // webfinger_host is intentionally omitted: a concurrent
+            // updateWebfingerHost must not be overwritten by a stale
+            // in-memory snapshot from a profile / follow / block save.
+            // Callers that mean to change the host use updateWebfingerHost.
             const rows = await transaction('accounts')
                 .update({
                     name: account.name,
@@ -116,7 +120,6 @@ export class KnexAccountRepository {
                     custom_fields: account.customFields
                         ? JSON.stringify(account.customFields)
                         : null,
-                    webfinger_host: account.webfingerHost,
                 })
                 .where({ id: account.id });
 
@@ -501,8 +504,10 @@ export class KnexAccountRepository {
     /**
      * Update only the `webfinger_host` column
      *
-     * Used by refresh paths that resolve the host over the network, so a stale
-     * in-memory entity cannot overwrite concurrently updated profile fields.
+     * Sole writer of this column after create. Kept separate from `save()` so a
+     * stale in-memory entity cannot overwrite a host another path just
+     * resolved, and so a host refresh cannot overwrite concurrent profile
+     * fields.
      */
     async updateWebfingerHost(
         accountId: number,

@@ -393,7 +393,7 @@ export class AccountService {
     ): Promise<Result<Account, WebfingerHostError>> {
         if (host === null) {
             const updated = account.setWebfingerHost(null);
-            await this.accountRepository.save(updated);
+            await this.persistWebfingerHostChange(updated);
             return ok(updated);
         }
 
@@ -406,7 +406,7 @@ export class AccountService {
 
         if (normalizedHost === fallbackHost) {
             const updated = account.setWebfingerHost(null);
-            await this.accountRepository.save(updated);
+            await this.persistWebfingerHostChange(updated);
             return ok(updated);
         }
 
@@ -421,7 +421,7 @@ export class AccountService {
 
         const updated = account.setWebfingerHost(normalizedHost);
         try {
-            await this.accountRepository.save(updated);
+            await this.persistWebfingerHostChange(updated);
         } catch (err) {
             if (isDuplicateEntryError(err)) {
                 return error({ type: 'conflict', host: normalizedHost });
@@ -431,6 +431,20 @@ export class AccountService {
         }
 
         return ok(updated);
+    }
+
+    /**
+     * Persist an intentional WebFinger host change.
+     *
+     * `save()` no longer writes `webfinger_host`, so the column is updated
+     * separately — the same seam external refresh uses.
+     */
+    private async persistWebfingerHostChange(account: Account): Promise<void> {
+        await this.accountRepository.save(account);
+        await this.accountRepository.updateWebfingerHost(
+            account.id,
+            account.webfingerHost,
+        );
     }
 
     /**

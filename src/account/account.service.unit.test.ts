@@ -282,7 +282,10 @@ describe('AccountService', () => {
 
     describe('setWebfingerHost', () => {
         it('saves a validated custom domain', async () => {
-            const updatedAccount = {} as AccountEntity;
+            const updatedAccount = {
+                id: 1,
+                webfingerHost: 'example.com',
+            } as AccountEntity;
             const account = {
                 id: 1,
                 username: 'index',
@@ -326,11 +329,19 @@ describe('AccountService', () => {
             expect(knexAccountRepository.save).toHaveBeenCalledWith(
                 updatedAccount,
             );
+            expect(knexAccountRepository.updateWebfingerHost).toHaveBeenCalledWith(
+                1,
+                'example.com',
+            );
         });
 
         it('clears the custom domain without live validation', async () => {
-            const updatedAccount = {} as AccountEntity;
+            const updatedAccount = {
+                id: 1,
+                webfingerHost: null,
+            } as AccountEntity;
             const account = {
+                id: 1,
                 apId: new URL('https://blog.example.com/users/index'),
                 setWebfingerHost: vi.fn().mockReturnValue(updatedAccount),
             } as unknown as AccountEntity;
@@ -344,6 +355,10 @@ describe('AccountService', () => {
             expect(account.setWebfingerHost).toHaveBeenCalledWith(null);
             expect(knexAccountRepository.save).toHaveBeenCalledWith(
                 updatedAccount,
+            );
+            expect(knexAccountRepository.updateWebfingerHost).toHaveBeenCalledWith(
+                1,
+                null,
             );
         });
     });
