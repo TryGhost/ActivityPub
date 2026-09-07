@@ -329,10 +329,9 @@ describe('AccountService', () => {
             expect(knexAccountRepository.save).toHaveBeenCalledWith(
                 updatedAccount,
             );
-            expect(knexAccountRepository.updateWebfingerHost).toHaveBeenCalledWith(
-                1,
-                'example.com',
-            );
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, 'example.com');
         });
 
         it('clears the custom domain without live validation', async () => {
@@ -356,10 +355,9 @@ describe('AccountService', () => {
             expect(knexAccountRepository.save).toHaveBeenCalledWith(
                 updatedAccount,
             );
-            expect(knexAccountRepository.updateWebfingerHost).toHaveBeenCalledWith(
-                1,
-                null,
-            );
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
         });
     });
 
