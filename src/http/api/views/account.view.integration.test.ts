@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Person } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
@@ -9,7 +10,11 @@ import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
 import { AccountView } from '@/http/api/views/account.view';
-import { lookupActorProfile } from '@/lookup-helpers';
+import {
+    lookupActorProfile,
+    lookupObject,
+    resolveCustomWebfingerHost,
+} from '@/lookup-helpers';
 import { Audience, Post, PostType } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { createTestDb } from '@/test/db';
@@ -584,6 +589,30 @@ describe('AccountView', () => {
             const view = await accountView.viewByApId(account.apId.toString());
 
             expect(view).toBeNull();
+        });
+
+        it('should use the stored WebFinger host for a known remote account', async () => {
+            const account = await fixtureManager.createExternalAccount(
+                'https://john.onolan.org/',
+            );
+
+            await db('accounts')
+                .where({ id: account.id })
+                .update({ webfinger_host: 'onolan.org' });
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Person({
+                    id: account.apId,
+                    preferredUsername: account.username,
+                }),
+            );
+
+            const view = await accountView.viewByApId(account.apId.toString());
+
+            expect(view!.handle).toBe(`@${account.username}@onolan.org`);
+            // Re-resolving here would cost a WebFinger round trip per profile
+            // load and could regress the handle whenever that lookup failed
+            expect(resolveCustomWebfingerHost).not.toHaveBeenCalled();
         });
     });
 });

@@ -239,20 +239,25 @@ export class AccountView {
         let blockedByMe = false;
         let domainBlockedByMe = false;
 
-        if (context.requestUserAccount?.id) {
-            const externalAccount = await this.db('accounts')
-                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
-                .select('id', 'ap_id')
-                .first();
+        // `viewByApId` resolves against internal accounts only, so every remote
+        // profile reaches this path, including ones we have already ingested
+        const storedAccount = await this.db('accounts')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+            .select('id', 'ap_id', 'username', 'webfinger_host')
+            .first<{
+                id: number;
+                ap_id: string;
+                username: string;
+                webfinger_host: string | null;
+            }>();
 
-            if (externalAccount) {
-                ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
-                    await this.getRequestUserContextData(
-                        context.requestUserAccount.id,
-                        externalAccount.id,
-                        new URL(externalAccount.ap_id).hostname,
-                    ));
-            }
+        if (context.requestUserAccount?.id && storedAccount) {
+            ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    storedAccount.id,
+                    new URL(storedAccount.ap_id).hostname,
+                ));
         }
 
         const icon = await actor.getIcon();
@@ -273,9 +278,20 @@ export class AccountView {
                 ]);
         }
 
-        // This path only runs for actors we have never stored, so there is no
-        // `webfinger_host` to read and the custom handle has to be resolved live
         const handle = await (async () => {
+            // Reading the stored host keeps this handle identical to every
+            // other surface, and stops a transient WebFinger failure from
+            // regressing a correct handle back to the actor host
+            if (storedAccount) {
+                return getAccountHandle(
+                    getAccountHandleHost({
+                        apId: new URL(storedAccount.ap_id),
+                        webfingerHost: storedAccount.webfinger_host,
+                    }),
+                    storedAccount.username,
+                );
+            }
+
             const username = actor.preferredUsername?.toString();
             if (!actor.id || !username) {
                 return getHandle(actor);
