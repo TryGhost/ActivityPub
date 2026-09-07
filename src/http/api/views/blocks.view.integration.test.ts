@@ -104,6 +104,34 @@ describe('BlocksView', () => {
             expect(blockedAccounts[0].domainBlockedByMe).toBe(true);
         });
 
+        it("should return one entry when both of an account's domains are blocked", async () => {
+            const [blocker] = await fixtureManager.createInternalAccount();
+            const blockedAccount = await fixtureManager.createExternalAccount(
+                'https://actor-domain.com/',
+            );
+
+            await db('accounts')
+                .where({ id: blockedAccount.id })
+                .update({ webfinger_host: 'custom-blocked.com' });
+
+            await fixtureManager.createBlock(blocker, blockedAccount);
+            await fixtureManager.createDomainBlock(
+                blocker,
+                new URL('https://actor-domain.com'),
+            );
+            await fixtureManager.createDomainBlock(
+                blocker,
+                new URL('https://custom-blocked.com'),
+            );
+
+            const blockedAccounts = await blocksView.getBlockedAccounts(
+                blocker.id,
+            );
+
+            expect(blockedAccounts).toHaveLength(1);
+            expect(blockedAccounts[0].domainBlockedByMe).toBe(true);
+        });
+
         it("should not report another account's domain block as the viewer's own", async () => {
             const [blocker] = await fixtureManager.createInternalAccount();
             const [otherAccount] = await fixtureManager.createInternalAccount();
