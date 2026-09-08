@@ -235,6 +235,12 @@ export async function resolveCustomWebfingerHost(
     username: string,
     apId: URL,
 ): Promise<CustomWebfingerHostResolution> {
+    // Non-default ports are a different WebFinger authority. Using
+    // `hostname` alone would drop the port and query the wrong host.
+    if (apId.port) {
+        return { type: 'none' };
+    }
+
     // Lookup against the actor's actual host — do not strip `www.`. That host
     // and the apex are distinct origins; asking the apex to describe a www
     // actor (or vice versa) is not the same as verifying the actor's own

@@ -327,6 +327,18 @@ describe('resolveCustomWebfingerHost', () => {
         expect(result).toEqual({ type: 'none' });
     });
 
+    it('rejects actor ids with a non-default port instead of querying the wrong host', async () => {
+        // hostname would drop :8443 and hit example.com — refuse rather than
+        // verify through a different authority
+        const result = await resolveCustomWebfingerHost(
+            'alice',
+            new URL('https://example.com:8443/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'none' });
+        expect(webfingerMock()).not.toHaveBeenCalled();
+    });
+
     it('accepts an uppercase acct scheme', async () => {
         webfingerMock()
             .mockResolvedValueOnce(jrd('ACCT:john@onolan.org'))
