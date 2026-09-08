@@ -326,12 +326,21 @@ describe('AccountService', () => {
             expect(account.setWebfingerHost).toHaveBeenCalledWith(
                 'example.com',
             );
-            expect(knexAccountRepository.save).toHaveBeenCalledWith(
-                updatedAccount,
-            );
             expect(
                 knexAccountRepository.updateWebfingerHost,
             ).toHaveBeenCalledWith(1, 'example.com');
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+            // Host must be queryable via WebFinger before AccountUpdatedEvent
+            // federates an Update to peers
+            expect(
+                vi.mocked(knexAccountRepository.updateWebfingerHost).mock
+                    .invocationCallOrder[0],
+            ).toBeLessThan(
+                vi.mocked(knexAccountRepository.save).mock
+                    .invocationCallOrder[0],
+            );
         });
 
         it('clears the custom domain without live validation', async () => {
@@ -352,12 +361,19 @@ describe('AccountService', () => {
             expect(result).toEqual(ok(updatedAccount));
             expect(fetchMock).not.toHaveBeenCalled();
             expect(account.setWebfingerHost).toHaveBeenCalledWith(null);
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
             expect(knexAccountRepository.save).toHaveBeenCalledWith(
                 updatedAccount,
             );
             expect(
-                knexAccountRepository.updateWebfingerHost,
-            ).toHaveBeenCalledWith(1, null);
+                vi.mocked(knexAccountRepository.updateWebfingerHost).mock
+                    .invocationCallOrder[0],
+            ).toBeLessThan(
+                vi.mocked(knexAccountRepository.save).mock
+                    .invocationCallOrder[0],
+            );
         });
     });
 
@@ -612,9 +628,11 @@ describe('AccountService', () => {
         it('should update the account with the provided data', async () => {
             const updated = {
                 isInternal: true,
+                username: 'alice',
             } as unknown as AccountEntity;
             const account = {
                 isInternal: true,
+                username: 'alice',
                 updateProfile: vi.fn().mockReturnValue(updated),
             } as unknown as AccountEntity;
 
@@ -652,8 +670,10 @@ describe('AccountService', () => {
         it('should handle empty values for avatarUrl, bannerImageUrl, url, and customFields', async () => {
             const account = {
                 isInternal: true,
+                username: 'alice',
                 updateProfile: vi.fn().mockReturnValue({
                     isInternal: true,
+                    username: 'alice',
                 }),
             } as unknown as AccountEntity;
 
@@ -692,6 +712,7 @@ describe('AccountService', () => {
             } as unknown as AccountEntity;
             const account = {
                 isInternal: false,
+                username: 'alice',
                 updateProfile: vi.fn().mockReturnValue(afterProfile),
             } as unknown as AccountEntity;
 
@@ -729,6 +750,64 @@ describe('AccountService', () => {
             expect(
                 knexAccountRepository.updateWebfingerHost,
             ).toHaveBeenCalledWith(9, 'custom.example');
+        });
+
+        it('clears a stored host when username changes and WebFinger is unavailable', async () => {
+            const afterProfile = {
+                isInternal: false,
+                webfingerHost: null,
+                username: 'alice',
+                apId: new URL('https://blog.example.com/users/bob'),
+                id: 9,
+            } as unknown as AccountEntity;
+            const afterClear = {
+                isInternal: false,
+                webfingerHost: null,
+                username: 'bob',
+                apId: new URL('https://blog.example.com/users/bob'),
+                id: 9,
+                updateProfile: vi.fn().mockReturnValue(afterProfile),
+            } as unknown as AccountEntity;
+            const account = {
+                isInternal: false,
+                username: 'bob',
+                webfingerHost: 'custom.example',
+                id: 9,
+                setWebfingerHost: vi.fn().mockReturnValue(afterClear),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockResolvedValue(
+                account,
+            );
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'unavailable' });
+
+            await accountService.updateAccountByApId(
+                new URL('https://blog.example.com/users/bob'),
+                {
+                    name: 'Alice',
+                    bio: 'bio',
+                    username: 'alice',
+                    avatarUrl: '',
+                    bannerImageUrl: '',
+                    url: '',
+                    customFields: null,
+                },
+            );
+
+            // Host cleared before the username write — never (alice, custom.example)
+            expect(account.setWebfingerHost).toHaveBeenCalledWith(null);
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(9, null);
+            expect(
+                vi.mocked(knexAccountRepository.updateWebfingerHost).mock
+                    .invocationCallOrder[0],
+            ).toBeLessThan(
+                vi.mocked(knexAccountRepository.save).mock
+                    .invocationCallOrder[0],
+            );
         });
     });
 
@@ -801,6 +880,48 @@ describe('AccountService', () => {
             expect(
                 knexAccountRepository.updateWebfingerHost,
             ).not.toHaveBeenCalled();
+        });
+
+        it('clears a stored host when the username changed and lookup is unavailable', async () => {
+            // A host verified for @bob@custom must not survive a rename to
+            // alice when we cannot re-verify — otherwise we display an
+            // unverified handle
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'unavailable' });
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({
+                    username: 'alice',
+                    webfingerHost: 'custom.example',
+                }),
+                { usernameChanged: true },
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
+        });
+
+        it('clears a stored host when username changed but the new host conflicts', async () => {
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'custom', host: 'custom.example' });
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(true);
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({
+                    username: 'alice',
+                    webfingerHost: 'old-custom.example',
+                }),
+                { usernameChanged: true },
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
         });
 
         it('does not take a handle already held by another account', async () => {

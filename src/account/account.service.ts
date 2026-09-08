@@ -437,14 +437,16 @@ export class AccountService {
      * Persist an intentional WebFinger host change.
      *
      * `save()` no longer writes `webfinger_host`, so the column is updated
-     * separately — the same seam external refresh uses.
+     * separately — the same seam external refresh uses. The host is written
+     * first so WebFinger can answer for it before `save()` emits
+     * AccountUpdatedEvent and federates an Update to peers.
      */
     private async persistWebfingerHostChange(account: Account): Promise<void> {
-        await this.accountRepository.save(account);
         await this.accountRepository.updateWebfingerHost(
             account.id,
             account.webfingerHost,
         );
+        await this.accountRepository.save(account);
     }
 
     /**
@@ -487,10 +489,15 @@ export class AccountService {
      * Re-resolve and persist the custom WebFinger host for an external account.
      *
      * Only the `webfinger_host` column is written, so this cannot clobber
-     * profile fields updated concurrently. A failed lookup leaves the stored
-     * value unchanged; a successful lookup that finds no custom host clears it.
+     * profile fields updated concurrently. A failed lookup normally leaves the
+     * stored value unchanged — except when the username just changed, in which
+     * case a previous host was verified for a different local-part and must be
+     * cleared rather than displayed under the new name.
      */
-    async refreshExternalWebfingerHost(account: Account): Promise<void> {
+    async refreshExternalWebfingerHost(
+        account: Account,
+        options: { usernameChanged?: boolean } = {},
+    ): Promise<void> {
         if (account.isInternal) {
             return;
         }
@@ -501,6 +508,12 @@ export class AccountService {
         );
 
         if (resolution.type === 'unavailable') {
+            if (options.usernameChanged && account.webfingerHost !== null) {
+                await this.accountRepository.updateWebfingerHost(
+                    account.id,
+                    null,
+                );
+            }
             return;
         }
 
@@ -527,6 +540,16 @@ export class AccountService {
                         apId: account.apId.href,
                     },
                 );
+
+                // After a rename the previous host was verified for a different
+                // local-part. Refuse to keep it attached to the new username
+                // when the newly resolved host cannot be claimed.
+                if (options.usernameChanged && account.webfingerHost !== null) {
+                    await this.accountRepository.updateWebfingerHost(
+                        account.id,
+                        null,
+                    );
+                }
 
                 return;
             }
@@ -1070,14 +1093,29 @@ export class AccountService {
             return error('account-not-found');
         }
 
-        const updated = account.updateProfile(profileData);
+        const usernameChanged =
+            account.username.toLowerCase() !== data.username.toLowerCase();
+
+        // Clear any stored custom host before the username write so we never
+        // briefly hold (or unique-constrain) an unverified @newuser@oldhost.
+        let accountForUpdate = account;
+        if (
+            usernameChanged &&
+            !account.isInternal &&
+            account.webfingerHost !== null
+        ) {
+            await this.accountRepository.updateWebfingerHost(account.id, null);
+            accountForUpdate = account.setWebfingerHost(null);
+        }
+
+        const updated = accountForUpdate.updateProfile(profileData);
 
         await this.accountRepository.save(updated);
 
         // An actor Update is the only federation signal we get for a remote
         // handle domain change, since the custom host lives in WebFinger rather
         // than on the actor document.
-        await this.refreshExternalWebfingerHost(updated);
+        await this.refreshExternalWebfingerHost(updated, { usernameChanged });
 
         return ok(true);
     }

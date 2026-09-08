@@ -287,6 +287,46 @@ describe('resolveCustomWebfingerHost', () => {
         expect(result).toEqual({ type: 'custom', host: 'custom.example' });
     });
 
+    it('does not treat www and apex as the same actor origin', async () => {
+        // www.example.com and example.com can be controlled independently;
+        // equating them would let one origin vouch for the other's actor id
+        webfingerMock().mockResolvedValueOnce(
+            jrd(
+                'acct:alice@custom.example',
+                'https://www.example.com/users/alice',
+            ),
+        );
+
+        const result = await resolveCustomWebfingerHost(
+            'alice',
+            new URL('https://example.com/users/alice'),
+        );
+
+        expect(result).toEqual({ type: 'none' });
+        expect(webfingerMock()).toHaveBeenCalledTimes(1);
+    });
+
+    it('looks up WebFinger on the actor host including www', async () => {
+        webfingerMock().mockResolvedValueOnce(
+            jrd(
+                'acct:alice@www.example.com',
+                'https://www.example.com/users/alice',
+            ),
+        );
+
+        const result = await resolveCustomWebfingerHost(
+            'alice',
+            new URL('https://www.example.com/users/alice'),
+        );
+
+        expect(webfingerMock()).toHaveBeenCalledWith(
+            'acct:alice@www.example.com',
+            expect.any(Object),
+        );
+        // Subject host normalizes to the same handle host as the actor — not custom
+        expect(result).toEqual({ type: 'none' });
+    });
+
     it('accepts an uppercase acct scheme', async () => {
         webfingerMock()
             .mockResolvedValueOnce(jrd('ACCT:john@onolan.org'))

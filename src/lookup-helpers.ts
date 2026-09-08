@@ -139,14 +139,18 @@ export async function lookupActorProfile(
 }
 
 /**
- * Canonical form of an actor id, so trailing-slash and `www.` differences
- * between a WebFinger self link and an actor id do not read as different actors
+ * Canonical form of an actor id for WebFinger self-link comparison.
+ *
+ * Trailing slashes are ignored so producers that append one still match.
+ * Hostnames are compared case-insensitively (URI hostnames are). `www.` is
+ * not stripped: www.example.com and example.com are distinct security origins
+ * and must not verify each other.
  */
 function canonicalActorId(url: URL): string {
     const canonical = new URL(url.href);
 
     canonical.pathname = canonical.pathname.replace(/\/+$/, '');
-    canonical.host = normalizeWebfingerHost(canonical.host) ?? canonical.host;
+    canonical.hostname = canonical.hostname.toLowerCase();
 
     return canonical.href;
 }
@@ -231,13 +235,22 @@ export async function resolveCustomWebfingerHost(
     username: string,
     apId: URL,
 ): Promise<CustomWebfingerHostResolution> {
-    const actorHost = normalizeWebfingerHost(apId.host);
+    // Lookup against the actor's actual host — do not strip `www.`. That host
+    // and the apex are distinct origins; asking the apex to describe a www
+    // actor (or vice versa) is not the same as verifying the actor's own
+    // WebFinger. Handle comparison still uses normalizeWebfingerHost so a
+    // subject of acct:user@www.example.com on a www actor reads as "no custom
+    // host" rather than a custom apex claim.
+    const actorLookupHost = apId.hostname.toLowerCase();
+    const actorHandleHost = normalizeWebfingerHost(apId.hostname);
 
-    if (!username || !actorHost) {
+    if (!username || !actorLookupHost || !actorHandleHost) {
         return { type: 'none' };
     }
 
-    const claimedLookup = await fetchWebfinger(`acct:${username}@${actorHost}`);
+    const claimedLookup = await fetchWebfinger(
+        `acct:${username}@${actorLookupHost}`,
+    );
     if (claimedLookup.type === 'unavailable') {
         return { type: 'unavailable' };
     }
@@ -247,7 +260,7 @@ export async function resolveCustomWebfingerHost(
     }
 
     const claimed = parseAcctSubject(claimedLookup.data.subject);
-    if (!claimed || claimed.host === actorHost) {
+    if (!claimed || claimed.host === actorHandleHost) {
         return { type: 'none' };
     }
 
