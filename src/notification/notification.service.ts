@@ -446,7 +446,7 @@ export class NotificationService {
         await this.db('notifications')
             .join('accounts', 'notifications.account_id', 'accounts.id')
             .where('notifications.user_id', user.id)
-            .andWhere(accountMatchesDomain(this.db, domain.host))
+            .andWhere(accountMatchesDomain(this.db, domain.hostname))
             .delete();
     }
 

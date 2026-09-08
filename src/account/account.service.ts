@@ -533,7 +533,7 @@ export class AccountService {
 
             if (conflict) {
                 getLogger(['activitypub']).warn(
-                    'WebFinger handle @{username}@{host} for {apId} is already held by another account, leaving host unchanged',
+                    'WebFinger handle @{username}@{host} for {apId} is already held by another account, falling back to actor host',
                     {
                         username: account.username,
                         host: nextHost,
@@ -541,10 +541,9 @@ export class AccountService {
                     },
                 );
 
-                // After a rename the previous host was verified for a different
-                // local-part. Refuse to keep it attached to the new username
-                // when the newly resolved host cannot be claimed.
-                if (options.usernameChanged && account.webfingerHost !== null) {
+                // WebFinger no longer advertises the stored host (or never did
+                // for this local-part). Keeping it would show a stale handle.
+                if (account.webfingerHost !== null) {
                     await this.accountRepository.updateWebfingerHost(
                         account.id,
                         null,
@@ -562,6 +561,22 @@ export class AccountService {
             );
         } catch (err) {
             if (isDuplicateEntryError(err)) {
+                getLogger(['activitypub']).warn(
+                    'WebFinger handle @{username}@{host} for {apId} conflicted on write, falling back to actor host',
+                    {
+                        username: account.username,
+                        host: nextHost,
+                        apId: account.apId.href,
+                    },
+                );
+
+                if (account.webfingerHost !== null && nextHost !== null) {
+                    await this.accountRepository.updateWebfingerHost(
+                        account.id,
+                        null,
+                    );
+                }
+
                 return;
             }
             throw err;

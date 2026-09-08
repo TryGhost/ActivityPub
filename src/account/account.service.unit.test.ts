@@ -924,6 +924,25 @@ describe('AccountService', () => {
             ).toHaveBeenCalledWith(1, null);
         });
 
+        it('clears a stored host when a domain change conflicts', async () => {
+            // WebFinger now advertises @user@new.example, but that slot is
+            // taken — keep showing @user@old.example would be a stale handle
+            vi.mocked(
+                lookupHelpers.resolveCustomWebfingerHost,
+            ).mockResolvedValue({ type: 'custom', host: 'new.example' });
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(true);
+
+            await accountService.refreshExternalWebfingerHost(
+                externalAccount({ webfingerHost: 'old.example' }),
+            );
+
+            expect(
+                knexAccountRepository.updateWebfingerHost,
+            ).toHaveBeenCalledWith(1, null);
+        });
+
         it('does not take a handle already held by another account', async () => {
             vi.mocked(
                 lookupHelpers.resolveCustomWebfingerHost,

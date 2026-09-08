@@ -670,7 +670,7 @@ export class FeedService {
                 );
             })
             .where('feeds.user_id', user.id)
-            .andWhere(accountMatchesDomain(this.db, blockedDomain.host))
+            .andWhere(accountMatchesDomain(this.db, blockedDomain.hostname))
             .delete();
     }
 
