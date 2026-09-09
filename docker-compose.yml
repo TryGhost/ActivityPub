@@ -102,7 +102,7 @@ services:
       retries: 120
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:583.0.0-emulators@sha256:07e4b8c3075ca793552fcfaf4808f104ef155d7805d87ade8e01b440463be262
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:584.0.0-emulators@sha256:45a15cc163d2df13137478856b4b9bb90426100fa8aec542269460c10110b727
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -248,7 +248,7 @@ services:
   pubsub-testing:
     networks:
       - test_network
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:583.0.0-emulators@sha256:07e4b8c3075ca793552fcfaf4808f104ef155d7805d87ade8e01b440463be262
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:584.0.0-emulators@sha256:45a15cc163d2df13137478856b4b9bb90426100fa8aec542269460c10110b727
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
