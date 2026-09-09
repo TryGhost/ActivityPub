@@ -3,7 +3,7 @@ FROM docker.io/library/alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae
 # Binary is copied from golang-migrate's published image rather than their
 # release tarball so Renovate tracks the digest. Not used as a base: it sets
 # ENTRYPOINT ["migrate"] and runs on a different version of Alpine.
-COPY --from=docker.io/migrate/migrate:v4.19.1@sha256:cc4ad8e19d66791e3689405d9a028ce6e9614f32032db14acda1469f7201d6e4 /usr/local/bin/migrate /usr/bin/migrate
+COPY --from=docker.io/migrate/migrate:v4.20.1@sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c4daa743275a22e0c5be7 /usr/local/bin/migrate /usr/bin/migrate
 
 COPY bin /usr/local/bin
 
