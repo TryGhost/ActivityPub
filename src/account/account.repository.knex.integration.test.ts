@@ -782,6 +782,10 @@ describe('KnexAccountRepository', () => {
         const updated = account.setWebfingerHost('example.com');
 
         await accountRepository.save(updated);
+        await accountRepository.updateWebfingerHost(
+            updated.id,
+            updated.webfingerHost,
+        );
 
         const fetched = await accountRepository.getByWebfingerHandle(
             'index',
@@ -797,6 +801,56 @@ describe('KnexAccountRepository', () => {
                 account.id,
             ),
         ).resolves.toBe(false);
+    });
+
+    it('does not overwrite webfinger_host on a profile save', async () => {
+        const site = await fixtureManager.createSite('blog.example.com');
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'index',
+            name: 'Test',
+            bio: null,
+            url: new URL(`https://${site.host}`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+
+        // Created with webfingerHost null — stands in for a concurrent save
+        // that loaded the row before updateWebfingerHost completed.
+        const account = await accountRepository.create(
+            AccountEntity.draft(draftData),
+        );
+
+        await accountRepository.updateWebfingerHost(account.id, 'example.com');
+
+        await accountRepository.save(
+            account.updateProfile({ name: 'Renamed' }),
+        );
+
+        const row = await client('accounts').where({ id: account.id }).first();
+
+        expect(row.name).toBe('Renamed');
+        expect(row.webfinger_host).toBe('example.com');
+    });
+
+    it('does not resolve a WebFinger handle held by an external account', async () => {
+        const externalAccount = await fixtureManager.createExternalAccount(
+            'https://john.onolan.org/',
+        );
+
+        await client('accounts')
+            .update({ webfinger_host: 'onolan.org' })
+            .where('id', externalAccount.id);
+
+        // We do not host this account, so answering WebFinger for its handle
+        // would point callers at another server from our own domain
+        const fetched = await accountRepository.getByWebfingerHandle(
+            externalAccount.username,
+            'onolan.org',
+        );
+
+        expect(fetched).toBeNull();
     });
 
     it('resolves a custom WebFinger host by stable actor username', async () => {
@@ -820,6 +874,10 @@ describe('KnexAccountRepository', () => {
             .updateProfile({ username: 'alice' });
 
         await accountRepository.save(updated);
+        await accountRepository.updateWebfingerHost(
+            updated.id,
+            updated.webfingerHost,
+        );
 
         const fetched = await accountRepository.getByWebfingerHandle(
             'index',

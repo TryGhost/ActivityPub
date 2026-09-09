@@ -184,6 +184,75 @@ describe('ModerationService', () => {
             expect(users).toEqual([bobUserId, charlieUserId]);
         });
 
+        it("should keep filtering by the author's actor domain after a custom WebFinger host is stored", async () => {
+            const [
+                [aliceAccount, , aliceUserId],
+                [bobAccount, , bobUserId],
+                [, , charlieUserId],
+            ] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(
+                    null,
+                    'blocked-domain.com',
+                ),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const post = await fixtureManager.createPost(bobAccount);
+
+            // Alice blocks the domain she was shown, bob's actor host
+            await fixtureManager.createDomainBlock(
+                aliceAccount,
+                bobAccount.apId,
+            );
+
+            // Bob later turns out to have a custom handle domain. Keying this
+            // filter on the custom host alone would let his posts back into
+            // Alice's feed while Explore still hid him.
+            await client('accounts')
+                .where({ id: bobAccount.id })
+                .update({ webfinger_host: 'custom-handle.com' });
+
+            const users = await moderationService.filterUsersForPost(
+                [aliceUserId, bobUserId, charlieUserId],
+                post,
+            );
+
+            expect(users).toEqual([bobUserId, charlieUserId]);
+        });
+
+        it("should filter out users that have blocked the author's custom handle domain", async () => {
+            const [
+                [aliceAccount, , aliceUserId],
+                [bobAccount, , bobUserId],
+                [, , charlieUserId],
+            ] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(null, 'actor-host.com'),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const post = await fixtureManager.createPost(bobAccount);
+
+            await client('accounts')
+                .where({ id: bobAccount.id })
+                .update({ webfinger_host: 'custom-handle.com' });
+
+            // Alice blocks from a surface showing @bob@custom-handle.com, so
+            // that is the host recorded against the block
+            await fixtureManager.createDomainBlock(
+                aliceAccount,
+                new URL('https://custom-handle.com'),
+            );
+
+            const users = await moderationService.filterUsersForPost(
+                [aliceUserId, bobUserId, charlieUserId],
+                post,
+            );
+
+            expect(users).toEqual([bobUserId, charlieUserId]);
+        });
+
         it("should filter out users that have blocked the reposter's domain", async () => {
             const [
                 [aliceAccount, , aliceUserId],

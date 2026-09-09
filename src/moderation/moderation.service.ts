@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 import type { Post } from '@/post/post.entity';
 
 export class ModerationService {
@@ -37,11 +38,7 @@ export class ModerationService {
             }
 
             const domainBlock = await this.db('domain_blocks')
-                .join(
-                    'accounts',
-                    'domain_blocks.domain_hash',
-                    'accounts.domain_hash',
-                )
+                .join('accounts', domainBlockMatchesAccount(this.db))
                 .innerJoin('users', 'accounts.id', 'users.account_id')
                 .where({
                     'domain_blocks.blocker_id': post.author.id,
@@ -67,11 +64,7 @@ export class ModerationService {
             .select('blocker_id');
 
         const domainBlocks = await this.db('domain_blocks')
-            .join(
-                'accounts',
-                'domain_blocks.domain_hash',
-                'accounts.domain_hash',
-            )
+            .join('accounts', domainBlockMatchesAccount(this.db))
             .whereIn('blocker_id', Array.from(userAccountMap.values()))
             .whereIn(
                 'accounts.id',
@@ -105,7 +98,7 @@ export class ModerationService {
             WHERE blocker_id = ? AND blocked_id = ?
             UNION ALL
             SELECT 1 AS blocked FROM domain_blocks
-            INNER JOIN accounts ON domain_blocks.domain_hash = accounts.domain_hash
+            INNER JOIN accounts ON domain_blocks.domain_hash IN (accounts.domain_hash, accounts.webfinger_host_hash)
             WHERE domain_blocks.blocker_id = ? AND accounts.id = ?
             LIMIT 1`,
             [

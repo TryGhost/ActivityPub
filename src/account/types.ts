@@ -46,4 +46,6 @@ export interface Account {
 export type ExternalAccountData = Omit<
     Account,
     'id' | 'ap_private_key' | 'webfinger_host'
->;
+> & {
+    webfinger_host?: string | null;
+};

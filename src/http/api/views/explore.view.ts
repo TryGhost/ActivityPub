@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 import { getAccountHandle } from '@/account/utils';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ExploreAccountDTO } from '@/http/api/types';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 const DEFAULT_EXPLORE_LIMIT = 20;
 
@@ -15,11 +16,9 @@ export class ExploreView {
         offset = 0,
         limit = DEFAULT_EXPLORE_LIMIT,
     ): Promise<{ accounts: ExploreAccountDTO[]; next: string | null }> {
-        const effectiveDomainHash = this.db.raw(
-            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
-        );
+        const db = this.db;
 
-        const results = await this.db('accounts')
+        const results = await db('accounts')
             .select(
                 'accounts.ap_id',
                 'accounts.name',
@@ -67,10 +66,7 @@ export class ExploreView {
                 );
             })
             .leftJoin('domain_blocks', function () {
-                this.on(
-                    'domain_blocks.domain_hash',
-                    effectiveDomainHash,
-                ).andOnVal(
+                this.on(domainBlockMatchesAccount(db)).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',
                     viewerAccountId.toString(),

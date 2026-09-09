@@ -14,6 +14,7 @@ import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import type { MinimalAccountDTO } from '@/http/api/types';
+import { isAccountDomainBlocked } from '@/moderation/domain-blocks';
 import type { ModerationService } from '@/moderation/moderation.service';
 
 /**
@@ -140,7 +141,11 @@ export class AccountFollowsView {
                 isFollowing: !!result.followed_by_me,
                 followedByMe: !!result.followed_by_me,
                 blockedByMe: !!result.blocked_by_me,
-                domainBlockedByMe: blockedDomains.has(apIdUrl.hostname),
+                domainBlockedByMe: isAccountDomainBlocked(
+                    blockedDomains,
+                    apIdUrl.hostname,
+                    result.webfinger_host,
+                ),
             });
         }
 
@@ -387,7 +392,11 @@ export class AccountFollowsView {
                         isFollowing: !!followeeAccount.followed_by_me,
                         followedByMe: !!followeeAccount.followed_by_me,
                         blockedByMe: !!followeeAccount.blocked_by_me,
-                        domainBlockedByMe: blockedDomains.has(apIdUrl.hostname),
+                        domainBlockedByMe: isAccountDomainBlocked(
+                            blockedDomains,
+                            apIdUrl.hostname,
+                            followeeAccount.webfinger_host,
+                        ),
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -406,19 +415,33 @@ export class AccountFollowsView {
                         continue;
                     }
 
+                    // No WebFinger lookup here: this loop already fetches each
+                    // unknown actor sequentially, and the remote page size is
+                    // not ours to bound. Custom hosts show up once the account
+                    // is ingested through `ensureByApId`.
+                    const followsActorId = new URL(followsActor.id);
+
                     accounts.push({
                         id: followsActor.id,
                         apId: followsActor.id,
                         name: followsActor.name,
                         handle: getAccountHandle(
-                            new URL(followsActor.id).host,
+                            followsActorId.host,
                             followsActor.preferredUsername,
                         ),
                         avatarUrl: followsActor.icon.url,
                         isFollowing: false,
                         followedByMe: false,
                         blockedByMe: false,
-                        domainBlockedByMe: blockedDomains.has(item.hostname),
+                        // There is no stored row to read a custom host from, so
+                        // the two hosts this actor is known under are its
+                        // canonical id and the URL the collection listed it
+                        // under, which a redirect can move to another domain
+                        domainBlockedByMe: isAccountDomainBlocked(
+                            blockedDomains,
+                            followsActorId.hostname,
+                            item.hostname,
+                        ),
                     });
                 }
             } catch (_err) {

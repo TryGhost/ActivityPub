@@ -220,6 +220,47 @@ describe('ExploreView', () => {
             expect(next).toBeNull();
         });
 
+        it('should keep filtering out accounts blocked by their actor domain after a custom WebFinger host is stored', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [accountOne] = await fixtureManager.createInternalAccount();
+            const customDomainAccount =
+                await fixtureManager.createExternalAccount(
+                    'https://actor-domain.com/',
+                );
+
+            const topic = await fixtureManager.createTopic(
+                'Science',
+                'science',
+            );
+
+            await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
+            await fixtureManager.addAccountToTopic(
+                customDomainAccount.id,
+                topic.id,
+            );
+
+            // The viewer blocked the domain they were shown at the time, which
+            // was the actor host, before any custom host was resolved
+            await fixtureManager.createDomainBlock(
+                viewer,
+                new URL('https://actor-domain.com'),
+            );
+
+            await db('accounts')
+                .where({ id: customDomainAccount.id })
+                .update({ webfinger_host: 'custom.example' });
+
+            const { accounts } = await exploreView.getAccountsInTopic(
+                topic.slug,
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts.map((a) => a.id)).not.toContain(
+                customDomainAccount.apId.toString(),
+            );
+        });
+
         it('should set followedByMe field correctly', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [followedAccount] =

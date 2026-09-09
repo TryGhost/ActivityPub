@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 
 import { getAccountHandle } from '@/account/utils';
 import type { AccountSearchResult } from '@/http/api/search.controller';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 const SEARCH_RESULT_LIMIT = 20;
 
@@ -107,7 +108,8 @@ export class AccountSearchView {
         limit: number,
         rankExpression?: Knex.Raw,
     ): Promise<AccountSearchResult[]> {
-        const query = this.db('accounts')
+        const db = this.db;
+        const query = db('accounts')
             .select(
                 'accounts.ap_id',
                 'accounts.name',
@@ -155,11 +157,8 @@ export class AccountSearchView {
                     viewerAccountId.toString(),
                 );
             })
-            .leftJoin('domain_blocks', function () {
-                this.on(
-                    'domain_blocks.domain_hash',
-                    'accounts.domain_hash',
-                ).andOnVal(
+            .leftJoin('domain_blocks', (join) => {
+                join.on(domainBlockMatchesAccount(db)).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',
                     viewerAccountId.toString(),

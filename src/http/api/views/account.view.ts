@@ -9,6 +9,7 @@ import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
 import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 /**
  * Additional context that can be passed to the view
@@ -62,7 +63,6 @@ export class AccountView {
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
-                    new URL(accountData.ap_id).hostname,
                 ));
         }
 
@@ -178,7 +178,6 @@ export class AccountView {
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
-                    new URL(accountData.ap_id).hostname,
                 ));
         }
 
@@ -235,20 +234,24 @@ export class AccountView {
         let blockedByMe = false;
         let domainBlockedByMe = false;
 
-        if (context.requestUserAccount?.id) {
-            const externalAccount = await this.db('accounts')
-                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
-                .select('id', 'ap_id')
-                .first();
+        // `viewByApId` resolves against internal accounts only, so every remote
+        // profile reaches this path, including ones we have already ingested
+        const storedAccount = await this.db('accounts')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+            .select('id', 'ap_id', 'username', 'webfinger_host')
+            .first<{
+                id: number;
+                ap_id: string;
+                username: string;
+                webfinger_host: string | null;
+            }>();
 
-            if (externalAccount) {
-                ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
-                    await this.getRequestUserContextData(
-                        context.requestUserAccount.id,
-                        externalAccount.id,
-                        new URL(externalAccount.ap_id).hostname,
-                    ));
-            }
+        if (context.requestUserAccount?.id && storedAccount) {
+            ({ followedByMe, followsMe, blockedByMe, domainBlockedByMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    storedAccount.id,
+                ));
         }
 
         const icon = await actor.getIcon();
@@ -269,11 +272,25 @@ export class AccountView {
                 ]);
         }
 
+        // Stored host only — no live WebFinger here. Resolution belongs on
+        // ingest / actor Update, where the result is verified, conflict-checked
+        // and persisted. An unknown actor falls back to the actor host until
+        // then, matching the follower-list unknown-actor path.
+        const handle = storedAccount
+            ? getAccountHandle(
+                  getAccountHandleHost({
+                      apId: new URL(storedAccount.ap_id),
+                      webfingerHost: storedAccount.webfinger_host,
+                  }),
+                  storedAccount.username,
+              )
+            : getHandle(actor);
+
         return {
             id: actor.id?.toString() || '',
             apId: actor.id?.toString() || '',
             name: actor.name?.toString() || '',
-            handle: getHandle(actor),
+            handle,
             bio: sanitizeHtml(actor.summary?.toString() || ''),
             url: actor.url?.toString() || '',
             avatarUrl: icon?.url?.toString() || '',
@@ -348,7 +365,6 @@ export class AccountView {
     private async getRequestUserContextData(
         requestUserAccountId: number,
         retrievedAccountId: number,
-        retrievedAccountDomain: string,
     ) {
         let followedByMe = false;
         let followsMe = false;
@@ -383,8 +399,9 @@ export class AccountView {
             (
                 await this.db('domain_blocks')
                     .where('blocker_id', requestUserAccountId)
-                    .where('domain', retrievedAccountDomain)
-                    .first()
+                    .join('accounts', domainBlockMatchesAccount(this.db))
+                    .where('accounts.id', retrievedAccountId)
+                    .first('domain_blocks.id')
             )?.id !== undefined;
 
         return {
