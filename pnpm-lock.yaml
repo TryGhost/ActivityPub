@@ -131,8 +131,8 @@ importers:
         specifier: 6.0.1
         version: 6.0.1(supports-color@11.0.0)
       '@google-cloud/storage':
-        specifier: 8.0.1
-        version: 8.0.1(supports-color@11.0.0)
+        specifier: 8.1.0
+        version: 8.1.0(supports-color@11.0.0)
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.7)
@@ -681,8 +681,8 @@ packages:
     resolution: {integrity: sha512-Ms/cE5wyxWoHHj6IUWZO67j7nDhAKa7eAUkUYBJjRie0Yr1V82NclaaIntdqAmmpOgXbIzdDlrIyWXLVMeGSDg==}
     engines: {node: '>=22'}
 
-  '@google-cloud/storage@8.0.1':
-    resolution: {integrity: sha512-qgNayyweyLssLW2NNL4WYUIbwxRCvCVGg52aW8r9Lkunkoj52U6WQa/TSXSsJZ1BrbxQp3+9kwwpRl+scHQ3KQ==}
+  '@google-cloud/storage@8.1.0':
+    resolution: {integrity: sha512-iFDlOGBzmzTelslzcf0yTpoqloyfTUi448PxJXvjtbvGqtc2ftT8HUSl5+sKQPRz70y64ha5FqojDhABP103EA==}
     engines: {node: '>=22'}
 
   '@grpc/grpc-js@1.14.4':
@@ -4146,7 +4146,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/storage@8.0.1(supports-color@11.0.0)':
+  '@google-cloud/storage@8.1.0(supports-color@11.0.0)':
     dependencies:
       '@google-cloud/paginator': 7.0.1
       '@google-cloud/projectify': 6.0.1
