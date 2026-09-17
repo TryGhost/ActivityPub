@@ -8,7 +8,10 @@ import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { requireParam } from '@/http/api/helpers/request';
-import { Forbidden } from '@/http/api/helpers/response';
+import {
+    Forbidden,
+    InternalServerError,
+} from '@/http/api/helpers/response';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
@@ -40,6 +43,12 @@ export class LikeController {
                     status: 404,
                 },
             );
+        }
+
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        if (!actor) {
+            return InternalServerError('Site actor could not be resolved');
         }
 
         const idAsUrl = parseURL(id);
@@ -114,12 +123,10 @@ export class LikeController {
             );
         }
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
         const like = new Like({
             id: likeId,
-            actor: actor,
-            object: objectToLike,
+            actor: actor.id,
+            object: objectToLike.id,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
@@ -173,6 +180,12 @@ export class LikeController {
                     status: 404,
                 },
             );
+        }
+
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        if (!actor) {
+            return InternalServerError('Site actor could not be resolved');
         }
 
         const likeId = apCtx.getObjectUri(Like, {
@@ -240,11 +253,9 @@ export class LikeController {
 
         const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
         const undo = new Undo({
             id: undoId,
-            actor: actor,
+            actor: actor.id,
             object: likeToUndo,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
