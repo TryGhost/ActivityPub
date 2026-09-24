@@ -128,8 +128,8 @@ importers:
         specifier: 2.3.8
         version: 2.3.8
       '@google-cloud/pubsub':
-        specifier: 6.0.1
-        version: 6.0.1(supports-color@11.0.0)
+        specifier: 6.1.0
+        version: 6.1.0(supports-color@11.0.0)
       '@google-cloud/storage':
         specifier: 8.0.1
         version: 8.0.1(supports-color@11.0.0)
@@ -677,8 +677,8 @@ packages:
     resolution: {integrity: sha512-x1L+lrIHgaMwN5fAhnNVS7rh0BZn9eKmqOBXnOUM3jkilF4GE4ooETS9SYnCtPCVHwQtByDTh5b7KIMUW7XAHQ==}
     engines: {node: '>=22'}
 
-  '@google-cloud/pubsub@6.0.1':
-    resolution: {integrity: sha512-Ms/cE5wyxWoHHj6IUWZO67j7nDhAKa7eAUkUYBJjRie0Yr1V82NclaaIntdqAmmpOgXbIzdDlrIyWXLVMeGSDg==}
+  '@google-cloud/pubsub@6.1.0':
+    resolution: {integrity: sha512-amPObGHTojTGLeaSTogY22vGkNc/cWaNXphS64Jmwkn2rcvIHnYnwsFwQaxYd+BfML48ninINn5gziRmcfOqPA==}
     engines: {node: '>=22'}
 
   '@google-cloud/storage@8.0.1':
@@ -4123,7 +4123,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/pubsub@6.0.1(supports-color@11.0.0)':
+  '@google-cloud/pubsub@6.1.0(supports-color@11.0.0)':
     dependencies:
       '@google-cloud/paginator': 7.0.1
       '@google-cloud/precise-date': 6.0.1
