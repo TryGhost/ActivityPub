@@ -14,6 +14,16 @@
   automergeSchedule: [
     '* 7-16 * * 1,2,3,4',
   ],
+  // Renovate merges one PR per job, then restarts once and rebases every
+  // other automerge PR because main moved. That restarts their CI, so nothing
+  // else can merge until the next job, and the same handful of digest PRs
+  // win every time while everything behind them starves for weeks.
+  //
+  // Only rebasing on conflict keeps the other PRs green, so the job Mend
+  // runs after each push to main can keep merging through the queue. The
+  // main ruleset doesn't require branches to be up to date, so a green PR
+  // that's behind main still merges.
+  rebaseWhen: 'conflicted',
   lockFileMaintenance: {
     enabled: true,
     automerge: true,
