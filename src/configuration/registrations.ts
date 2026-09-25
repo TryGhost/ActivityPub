@@ -14,6 +14,7 @@ import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
+import { AccountMoveService } from '@/account/account-move.service';
 import { CreateHandler } from '@/activity-handlers/create.handler';
 import { DeleteHandler } from '@/activity-handlers/delete.handler';
 import { FollowHandler } from '@/activity-handlers/follow.handler';
@@ -374,6 +375,10 @@ export function registerDependencies(
         asClass(KnexUserRepository).singleton(),
     );
     container.register('accountService', asClass(AccountService).singleton());
+    container.register(
+        'accountMoveService',
+        asClass(AccountMoveService).singleton(),
+    );
     container.register('postService', asClass(PostService).singleton());
     container.register('userService', asClass(UserService).singleton());
     container.register(

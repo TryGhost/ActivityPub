@@ -6,6 +6,7 @@ import type {
     AccountService,
     WebfingerHostError,
 } from '@/account/account.service';
+import type { AccountMoveService } from '@/account/account-move.service';
 import {
     getAccountHandle,
     getAccountHandleHost,
@@ -59,6 +60,10 @@ const RemoveAliasSchema = z.object({
     actorUri: z.string(),
 });
 
+const MoveAccountSchema = z.object({
+    targetHandle: z.string(),
+});
+
 const UpdateDomainSchema = z.object({
     domain: z.string().nullable(),
 });
@@ -74,6 +79,7 @@ export class AccountController {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountPostsView: AccountPostsView,
         private readonly accountService: AccountService,
+        private readonly accountMoveService: AccountMoveService,
     ) {}
 
     private async accountAliasesResponse(account: Account) {
@@ -488,6 +494,61 @@ export class AccountController {
                 status: 200,
             },
         );
+    }
+
+    @APIRoute('GET', 'migration')
+    @RequireRoles(GhostRole.Owner)
+    async handleGetAccountMigration(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+        if (!account) return new Response(null, { status: 404 });
+        const move = await this.accountMoveService.getMove(account.id);
+        return ok({
+            targetApId: move?.target.href ?? null,
+            sent: move?.sent ?? false,
+        });
+    }
+
+    @APIRoute('POST', 'migration')
+    @RequireRoles(GhostRole.Owner)
+    async handleMoveAccount(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+        if (!account) return new Response(null, { status: 404 });
+
+        const parsed = MoveAccountSchema.safeParse(
+            await ctx.req.json().catch(() => null),
+        );
+        if (!parsed.success)
+            return BadRequest('A destination handle is required');
+
+        const result = await this.accountMoveService.move(
+            account,
+            parsed.data.targetHandle,
+        );
+        if (isError(result)) {
+            const moveError = getError(result);
+            switch (moveError.type) {
+                case 'invalid-handle':
+                case 'self-move':
+                    return BadRequest('Invalid destination handle');
+                case 'target-unavailable':
+                    return new Response(null, { status: 404 });
+                case 'alias-required':
+                    return UnprocessableEntity(
+                        'Destination actor must alias this account',
+                    );
+                case 'different-target':
+                case 'busy':
+                    return Conflict('Account migration already started');
+                default:
+                    return exhaustiveCheck(moveError);
+            }
+        }
+
+        return ok({ targetApId: getValue(result).target.href, sent: true });
     }
 
     @APIRoute('GET', 'domain')

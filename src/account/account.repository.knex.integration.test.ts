@@ -317,6 +317,47 @@ describe('KnexAccountRepository', () => {
         expect(aliases).toEqual([]);
     });
 
+    it('reserves a single Move and persists the destination after delivery', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const target = new URL('https://mastodon.social/users/new');
+        const firstId = new URL('https://example.com/moves/first');
+        const secondId = new URL('https://example.com/moves/second');
+
+        expect(
+            await accountRepository.claimMove(account.id, target, firstId),
+        ).toBe('claimed');
+        expect(
+            await accountRepository.claimMove(account.id, target, secondId),
+        ).toBe('busy');
+        expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
+            firstId,
+        );
+
+        await accountRepository.releaseMove(account.id);
+        expect(
+            await accountRepository.claimMove(account.id, target, secondId),
+        ).toBe('claimed');
+        expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
+            firstId,
+        );
+
+        await accountRepository.completeMove(account.id);
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: true,
+        });
+        expect(
+            await accountRepository.claimMove(account.id, target, secondId),
+        ).toBe('sent');
+        expect(
+            await accountRepository.claimMove(
+                account.id,
+                new URL('https://other.example/users/new'),
+                secondId,
+            ),
+        ).toBe('different-target');
+    });
+
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),
