@@ -445,6 +445,76 @@ export class KnexAccountRepository {
         return rows.map((row) => new URL(row.ap_id));
     }
 
+    async getMove(
+        accountId: number,
+    ): Promise<{ target: URL; sent: boolean } | null> {
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('target_ap_id', 'sent_at');
+        return row
+            ? { target: new URL(row.target_ap_id), sent: row.sent_at !== null }
+            : null;
+    }
+
+    async claimMove(
+        accountId: number,
+        target: URL,
+        activityId: URL,
+    ): Promise<'claimed' | 'busy' | 'sent' | 'different-target'> {
+        await this.db('account_moves')
+            .insert({
+                account_id: accountId,
+                target_ap_id: target.href,
+                activity_id: activityId.href,
+                claimed_at: this.db.fn.now(6),
+            })
+            .onConflict('account_id')
+            .ignore();
+
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('target_ap_id', 'activity_id', 'claimed_at', 'sent_at');
+
+        if (row.target_ap_id !== target.href) return 'different-target';
+        if (row.sent_at !== null) return 'sent';
+        if (row.activity_id === activityId.href) return 'claimed';
+
+        // Allow a failed or interrupted delivery to be retried. The original
+        // activity ID remains stable so remote servers can deduplicate it.
+        const claimed = await this.db('account_moves')
+            .where('account_id', accountId)
+            .whereNull('sent_at')
+            .where((query) =>
+                query
+                    .whereNull('claimed_at')
+                    .orWhereRaw(
+                        'claimed_at < DATE_SUB(NOW(6), INTERVAL 5 MINUTE)',
+                    ),
+            )
+            .update({ claimed_at: this.db.fn.now(6) });
+        return claimed === 1 ? 'claimed' : 'busy';
+    }
+
+    async getMoveActivityId(accountId: number): Promise<URL> {
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('activity_id');
+        return new URL(row.activity_id);
+    }
+
+    async completeMove(accountId: number): Promise<void> {
+        await this.db('account_moves')
+            .where('account_id', accountId)
+            .update({ sent_at: this.db.fn.now(6), claimed_at: null });
+    }
+
+    async releaseMove(accountId: number): Promise<void> {
+        await this.db('account_moves')
+            .where('account_id', accountId)
+            .whereNull('sent_at')
+            .update({ claimed_at: null });
+    }
+
     async getByWebfingerHandle(
         username: string,
         host: string,
