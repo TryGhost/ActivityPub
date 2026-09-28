@@ -85,7 +85,7 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
 
@@ -229,7 +229,7 @@ services:
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
     healthcheck:
-      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
 
