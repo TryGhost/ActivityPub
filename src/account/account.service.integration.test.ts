@@ -56,6 +56,10 @@ vi.mock('@fedify/vocab', async () => {
     };
 });
 
+vi.mock('@fedify/webfinger', () => ({
+    lookupWebFinger: vi.fn().mockResolvedValue(null),
+}));
+
 describe('AccountService', () => {
     let service: AccountService;
     let events: AsyncEvents;
