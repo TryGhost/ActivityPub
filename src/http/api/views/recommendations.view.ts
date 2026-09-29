@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 import { getAccountHandle } from '@/account/utils';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ExploreAccountDTO } from '@/http/api/types';
+import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
 const DEFAULT_TOPIC_SLUG = 'top';
 
@@ -74,11 +75,9 @@ export class RecommendationsView {
         excludeIds: number[],
         limit: number,
     ): Promise<RecommendationRow[]> {
-        const effectiveDomainHash = this.db.raw(
-            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
-        );
+        const db = this.db;
 
-        const query = this.db('accounts')
+        const query = db('accounts')
             .select(
                 'accounts.id',
                 'accounts.ap_id',
@@ -128,10 +127,7 @@ export class RecommendationsView {
 
             // Exclude domain-blocked accounts
             .leftJoin('domain_blocks', function () {
-                this.on(
-                    'domain_blocks.domain_hash',
-                    effectiveDomainHash,
-                ).andOnVal(
+                this.on(domainBlockMatchesAccount(db)).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',
                     viewerAccountId.toString(),

@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 
 import { error, ok, type Result } from '@/core/result';
 import { sanitizeHtml } from '@/helpers/html';
+import { accountMatchesDomain } from '@/moderation/domain-blocks';
 import type { ModerationService } from '@/moderation/moderation.service';
 import type { Post } from '@/post/post.entity';
 
@@ -445,9 +446,7 @@ export class NotificationService {
         await this.db('notifications')
             .join('accounts', 'notifications.account_id', 'accounts.id')
             .where('notifications.user_id', user.id)
-            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
-                domain.host,
-            ])
+            .andWhere(accountMatchesDomain(this.db, domain.hostname))
             .delete();
     }
 
