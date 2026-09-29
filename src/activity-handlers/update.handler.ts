@@ -16,6 +16,11 @@ export class UpdateHandler {
             return;
         }
 
+        if (!update.actorId) {
+            ctx.data.logger.debug('Update missing actorId - exit');
+            return;
+        }
+
         const object = await update.getObject();
         if (!isActor(object)) {
             ctx.data.logger.debug('Update object is not an actor - exit');
@@ -26,6 +31,17 @@ export class UpdateHandler {
 
         if (!updatedActor.id) {
             ctx.data.logger.debug('Update actor missing id - exit');
+            return;
+        }
+
+        if (update.actorId.href !== updatedActor.id.href) {
+            ctx.data.logger.debug(
+                'Update actor does not own the object - exit',
+                {
+                    actorId: update.actorId.href,
+                    objectId: updatedActor.id.href,
+                },
+            );
             return;
         }
 
