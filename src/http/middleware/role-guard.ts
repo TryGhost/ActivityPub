@@ -182,6 +182,9 @@ async function verifyToken(
             const key = await importJWK(jwk, TOKEN_ALGORITHM);
             const { payload } = await jwtVerify(token, key, {
                 algorithms: [TOKEN_ALGORITHM],
+                // Ghost's tokens always expire, and jose only checks `exp`
+                // when it is present
+                requiredClaims: ['exp'],
             });
 
             return ok(payload);

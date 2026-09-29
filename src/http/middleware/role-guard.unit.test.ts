@@ -312,6 +312,15 @@ describe('createRoleMiddleware', () => {
         expect(await getRole(token)).toBe('Anonymous');
     });
 
+    it('rejects a token without an expiry', async () => {
+        const token = await new SignJWT({ role: 'Owner' })
+            .setProtectedHeader({ alg: 'RS256', kid: oldKey.kid })
+            .setIssuedAt()
+            .sign(oldKey.privateKey);
+
+        expect(await getRole(token)).toBe('Anonymous');
+    });
+
     it('retries fetching the key set when the fetch fails', async () => {
         fetchMock
             .mockRejectedValueOnce(new Error('network error'))
