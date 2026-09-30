@@ -1,18 +1,24 @@
-import { IncomingMessage } from 'node:http';
 import { Session } from 'node:inspector';
 
 import type { Logger } from '@logtape/logtape';
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
-import {
-    SimpleSpanProcessor,
-    type SpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
 
 import { beforeSend } from '@/sentry';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 
-export async function setupInstrumentation(logger: Logger) {
+// Header and query param names containing any of these carry a client IP or
+// user identifier. `x-forwarded-host` must not match, it is the only record of
+// which site a request was for
+const CLIENT_IDENTITY_KEYS = [
+    'forwarded-for',
+    '-ip',
+    'remote-',
+    'via',
+    '-user',
+];
+
+export function setupInstrumentation(logger: Logger) {
     if (process.env.NODE_ENV === 'production') {
         if (process.env.OTEL_DEBUG_LOGGING) {
             diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
@@ -22,21 +28,6 @@ export async function setupInstrumentation(logger: Logger) {
     }
 
     if (process.env.SENTRY_DSN) {
-        const openTelemetrySpanProcessors: SpanProcessor[] = [];
-
-        if (process.env.NODE_ENV === 'development') {
-            const { OTLPTraceExporter } = await import(
-                '@opentelemetry/exporter-trace-otlp-proto'
-            );
-            openTelemetrySpanProcessors.push(
-                new SimpleSpanProcessor(
-                    new OTLPTraceExporter({
-                        url: 'http://jaeger:4318/v1/traces',
-                    }),
-                ),
-            );
-        }
-
         Sentry.init({
             dsn: process.env.SENTRY_DSN,
             environment: process.env.NODE_ENV || 'unknown',
@@ -44,37 +35,44 @@ export async function setupInstrumentation(logger: Logger) {
             tracesSampleRate: 1.0,
             maxValueLength: 2000,
             beforeSend: beforeSend,
-            openTelemetrySpanProcessors,
+            // Fedify creates its spans, and the message queue propagates
+            // trace context, through the OpenTelemetry API
+            enableOpenTelemetrySetup: true,
+            // Streamed spans are sent before the response status is known,
+            // so the traces of 3xx and 4xx responses could not be dropped
+            traceLifecycle: 'static',
+            dataCollection: {
+                userInfo: false,
+                httpHeaders: {
+                    request: { deny: CLIENT_IDENTITY_KEYS },
+                    response: { deny: CLIENT_IDENTITY_KEYS },
+                },
+                httpBodies: ['incomingRequest'],
+                urlQueryParams: { deny: CLIENT_IDENTITY_KEYS },
+                databaseQueryData: false,
+                queues: false,
+            },
             integrations: [
                 // Customize HTTP integration to use better span names
                 Sentry.httpIntegration({
-                    instrumentation: {
-                        requestHook: (span, req) => {
-                            // Only process IncomingMessage (server-side requests)
-                            if (span && req instanceof IncomingMessage) {
-                                if (req.url && req.method) {
-                                    try {
-                                        const url = new URL(
-                                            req.url,
-                                            `http://${req.headers.host || 'localhost'}`,
-                                        );
-                                        span.updateName(
-                                            `${req.method} ${url.pathname}`,
-                                        );
-                                        span.setAttributes({
-                                            'service.name': 'activitypub',
-                                            'http.method': req.method,
-                                            'http.route': url.pathname,
-                                            'http.url': req.url,
-                                            'http.target': url.pathname,
-                                        });
-                                    } catch (_e) {
-                                        // Ignore URL parsing errors
-                                    }
-                                }
+                    onSpanCreated: (span, req) => {
+                        if (req.url && req.method) {
+                            try {
+                                const url = new URL(
+                                    req.url,
+                                    `http://${req.headers.host || 'localhost'}`,
+                                );
+                                span.updateName(
+                                    `${req.method} ${url.pathname}`,
+                                );
+                                span.setAttributes({
+                                    'service.name': 'activitypub',
+                                    'http.route': url.pathname,
+                                });
+                            } catch (_e) {
+                                // Ignore URL parsing errors
                             }
-                        },
-                        applyCustomAttributesOnSpan: (_span) => {},
+                        }
                     },
                 }),
             ],
