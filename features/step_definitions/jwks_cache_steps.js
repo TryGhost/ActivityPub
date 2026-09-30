@@ -1,184 +1,111 @@
 import { After, Given, When } from '@cucumber/cucumber';
 
 import assert from 'node:assert';
-import fs from 'node:fs';
-import { resolve } from 'node:path';
 
-import jwt from 'jsonwebtoken';
-import jose from 'node-jose';
+import {
+    createKey,
+    getFixtureKey,
+    serveJwks,
+    signToken,
+} from '../support/jwks.js';
 
-import { getCurrentDirectory } from '../support/path.js';
-import { getGhostWiremock } from '../support/wiremock.js';
+const ACCOUNT_URL = 'https://self.test/.ghost/activitypub/v1/account/me';
 
-// Store key pairs for the test
-let oldKeyPair;
-let newKeyPair;
-
-Given('the JWKS endpoint is serving an old key', async function () {
-    const privateKeyPem = fs.readFileSync(
-        resolve(getCurrentDirectory(), '../fixtures/private.key'),
-        'utf8',
-    );
-
-    const oldKey = await jose.JWK.asKey(privateKeyPem, 'pem', {
-        kid: 'test-key-id',
+function requestWithToken(token) {
+    return fetch(ACCOUNT_URL, {
+        method: 'GET',
+        headers: {
+            Accept: 'application/ld+json',
+            Authorization: `Bearer ${token}`,
+        },
     });
+}
 
-    oldKeyPair = {
-        publicKey: oldKey.toJSON(),
-        privateKey: privateKeyPem,
-    };
+async function getNewKey(world) {
+    if (!world.newKey) {
+        world.newKey = await createKey();
+    }
 
-    const ghostActivityPub = getGhostWiremock();
-    await ghostActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: '/ghost/.well-known/jwks.json',
-        },
-        {
-            status: 200,
-            body: {
-                keys: [oldKeyPair.publicKey],
-            },
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        },
-    );
+    return world.newKey;
+}
 
-    this.oldKeyPair = oldKeyPair;
+Given('the JWKS endpoint is serving the current key', async () => {
+    await serveJwks([await getFixtureKey()]);
 });
 
 Given(
-    'the old key has been cached by making a successful request',
+    'the JWKS endpoint is serving the current key and a new key',
     async function () {
-        // Make a successful authenticated request to ensure the old key is cached
-        const token = jwt.sign(
-            {
-                sub: 'test@user.com',
-                role: 'Owner',
-            },
-            this.oldKeyPair.privateKey,
-            {
-                algorithm: 'RS256',
-                keyid: 'test-key-id',
-                expiresIn: '5m',
-            },
-        );
+        await serveJwks([await getFixtureKey(), await getNewKey(this)]);
+    },
+);
 
-        const response = await fetch(
-            'https://self.test/.ghost/activitypub/v1/account/me',
-            {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/ld+json',
-                    Authorization: `Bearer ${token}`,
-                },
-            },
+Given(
+    'the current key has been cached by making a successful request',
+    async () => {
+        const response = await requestWithToken(
+            await signToken(await getFixtureKey()),
         );
 
         assert(
             response.ok,
-            'Initial request with old key should succeed to populate cache',
+            'Initial request with the current key should succeed to populate the cache',
         );
     },
 );
 
-When('the JWKS endpoint is updated to serve a new key', async function () {
-    const newKey = await jose.JWK.createKey('RSA', 2048, {
-        kid: 'new-key-id',
-        use: 'sig',
-        alg: 'RS256',
-    });
+Given(
+    'the new key has been cached by making a successful request',
+    async function () {
+        // A token with a kid missing from the cached key set makes us
+        // refetch it, whereas a token without a kid never does
+        const response = await requestWithToken(
+            await signToken(await getNewKey(this)),
+        );
 
-    newKeyPair = {
-        publicKey: newKey.toJSON(),
-        privateKey: newKey.toPEM(true), // true = private key
-    };
+        assert(
+            response.ok,
+            'Request with the new key should succeed to populate the cache',
+        );
+    },
+);
 
-    this.newKeyPair = newKeyPair;
-
-    const ghostActivityPub = getGhostWiremock();
-    await ghostActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: '/ghost/.well-known/jwks.json',
-        },
-        {
-            status: 200,
-            body: {
-                keys: [this.newKeyPair.publicKey],
-            },
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        },
-    );
-});
+When(
+    'the JWKS endpoint is updated to serve a new key alongside the current key',
+    async function () {
+        // Ghost lists the key it is signing with first
+        await serveJwks([await getNewKey(this), await getFixtureKey()]);
+    },
+);
 
 When(
     'an authenticated request is made with a token signed by the new key',
     async function () {
-        // Create a token signed with the NEW key
-        const token = jwt.sign(
-            {
-                sub: 'test@user.com',
-                role: 'Owner',
-            },
-            this.newKeyPair.privateKey,
-            {
-                algorithm: 'RS256',
-                keyid: 'new-key-id',
-                expiresIn: '5m',
-            },
+        this.response = await requestWithToken(
+            await signToken(await getNewKey(this)),
         );
+    },
+);
 
-        // Make the request - this should trigger cache invalidation and retry
-        // The middleware should:
-        // 1. Fail to verify with cached old key
-        // 2. Delete the cached key
-        // 3. Refetch from JWKS endpoint (which now serves the new key)
-        // 4. Retry verification with the new key
-        // 5. Succeed and return 200
-        this.response = await fetch(
-            'https://self.test/.ghost/activitypub/v1/account/me',
-            {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/ld+json',
-                    Authorization: `Bearer ${token}`,
-                },
-            },
+When(
+    'an authenticated request is made with a token signed by the new key without a kid',
+    async function () {
+        this.response = await requestWithToken(
+            await signToken(await getNewKey(this), { kid: null }),
+        );
+    },
+);
+
+When(
+    'an authenticated request is made with a token signed by an unknown key',
+    async function () {
+        this.response = await requestWithToken(
+            await signToken(await createKey()),
         );
     },
 );
 
 // Restore the original JWKS configuration after this test
 After({ tags: '@jwks-cache-invalidation' }, async () => {
-    const privateKeyPem = fs.readFileSync(
-        resolve(getCurrentDirectory(), '../fixtures/private.key'),
-        'utf8',
-    );
-
-    const key = await jose.JWK.asKey(privateKeyPem, 'pem', {
-        kid: 'test-key-id',
-    });
-    const jwk = key.toJSON();
-
-    const ghostActivityPub = getGhostWiremock();
-    await ghostActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: '/ghost/.well-known/jwks.json',
-        },
-        {
-            status: 200,
-            body: {
-                keys: [jwk],
-            },
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        },
-    );
+    await serveJwks([await getFixtureKey()]);
 });

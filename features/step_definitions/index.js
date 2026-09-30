@@ -5,14 +5,9 @@ import {
     setDefaultTimeout,
 } from '@cucumber/cucumber';
 
-import fs from 'node:fs';
-import { resolve } from 'node:path';
-
-import jose from 'node-jose';
-
 import { getClient, reset as resetDatabase } from '../support/db.js';
 import { getWebhookSecret } from '../support/fixtures.js';
-import { getCurrentDirectory } from '../support/path.js';
+import { getFixtureKey, serveJwks } from '../support/jwks.js';
 import { fetchActivityPub } from '../support/request.js';
 import {
     getGhostWiremock,
@@ -28,32 +23,8 @@ AfterAll(async () => {
 BeforeAll(async function setupWiremock() {
     const ghostActivityPub = getGhostWiremock();
 
-    const publicKey = fs.readFileSync(
-        resolve(getCurrentDirectory(), '../fixtures/private.key'),
-        'utf8',
-    );
-
-    const key = await jose.JWK.asKey(publicKey, 'pem', {
-        kid: 'test-key-id',
-    });
-    const jwk = key.toJSON();
-
     await Promise.all([
-        ghostActivityPub.register(
-            {
-                method: 'GET',
-                endpoint: '/ghost/.well-known/jwks.json',
-            },
-            {
-                status: 200,
-                body: {
-                    keys: [jwk],
-                },
-                headers: {
-                    'Content-Type': 'application/activity+json',
-                },
-            },
-        ),
+        serveJwks([await getFixtureKey()]),
         ghostActivityPub.register(
             {
                 method: 'GET',

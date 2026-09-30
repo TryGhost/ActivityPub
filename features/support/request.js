@@ -1,9 +1,4 @@
-import fs from 'node:fs';
-import { resolve } from 'node:path';
-
-import jwt from 'jsonwebtoken';
-
-import { getCurrentDirectory } from './path.js';
+import { getFixtureKey, signToken } from './jwks.js';
 import { getExternalWiremock } from './wiremock.js';
 
 export async function fetchActivityPub(url, options = {}, auth = true) {
@@ -11,24 +6,8 @@ export async function fetchActivityPub(url, options = {}, auth = true) {
         options.headers = {};
     }
 
-    const privateKey = fs.readFileSync(
-        resolve(getCurrentDirectory(), '../fixtures/private.key'),
-    );
-
-    const token = jwt.sign(
-        {
-            sub: 'test@user.com',
-            role: 'Owner',
-        },
-        privateKey,
-        {
-            algorithm: 'RS256',
-            keyid: 'test-key-id',
-            expiresIn: '5m',
-        },
-    );
-
     if (auth) {
+        const token = await signToken(await getFixtureKey());
         options.headers.Authorization = `Bearer ${token}`;
     }
 
