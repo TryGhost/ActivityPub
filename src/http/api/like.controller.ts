@@ -8,10 +8,7 @@ import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { requireParam } from '@/http/api/helpers/request';
-import {
-    Forbidden,
-    InternalServerError,
-} from '@/http/api/helpers/response';
+import { Forbidden, InternalServerError } from '@/http/api/helpers/response';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
