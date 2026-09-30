@@ -818,7 +818,15 @@ app.use(async (ctx, next) => {
     });
 });
 
-app.use(createRoleMiddleware(globalFedifyKv));
+app.use(
+    createRoleMiddleware(globalFedifyKv, {
+        // Lets the e2e tests turn off the cooldown so scenarios that rotate
+        // keys don't depend on each other
+        refetchCooldownMs: process.env.JWKS_REFETCH_COOLDOWN_MS
+            ? Number(process.env.JWKS_REFETCH_COOLDOWN_MS)
+            : undefined,
+    }),
+);
 
 app.use(async (ctx, next) => {
     const request = ctx.req;
