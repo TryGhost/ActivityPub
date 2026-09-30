@@ -153,6 +153,7 @@ services:
       - REDIS_HOST=redis-testing
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
+      - JWKS_REFETCH_COOLDOWN_MS=0
     command: pnpm build:watch
     depends_on:
       migrate-testing:
