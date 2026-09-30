@@ -1,14 +1,13 @@
-import { createPublicKey } from 'node:crypto';
+import {
+    createHash,
+    createPrivateKey,
+    createPublicKey,
+    generateKeyPairSync,
+} from 'node:crypto';
 import fs from 'node:fs';
 import { resolve } from 'node:path';
 
-import {
-    calculateJwkThumbprint,
-    exportJWK,
-    generateKeyPair,
-    importPKCS8,
-    SignJWT,
-} from 'jose';
+import jwt from 'jsonwebtoken';
 
 import { getCurrentDirectory } from './path.js';
 import { getGhostWiremock } from './wiremock.js';
@@ -19,7 +18,8 @@ let fixtureKey;
 
 /**
  * The key pair in `fixtures/private.key` that Ghost signs tokens with by
- * default in the tests
+ * default in the tests. It is a 1024-bit key, like the keys of sites that
+ * haven't rotated their signing key yet.
  */
 export async function getFixtureKey() {
     if (!fixtureKey) {
@@ -30,7 +30,7 @@ export async function getFixtureKey() {
 
         fixtureKey = {
             kid: FIXTURE_KEY_ID,
-            privateKey: await importPKCS8(privateKeyPem, 'RS256'),
+            privateKey: createPrivateKey(privateKeyPem),
             jwk: {
                 ...createPublicKey(privateKeyPem).export({ format: 'jwk' }),
                 kid: FIXTURE_KEY_ID,
@@ -42,21 +42,25 @@ export async function getFixtureKey() {
 }
 
 /**
- * Generate a new key pair, identified like Ghost's keys by its RFC 7638
- * thumbprint
+ * Generate a new 2048-bit key pair, identified like Ghost's keys by its
+ * RFC 7638 thumbprint
  */
 export async function createKey() {
-    const { privateKey, publicKey } = await generateKeyPair('RS256', {
-        extractable: true,
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+        modulusLength: 2048,
     });
-    const publicJwk = await exportJWK(publicKey);
-    const kid = await calculateJwkThumbprint(publicJwk);
+    const { e, kty, n } = publicKey.export({ format: 'jwk' });
+    const kid = createHash('sha256')
+        .update(JSON.stringify({ e, kty, n }))
+        .digest('base64url');
 
     return {
         kid,
         privateKey,
         jwk: {
-            ...publicJwk,
+            e,
+            kty,
+            n,
             kid,
             use: 'sig',
             alg: 'RS256',
@@ -69,13 +73,13 @@ export async function createKey() {
  * of the token header.
  */
 export async function signToken(key, { kid = key.kid } = {}) {
-    const header = kid === null ? { alg: 'RS256' } : { alg: 'RS256', kid };
-
-    return new SignJWT({ sub: 'test@user.com', role: 'Owner' })
-        .setProtectedHeader(header)
-        .setIssuedAt()
-        .setExpirationTime('5m')
-        .sign(key.privateKey);
+    return jwt.sign({ sub: 'test@user.com', role: 'Owner' }, key.privateKey, {
+        algorithm: 'RS256',
+        expiresIn: '5m',
+        // jsonwebtoken refuses to sign with keys smaller than 2048 bits
+        allowInsecureKeySizes: true,
+        ...(kid === null ? {} : { keyid: kid }),
+    });
 }
 
 export async function serveJwks(keys) {

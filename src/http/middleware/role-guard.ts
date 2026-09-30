@@ -1,13 +1,9 @@
+import { createPublicKey, type JsonWebKey } from 'node:crypto';
+
 import type { KvKey, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type { Context as HonoContext, Next } from 'hono';
-import {
-    decodeProtectedHeader,
-    importJWK,
-    type JWK,
-    type JWTPayload,
-    jwtVerify,
-} from 'jose';
+import jwt from 'jsonwebtoken';
 
 import {
     error,
@@ -44,6 +40,11 @@ const DEFAULT_KEY_SET_TTL = Temporal.Duration.from({ hours: 1 });
  * signed with a key we don't know about
  */
 const DEFAULT_REFETCH_COOLDOWN_MS = 30_000;
+
+type JWK = JsonWebKey & {
+    kid?: string;
+    use?: string;
+};
 
 type KeySet = {
     keys: JWK[];
@@ -154,17 +155,20 @@ async function fetchKeySet(
  * Verify a token against a key set. The key is selected using the `kid` in
  * the token header - tokens without a `kid` are tried against every key.
  */
-async function verifyToken(
+function verifyToken(
     token: string,
     keySet: KeySet,
-): Promise<Result<JWTPayload, VerifyTokenError>> {
-    let kid: string | undefined;
+): Result<jwt.JwtPayload, VerifyTokenError> {
+    const decoded = jwt.decode(token, { complete: true });
 
-    try {
-        kid = decodeProtectedHeader(token).kid;
-    } catch (err) {
-        return error({ type: 'invalid-token', error: err });
+    if (!decoded) {
+        return error({
+            type: 'invalid-token',
+            error: new Error('Malformed token'),
+        });
     }
+
+    const kid = decoded.header.kid;
 
     const candidates =
         kid === undefined
@@ -179,15 +183,20 @@ async function verifyToken(
 
     for (const jwk of candidates) {
         try {
-            const key = await importJWK(jwk, TOKEN_ALGORITHM);
-            const { payload } = await jwtVerify(token, key, {
+            // Sites that haven't rotated their key yet still sign with a
+            // 1024-bit key, so the key size must not be restricted here
+            const key = createPublicKey({ key: jwk, format: 'jwk' });
+            const claims = jwt.verify(token, key, {
                 algorithms: [TOKEN_ALGORITHM],
-                // Ghost's tokens always expire, and jose only checks `exp`
-                // when it is present
-                requiredClaims: ['exp'],
             });
 
-            return ok(payload);
+            // Ghost's tokens always expire, and jsonwebtoken only checks
+            // `exp` when it is present
+            if (typeof claims === 'string' || typeof claims.exp !== 'number') {
+                throw new Error('Token has no expiry');
+            }
+
+            return ok(claims);
         } catch (err) {
             lastError = err;
         }
@@ -196,7 +205,7 @@ async function verifyToken(
     return error({ type: 'invalid-token', error: lastError });
 }
 
-function getRoleFromClaims(claims: JWTPayload, logger: Logger): GhostRole {
+function getRoleFromClaims(claims: jwt.JwtPayload, logger: Logger): GhostRole {
     if (typeof claims.role !== 'string') {
         logger.error('Invalid claims for JWT - using Anonymous', {
             jwtClaims: claims,
@@ -328,7 +337,7 @@ export function createRoleMiddleware(
             );
         }
 
-        let result = await verifyToken(token, keySet);
+        let result = verifyToken(token, keySet);
 
         if (isError(result)) {
             const err = getError(result);
@@ -350,7 +359,7 @@ export function createRoleMiddleware(
                 );
 
                 if (refetchedKeySet) {
-                    result = await verifyToken(token, refetchedKeySet);
+                    result = verifyToken(token, refetchedKeySet);
                 }
             }
         }
