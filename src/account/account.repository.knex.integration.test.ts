@@ -323,9 +323,13 @@ describe('KnexAccountRepository', () => {
         const firstId = new URL('https://example.com/moves/first');
         const secondId = new URL('https://example.com/moves/second');
 
-        expect(
-            await accountRepository.claimMove(account.id, target, firstId),
-        ).toBe('claimed');
+        const firstClaim = await accountRepository.claimMove(
+            account.id,
+            target,
+            firstId,
+        );
+        assert(typeof firstClaim === 'object');
+        expect(firstClaim.activityId).toEqual(firstId);
         expect(
             await accountRepository.claimMove(account.id, target, secondId),
         ).toBe('busy');
@@ -333,15 +337,19 @@ describe('KnexAccountRepository', () => {
             firstId,
         );
 
-        await accountRepository.releaseMove(account.id);
-        expect(
-            await accountRepository.claimMove(account.id, target, secondId),
-        ).toBe('claimed');
+        await accountRepository.releaseMove(account.id, firstClaim.token);
+        const retryClaim = await accountRepository.claimMove(
+            account.id,
+            target,
+            secondId,
+        );
+        assert(typeof retryClaim === 'object');
+        expect(retryClaim.token).not.toBe(firstClaim.token);
         expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
             firstId,
         );
 
-        await accountRepository.completeMove(account.id);
+        await accountRepository.completeMove(account.id, retryClaim.token);
         expect(await accountRepository.getMove(account.id)).toEqual({
             target,
             sent: true,
@@ -356,6 +364,50 @@ describe('KnexAccountRepository', () => {
                 secondId,
             ),
         ).toBe('different-target');
+    });
+
+    it('prevents expired holders from releasing or completing a newer claim', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const target = new URL('https://elsewhere.example/users/new');
+        const activityId = new URL('https://example.com/move/one');
+        const first = await accountRepository.claimMove(
+            account.id,
+            target,
+            activityId,
+        );
+        assert(typeof first === 'object');
+        await client('account_moves')
+            .where('account_id', account.id)
+            .update({
+                claimed_at: client.raw('DATE_SUB(NOW(6), INTERVAL 6 MINUTE)'),
+            });
+        const second = await accountRepository.claimMove(
+            account.id,
+            target,
+            new URL('https://example.com/move/two'),
+        );
+        assert(typeof second === 'object');
+        expect(second.token).not.toBe(first.token);
+        expect(second.activityId).toEqual(activityId);
+
+        await accountRepository.releaseMove(account.id, first.token);
+        expect(
+            await accountRepository.completeMove(account.id, first.token),
+        ).toBe(false);
+        expect(
+            await accountRepository.claimMove(account.id, target, activityId),
+        ).toBe('busy');
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: false,
+        });
+        expect(
+            await accountRepository.completeMove(account.id, second.token),
+        ).toBe(true);
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: true,
+        });
     });
 
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {
@@ -823,6 +875,10 @@ describe('KnexAccountRepository', () => {
         const updated = account.setWebfingerHost('example.com');
 
         await accountRepository.save(updated);
+        await accountRepository.updateWebfingerHost(
+            updated.id,
+            updated.webfingerHost,
+        );
 
         const fetched = await accountRepository.getByWebfingerHandle(
             'index',
@@ -838,6 +894,56 @@ describe('KnexAccountRepository', () => {
                 account.id,
             ),
         ).resolves.toBe(false);
+    });
+
+    it('does not overwrite webfinger_host on a profile save', async () => {
+        const site = await fixtureManager.createSite('blog.example.com');
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'index',
+            name: 'Test',
+            bio: null,
+            url: new URL(`https://${site.host}`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+
+        // Created with webfingerHost null — stands in for a concurrent save
+        // that loaded the row before updateWebfingerHost completed.
+        const account = await accountRepository.create(
+            AccountEntity.draft(draftData),
+        );
+
+        await accountRepository.updateWebfingerHost(account.id, 'example.com');
+
+        await accountRepository.save(
+            account.updateProfile({ name: 'Renamed' }),
+        );
+
+        const row = await client('accounts').where({ id: account.id }).first();
+
+        expect(row.name).toBe('Renamed');
+        expect(row.webfinger_host).toBe('example.com');
+    });
+
+    it('does not resolve a WebFinger handle held by an external account', async () => {
+        const externalAccount = await fixtureManager.createExternalAccount(
+            'https://john.onolan.org/',
+        );
+
+        await client('accounts')
+            .update({ webfinger_host: 'onolan.org' })
+            .where('id', externalAccount.id);
+
+        // We do not host this account, so answering WebFinger for its handle
+        // would point callers at another server from our own domain
+        const fetched = await accountRepository.getByWebfingerHandle(
+            externalAccount.username,
+            'onolan.org',
+        );
+
+        expect(fetched).toBeNull();
     });
 
     it('resolves a custom WebFinger host by stable actor username', async () => {
@@ -861,6 +967,10 @@ describe('KnexAccountRepository', () => {
             .updateProfile({ username: 'alice' });
 
         await accountRepository.save(updated);
+        await accountRepository.updateWebfingerHost(
+            updated.id,
+            updated.webfingerHost,
+        );
 
         const fetched = await accountRepository.getByWebfingerHandle(
             'index',

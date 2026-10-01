@@ -20,6 +20,7 @@ import {
 } from '@/account/events';
 import type { AsyncEvents } from '@/core/events';
 import { parseURL } from '@/core/url';
+import { accountMatchesDomain } from '@/moderation/domain-blocks';
 import type { Site } from '@/site/site.service';
 
 interface AccountRow {
@@ -105,6 +106,10 @@ export class KnexAccountRepository {
     async save(account: Account): Promise<void> {
         const events = AccountEntity.pullEvents(account);
         await this.db.transaction(async (transaction) => {
+            // webfinger_host is intentionally omitted: a concurrent
+            // updateWebfingerHost must not be overwritten by a stale
+            // in-memory snapshot from a profile / follow / block save.
+            // Callers that mean to change the host use updateWebfingerHost.
             const rows = await transaction('accounts')
                 .update({
                     name: account.name,
@@ -115,7 +120,6 @@ export class KnexAccountRepository {
                     custom_fields: account.customFields
                         ? JSON.stringify(account.customFields)
                         : null,
-                    webfinger_host: account.webfingerHost,
                 })
                 .where({ id: account.id });
 
@@ -189,9 +193,8 @@ export class KnexAccountRepository {
                             'accounts.id',
                         )
                         .where('follows.follower_id', blockerId)
-                        .whereRaw(
-                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                            [domainHostname],
+                        .where(
+                            accountMatchesDomain(transaction, domainHostname),
                         )
                         .delete();
 
@@ -204,9 +207,8 @@ export class KnexAccountRepository {
                             'accounts.id',
                         )
                         .where('follows.following_id', blockerId)
-                        .whereRaw(
-                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                            [domainHostname],
+                        .where(
+                            accountMatchesDomain(transaction, domainHostname),
                         )
                         .delete();
                 } else if (event instanceof DomainUnblockedEvent) {
@@ -460,12 +462,19 @@ export class KnexAccountRepository {
         accountId: number,
         target: URL,
         activityId: URL,
-    ): Promise<'claimed' | 'busy' | 'sent' | 'different-target'> {
+    ): Promise<
+        | { token: string; activityId: URL }
+        | 'busy'
+        | 'sent'
+        | 'different-target'
+    > {
+        const token = randomUUID();
         await this.db('account_moves')
             .insert({
                 account_id: accountId,
                 target_ap_id: target.href,
                 activity_id: activityId.href,
+                claim_token: token,
                 claimed_at: this.db.fn.now(6),
             })
             .onConflict('account_id')
@@ -473,11 +482,11 @@ export class KnexAccountRepository {
 
         const row = await this.db('account_moves')
             .where('account_id', accountId)
-            .first('target_ap_id', 'activity_id', 'claimed_at', 'sent_at');
+            .first('target_ap_id', 'activity_id', 'claim_token', 'sent_at');
 
         if (row.target_ap_id !== target.href) return 'different-target';
         if (row.sent_at !== null) return 'sent';
-        if (row.activity_id === activityId.href) return 'claimed';
+        if (row.claim_token === token) return { token, activityId };
 
         // Allow a failed or interrupted delivery to be retried. The original
         // activity ID remains stable so remote servers can deduplicate it.
@@ -491,8 +500,10 @@ export class KnexAccountRepository {
                         'claimed_at < DATE_SUB(NOW(6), INTERVAL 5 MINUTE)',
                     ),
             )
-            .update({ claimed_at: this.db.fn.now(6) });
-        return claimed === 1 ? 'claimed' : 'busy';
+            .update({ claimed_at: this.db.fn.now(6), claim_token: token });
+        return claimed === 1
+            ? { token, activityId: new URL(row.activity_id) }
+            : 'busy';
     }
 
     async getMoveActivityId(accountId: number): Promise<URL> {
@@ -502,19 +513,35 @@ export class KnexAccountRepository {
         return new URL(row.activity_id);
     }
 
-    async completeMove(accountId: number): Promise<void> {
-        await this.db('account_moves')
+    async completeMove(accountId: number, token: string): Promise<boolean> {
+        const updated = await this.db('account_moves')
             .where('account_id', accountId)
-            .update({ sent_at: this.db.fn.now(6), claimed_at: null });
-    }
-
-    async releaseMove(accountId: number): Promise<void> {
-        await this.db('account_moves')
-            .where('account_id', accountId)
+            .where('claim_token', token)
             .whereNull('sent_at')
-            .update({ claimed_at: null });
+            .update({
+                sent_at: this.db.fn.now(6),
+                claimed_at: null,
+                claim_token: null,
+            });
+        return updated === 1;
     }
 
+    async releaseMove(accountId: number, token: string): Promise<void> {
+        await this.db('account_moves')
+            .where('account_id', accountId)
+            .where('claim_token', token)
+            .whereNull('sent_at')
+            .update({ claimed_at: null, claim_token: null });
+    }
+
+    /**
+     * Look up an internal account by its WebFinger handle
+     *
+     * Scoped to internal accounts because callers use this to decide what this
+     * server answers WebFinger for, and which handles a new site may claim.
+     * External accounts can also hold a `webfinger_host`, but those handles are
+     * served by the instance the account actually lives on.
+     */
     async getByWebfingerHandle(
         username: string,
         host: string,
@@ -532,7 +559,7 @@ export class KnexAccountRepository {
                 'accounts.webfinger_host_hash = UNHEX(SHA2(LOWER(?), 256))',
                 [host],
             )
-            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .innerJoin('users', 'users.account_id', 'accounts.id')
             .select(
                 'accounts.id',
                 'accounts.uuid',
@@ -559,6 +586,23 @@ export class KnexAccountRepository {
         }
 
         return this.mapRowToAccountEntity(accountRow);
+    }
+
+    /**
+     * Update only the `webfinger_host` column
+     *
+     * Sole writer of this column after create. Kept separate from `save()` so a
+     * stale in-memory entity cannot overwrite a host another path just
+     * resolved, and so a host refresh cannot overwrite concurrent profile
+     * fields.
+     */
+    async updateWebfingerHost(
+        accountId: number,
+        webfingerHost: string | null,
+    ): Promise<void> {
+        await this.db('accounts')
+            .update({ webfinger_host: webfingerHost })
+            .where({ id: accountId });
     }
 
     async hasWebfingerHandleConflict(

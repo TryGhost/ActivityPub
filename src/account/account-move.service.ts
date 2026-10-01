@@ -69,16 +69,16 @@ export class AccountMoveService {
         if (claim === 'busy') return error({ type: 'busy' });
         if (claim === 'sent') return ok({ target: targetId });
 
-        const move = new Move({
-            id: await this.accountRepository.getMoveActivityId(account.id),
-            actor: account.apId,
-            object: account.apId,
-            target: targetId,
-            to: PUBLIC_COLLECTION,
-            cc: account.apFollowers,
-        });
-
         try {
+            const move = new Move({
+                id: claim.activityId,
+                actor: account.apId,
+                object: account.apId,
+                target: targetId,
+                to: PUBLIC_COLLECTION,
+                cc: account.apFollowers,
+            });
+
             await ctx.data.globaldb.set([move.id!.href], await move.toJsonLd());
             await ctx.sendActivity(
                 { username: account.username },
@@ -86,9 +86,13 @@ export class AccountMoveService {
                 move,
                 { preferSharedInbox: true },
             );
-            await this.accountRepository.completeMove(account.id);
+            const completed = await this.accountRepository.completeMove(
+                account.id,
+                claim.token,
+            );
+            if (!completed) return error({ type: 'busy' });
         } catch (err) {
-            await this.accountRepository.releaseMove(account.id);
+            await this.accountRepository.releaseMove(account.id, claim.token);
             throw err;
         }
 

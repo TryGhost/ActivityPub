@@ -76,7 +76,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.11@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d
+    image: mysql:8.4.11@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -85,12 +85,12 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
 
   redis:
-    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -102,7 +102,7 @@ services:
       retries: 120
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:583.0.0-emulators@sha256:07e4b8c3075ca793552fcfaf4808f104ef155d7805d87ade8e01b440463be262
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-emulators@sha256:8d8573471c489a409f03891d2c24d177fa531276184f7002b9a2d853d1b3ed54
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -159,6 +159,7 @@ services:
       - REDIS_HOST=redis-testing
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
+      - JWKS_REFETCH_COOLDOWN_MS=0
     command: pnpm build:watch
     depends_on:
       migrate-testing:
@@ -222,21 +223,21 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.11@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d
+    image: mysql:8.4.11@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
     healthcheck:
-      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
 
   redis-testing:
     networks:
       - test_network
-    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -248,7 +249,7 @@ services:
   pubsub-testing:
     networks:
       - test_network
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:583.0.0-emulators@sha256:07e4b8c3075ca793552fcfaf4808f104ef155d7805d87ade8e01b440463be262
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-emulators@sha256:8d8573471c489a409f03891d2c24d177fa531276184f7002b9a2d853d1b3ed54
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh

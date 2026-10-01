@@ -39,9 +39,11 @@ describe('AccountMoveService', () => {
             new Person({ id: target, aliases: [source] }),
         );
         repository = {
-            claimMove: vi.fn().mockResolvedValue('claimed'),
+            claimMove: vi
+                .fn()
+                .mockResolvedValue({ token: 'claim-one', activityId: moveId }),
             getMoveActivityId: vi.fn().mockResolvedValue(moveId),
-            completeMove: vi.fn().mockResolvedValue(undefined),
+            completeMove: vi.fn().mockResolvedValue(true),
             releaseMove: vi.fn().mockResolvedValue(undefined),
             getMove: vi.fn().mockResolvedValue(null),
         } as unknown as KnexAccountRepository;
@@ -69,7 +71,7 @@ describe('AccountMoveService', () => {
         expect(move.actorId?.href).toBe(source.href);
         expect(move.objectId?.href).toBe(source.href);
         expect(move.targetId?.href).toBe(target.href);
-        expect(repository.completeMove).toHaveBeenCalledWith(1);
+        expect(repository.completeMove).toHaveBeenCalledWith(1, 'claim-one');
     });
 
     it('requires the destination actor to alias the source', async () => {
@@ -95,8 +97,17 @@ describe('AccountMoveService', () => {
         await expect(
             service.move(account, '@bryan@mastodon.social'),
         ).rejects.toThrow('queue unavailable');
-        expect(repository.releaseMove).toHaveBeenCalledWith(1);
+        expect(repository.releaseMove).toHaveBeenCalledWith(1, 'claim-one');
         expect(repository.completeMove).not.toHaveBeenCalled();
+    });
+
+    it('does not report success when a newer request owns the claim', async () => {
+        vi.mocked(repository.completeMove).mockResolvedValue(false);
+        const result = await service.move(account, '@bryan@mastodon.social');
+        expect(isError(result)).toBe(true);
+        if (!isError(result)) throw new Error('Expected a busy result');
+        expect(getError(result)).toEqual({ type: 'busy' });
+        expect(repository.releaseMove).not.toHaveBeenCalled();
     });
 
     it('rejects a different destination once migration has begun', async () => {

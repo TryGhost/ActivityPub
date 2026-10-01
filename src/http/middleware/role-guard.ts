@@ -1,9 +1,19 @@
-import type { KvStore } from '@fedify/fedify';
+import { createPublicKey, type JsonWebKey } from 'node:crypto';
+
+import type { KvKey, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type { Context as HonoContext, Next } from 'hono';
 import jwt from 'jsonwebtoken';
-import jose from 'node-jose';
 
+import {
+    error,
+    exhaustiveCheck,
+    getError,
+    getValue,
+    isError,
+    ok,
+    type Result,
+} from '@/core/result';
 import { isLocalEnvironment } from '@/helpers/environment';
 
 export enum GhostRole {
@@ -13,6 +23,41 @@ export enum GhostRole {
     Editor = 'Editor',
     Author = 'Author',
     Contributor = 'Contributor',
+}
+
+/**
+ * Ghost signs staff identity tokens with RS256 only
+ */
+const TOKEN_ALGORITHM = 'RS256';
+
+/**
+ * How long a site's key set is cached for before it is fetched again
+ */
+const DEFAULT_KEY_SET_TTL = Temporal.Duration.from({ hours: 1 });
+
+/**
+ * Minimum time between refetches of a site's key set triggered by a token
+ * signed with a key we don't know about
+ */
+const DEFAULT_REFETCH_COOLDOWN_MS = 30_000;
+
+type JWK = JsonWebKey & {
+    kid?: string;
+    use?: string;
+};
+
+type KeySet = {
+    keys: JWK[];
+};
+
+type VerifyTokenError =
+    | { type: 'unknown-key'; kid: string }
+    | { type: 'invalid-token'; error: unknown };
+
+interface RoleMiddlewareOptions {
+    keySetTtl?: Temporal.Duration;
+    refetchCooldownMs?: number;
+    now?: () => number;
 }
 
 function sleep(n: number) {
@@ -34,95 +79,134 @@ function getJwksURL(host: string, ctx: HonoContext) {
     return new URL(GHOST_JWKS_ENDPOINT, `${protocol}://${host}`);
 }
 
-async function getKey(
+function getKeySetCacheKey(jwksURL: URL): KvKey {
+    return ['cachedJwksSet', jwksURL.hostname];
+}
+
+async function getCachedKeySet(
     jwksURL: URL,
     jwksCache: KvStore,
-    retries = 5,
-): Promise<string | null> {
-    try {
-        const cachedKey = await jwksCache.get(['cachedJwks', jwksURL.hostname]);
-        if (cachedKey && typeof cachedKey === 'string') {
-            return cachedKey;
-        }
+): Promise<KeySet | null> {
+    const cached = await jwksCache.get<KeySet>(getKeySetCacheKey(jwksURL));
 
+    if (cached && Array.isArray(cached.keys) && cached.keys.length > 0) {
+        return cached;
+    }
+
+    return null;
+}
+
+async function fetchKeySet(
+    jwksURL: URL,
+    jwksCache: KvStore,
+    keySetTtl: Temporal.Duration,
+    bypassCache: boolean,
+    retries = 5,
+): Promise<KeySet | null> {
+    try {
         const jwksResponse = await fetch(jwksURL, {
             redirect: 'follow',
+            // Ask any caches in front of the site (i.e. a CDN) for a fresh
+            // copy when we're looking for a key the cached copy may not have
+            headers: bypassCache ? { 'Cache-Control': 'no-cache' } : {},
         });
+
+        if (!jwksResponse.ok) {
+            throw new Error(
+                `Unexpected JWKS response status: ${jwksResponse.status}`,
+            );
+        }
 
         const jwks = await jwksResponse.json();
 
-        const key = (await jose.JWK.asKey(jwks.keys[0])).toPEM();
-        await jwksCache.set(['cachedJwks', jwksURL.hostname], key);
+        const keys = (Array.isArray(jwks?.keys) ? jwks.keys : []).filter(
+            (key: JWK) =>
+                key?.kty === 'RSA' &&
+                (key.use === undefined || key.use === 'sig'),
+        );
 
-        return key;
+        if (keys.length === 0) {
+            throw new Error('JWKS contains no usable keys');
+        }
+
+        const keySet: KeySet = { keys };
+
+        await jwksCache.set(getKeySetCacheKey(jwksURL), keySet, {
+            ttl: keySetTtl,
+        });
+
+        return keySet;
     } catch (_err) {
         if (retries === 0) {
             return null;
         }
         await sleep(100);
-        return getKey(jwksURL, jwksCache, retries - 1);
-    }
-}
-
-async function verifyToken(
-    token: string,
-    key: string,
-    jwksCache: KvStore,
-    jwksURL: URL,
-    logger: Logger,
-): Promise<jwt.JwtPayload | string | null> {
-    let claims: jwt.JwtPayload | string | null = null;
-
-    try {
-        claims = jwt.verify(token, key);
-    } catch (err) {
-        const shouldInvalidateCache =
-            err instanceof jwt.JsonWebTokenError &&
-            (err.message.includes('invalid signature') ||
-                err.message.includes('invalid algorithm'));
-
-        if (!shouldInvalidateCache) {
-            logger.error('Error verifying JWT', {
-                error: err,
-            });
-
-            return null;
-        }
-
-        logger.error(
-            'Error verifying JWT: invalid signature/algorithm. Invalidating public key cache and retrying',
-            {
-                error: err,
-            },
+        return fetchKeySet(
+            jwksURL,
+            jwksCache,
+            keySetTtl,
+            bypassCache,
+            retries - 1,
         );
+    }
+}
 
-        await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
-        const newKey = await getKey(jwksURL, jwksCache);
+/**
+ * Verify a token against a key set. The key is selected using the `kid` in
+ * the token header - tokens without a `kid` are tried against every key.
+ */
+function verifyToken(
+    token: string,
+    keySet: KeySet,
+): Result<jwt.JwtPayload, VerifyTokenError> {
+    const decoded = jwt.decode(token, { complete: true });
 
-        if (!newKey) {
-            logger.error(
-                'Failed to fetch new public key after cache invalidation',
-            );
-            return null;
-        }
+    if (!decoded) {
+        return error({
+            type: 'invalid-token',
+            error: new Error('Malformed token'),
+        });
+    }
 
+    const kid = decoded.header.kid;
+
+    const candidates =
+        kid === undefined
+            ? keySet.keys
+            : keySet.keys.filter((key) => key.kid === kid);
+
+    if (kid !== undefined && candidates.length === 0) {
+        return error({ type: 'unknown-key', kid });
+    }
+
+    let lastError: unknown = null;
+
+    for (const jwk of candidates) {
         try {
-            claims = jwt.verify(token, newKey);
-        } catch (retryErr) {
-            logger.error('Error verifying JWT after retry', {
-                error: retryErr,
+            // Sites that haven't rotated their key yet still sign with a
+            // 1024-bit key, so the key size must not be restricted here
+            const key = createPublicKey({ key: jwk, format: 'jwk' });
+            const claims = jwt.verify(token, key, {
+                algorithms: [TOKEN_ALGORITHM],
             });
+
+            // Ghost's tokens always expire, and jsonwebtoken only checks
+            // `exp` when it is present
+            if (typeof claims === 'string' || typeof claims.exp !== 'number') {
+                throw new Error('Token has no expiry');
+            }
+
+            return ok(claims);
+        } catch (err) {
+            lastError = err;
         }
     }
 
-    return claims;
+    return error({ type: 'invalid-token', error: lastError });
 }
 
-function getRoleFromClaims(
-    claims: string | jwt.JwtPayload,
-    logger: Logger,
-): GhostRole {
-    if (typeof claims === 'string' || typeof claims.role !== 'string') {
+function getRoleFromClaims(claims: jwt.JwtPayload, logger: Logger): GhostRole {
+    if (typeof claims.role !== 'string') {
         logger.error('Invalid claims for JWT - using Anonymous', {
             jwtClaims: claims,
         });
@@ -150,7 +234,37 @@ function getRoleFromClaims(
     return GhostRole.Anonymous;
 }
 
-export function createRoleMiddleware(jwksCache: KvStore) {
+export function createRoleMiddleware(
+    jwksCache: KvStore,
+    {
+        keySetTtl = DEFAULT_KEY_SET_TTL,
+        refetchCooldownMs = DEFAULT_REFETCH_COOLDOWN_MS,
+        now = Date.now,
+    }: RoleMiddlewareOptions = {},
+) {
+    // Per-instance record of when each host's key set was last refetched
+    // because of an unknown key, so a flood of tokens with unknown keys can't
+    // make us repeatedly hit the site
+    const lastRefetchAt = new Map<string, number>();
+
+    function tryStartRefetch(host: string): boolean {
+        const currentTime = now();
+
+        for (const [cachedHost, refetchedAt] of lastRefetchAt) {
+            if (currentTime - refetchedAt >= refetchCooldownMs) {
+                lastRefetchAt.delete(cachedHost);
+            }
+        }
+
+        if (lastRefetchAt.has(host)) {
+            return false;
+        }
+
+        lastRefetchAt.set(host, currentTime);
+
+        return true;
+    }
+
     return async function roleMiddleware(ctx: HonoContext, next: Next) {
         const request = ctx.req;
         const host = request.header('host');
@@ -200,9 +314,14 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         }
 
         const jwksURL = getJwksURL(host, ctx);
-        const key = await getKey(jwksURL, jwksCache);
 
-        if (!key) {
+        let keySet = await getCachedKeySet(jwksURL, jwksCache);
+
+        if (!keySet) {
+            keySet = await fetchKeySet(jwksURL, jwksCache, keySetTtl, false);
+        }
+
+        if (!keySet) {
             logger.error('No key found for {host}', { host });
             return new Response(
                 JSON.stringify({
@@ -218,20 +337,55 @@ export function createRoleMiddleware(jwksCache: KvStore) {
             );
         }
 
-        const claims = await verifyToken(
-            token,
-            key,
-            jwksCache,
-            jwksURL,
-            logger,
-        );
+        let result = verifyToken(token, keySet);
 
-        if (!claims) {
+        if (isError(result)) {
+            const err = getError(result);
+
+            if (
+                err.type === 'unknown-key' &&
+                tryStartRefetch(jwksURL.hostname)
+            ) {
+                logger.info(
+                    'JWT signed with unknown key {kid} - refetching key set for {host}',
+                    { kid: err.kid, host },
+                );
+
+                const refetchedKeySet = await fetchKeySet(
+                    jwksURL,
+                    jwksCache,
+                    keySetTtl,
+                    true,
+                );
+
+                if (refetchedKeySet) {
+                    result = verifyToken(token, refetchedKeySet);
+                }
+            }
+        }
+
+        if (isError(result)) {
+            const err = getError(result);
+
+            switch (err.type) {
+                case 'unknown-key':
+                    logger.error(
+                        'Error verifying JWT: no key found for {kid} on {host}',
+                        { kid: err.kid, host },
+                    );
+                    break;
+                case 'invalid-token':
+                    logger.error('Error verifying JWT', { error: err.error });
+                    break;
+                default:
+                    exhaustiveCheck(err);
+            }
+
             ctx.set('role', GhostRole.Anonymous);
             return next();
         }
 
-        const role = getRoleFromClaims(claims, logger);
+        const role = getRoleFromClaims(getValue(result), logger);
         ctx.set('role', role);
 
         await next();
