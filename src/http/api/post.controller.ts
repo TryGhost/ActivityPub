@@ -27,7 +27,6 @@ import {
     BadRequest,
     Conflict,
     Forbidden,
-    InternalServerError,
     NotFound,
 } from '@/http/api/helpers/response';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
@@ -348,12 +347,6 @@ export class PostController {
             );
         }
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
-
-        if (!actor) {
-            return InternalServerError('Site actor could not be resolved');
-        }
-
         let attributionActor: Actor | null = null;
         if (objectToReplyTo.attributionId) {
             attributionActor = await lookupActor(
@@ -506,7 +499,7 @@ export class PostController {
 
         const reply = new Note({
             id: newReply.apId,
-            attribution: actor.id,
+            attribution: account.apId,
             replyTarget: objectToReplyTo.id,
             content: newReply.content,
             attachments: newReply.attachments
@@ -530,7 +523,7 @@ export class PostController {
 
         const create = new Create({
             id: apCtx.getObjectUri(Create, { id: newReply.uuid }),
-            actor: actor.id,
+            actor: account.apId,
             object: reply,
             to: to,
             ccs: cc,
@@ -697,12 +690,6 @@ export class PostController {
 
         const announceToUndo = await Announce.fromJsonLd(announceToUndoJson);
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        if (!actor) {
-            return InternalServerError('Site actor could not be resolved');
-        }
-
         const idAsUrl = parseURL(id);
 
         if (!idAsUrl) {
@@ -748,7 +735,7 @@ export class PostController {
 
         const undo = new Undo({
             id: undoId,
-            actor: actor.id,
+            actor: account.apId,
             object: announceToUndo,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),

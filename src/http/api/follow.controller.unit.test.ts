@@ -325,13 +325,6 @@ describe('FollowController', () => {
 
         it('should follow external account and federate Follow activity', async () => {
             const ctx = getMockContext('@external@external.com');
-            const mockActor = {
-                id: followerAccount.apId,
-                type: 'Person',
-                inbox:
-                    followerAccount.apInbox ||
-                    new URL('https://example.com/inbox'),
-            };
             const mockActorToFollow = {
                 id: externalAccountToFollow.apId,
                 type: 'Person',
@@ -354,9 +347,9 @@ describe('FollowController', () => {
             vi.mocked(
                 accountService.checkIfAccountIsFollowing,
             ).mockResolvedValue(false);
-            vi.mocked(lookupHelpers.lookupActor)
-                .mockResolvedValueOnce(mockActor as unknown as Actor)
-                .mockResolvedValueOnce(mockActorToFollow as unknown as Actor);
+            vi.mocked(lookupHelpers.lookupActor).mockResolvedValueOnce(
+                mockActorToFollow as unknown as Actor,
+            );
 
             const response = await controller.handleFollow(ctx);
 
@@ -369,6 +362,11 @@ describe('FollowController', () => {
                 expect.any(Follow),
             );
 
+            const sentFollow = vi.mocked(mockApCtx.sendActivity).mock
+                .calls[0][2] as unknown as { actor: unknown; object: unknown };
+            expect(sentFollow.actor).toEqual(followerAccount.apId);
+            expect(sentFollow.object).toEqual(externalAccountToFollow.apId);
+
             // Verify Follow activity was stored in globaldb
             expect(mockGlobalDb.set).toHaveBeenCalled();
 
@@ -378,13 +376,6 @@ describe('FollowController', () => {
 
         it('should follow internal account without federating', async () => {
             const ctx = getMockContext('@internal@example.com');
-            const mockActor = {
-                id: followerAccount.apId,
-                type: 'Person',
-                inbox:
-                    followerAccount.apInbox ||
-                    new URL('https://example.com/inbox'),
-            };
             const mockActorToFollow = {
                 id: internalAccountToFollow.apId,
                 type: 'Person',
@@ -407,9 +398,9 @@ describe('FollowController', () => {
             vi.mocked(
                 accountService.checkIfAccountIsFollowing,
             ).mockResolvedValue(false);
-            vi.mocked(lookupHelpers.lookupActor)
-                .mockResolvedValueOnce(mockActor as unknown as Actor)
-                .mockResolvedValueOnce(mockActorToFollow as unknown as Actor);
+            vi.mocked(lookupHelpers.lookupActor).mockResolvedValueOnce(
+                mockActorToFollow as unknown as Actor,
+            );
 
             const response = await controller.handleFollow(ctx);
 
