@@ -122,8 +122,8 @@ export class FollowController {
 
             const follow = new Follow({
                 id: followId,
-                actor: actor,
-                object: actorToFollow,
+                actor: actor.id,
+                object: actorToFollow.id,
             });
 
             const followJson = await follow.toJsonLd();
@@ -224,7 +224,7 @@ export class FollowController {
         const follow = new Follow({
             id: null,
             actor: new URL(unfollowerAccount.apId),
-            object: actorToUnfollow,
+            object: actorToUnfollow.id,
         });
 
         const unfollow = new Undo({
