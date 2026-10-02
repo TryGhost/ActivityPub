@@ -50,7 +50,7 @@
     // their majors by hand.
     //
     // Everything else in docker-compose is test scaffolding — wiremock,
-    // caddy, jaeger, the Pub/Sub emulator. When one of those breaks, CI goes
+    // caddy, the Pub/Sub emulator. When one of those breaks, CI goes
     // red and we know right away, so their majors can automerge. These three
     // are different: production pins their versions outside this repo, so
     // bumping an image here keeps CI green while quietly testing against a

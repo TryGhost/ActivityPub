@@ -226,7 +226,7 @@ registerDependencies(container, { knex });
 
 const globalLogging = container.resolve<Logger>('logging');
 
-await setupInstrumentation(globalLogging);
+setupInstrumentation(globalLogging);
 
 // Init queue
 const globalQueue = container.resolve<GCloudPubSubPushMessageQueue>('queue');
@@ -692,11 +692,6 @@ app.use(async (ctx, next) => {
     await withContext(extra, () => {
         return next();
     });
-
-    // Uses the Hono path e.g. /path/:id instead of /path/123
-    Sentry.getActiveSpan()?.updateName(
-        `${ctx.req.method} ${ctx.req.routePath}`,
-    );
 });
 
 app.use(async (ctx, next) => {
