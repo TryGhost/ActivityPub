@@ -89,7 +89,7 @@
     "ky": "2.1.0",
     "linkify-html": "4.3.3",
     "linkifyjs": "4.3.3",
-    "mysql2": "3.24.4",
+    "mysql2": "3.24.5",
     "node-html-parser": "9.0.4",
     "reflect-metadata": "0.2.2",
     "sanitize-html": "2.17.7",
