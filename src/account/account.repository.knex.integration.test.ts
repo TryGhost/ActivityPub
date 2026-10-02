@@ -317,6 +317,99 @@ describe('KnexAccountRepository', () => {
         expect(aliases).toEqual([]);
     });
 
+    it('reserves a single Move and persists the destination after delivery', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const target = new URL('https://mastodon.social/users/new');
+        const firstId = new URL('https://example.com/moves/first');
+        const secondId = new URL('https://example.com/moves/second');
+
+        const firstClaim = await accountRepository.claimMove(
+            account.id,
+            target,
+            firstId,
+        );
+        assert(typeof firstClaim === 'object');
+        expect(firstClaim.activityId).toEqual(firstId);
+        expect(
+            await accountRepository.claimMove(account.id, target, secondId),
+        ).toBe('busy');
+        expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
+            firstId,
+        );
+
+        await accountRepository.releaseMove(account.id, firstClaim.token);
+        const retryClaim = await accountRepository.claimMove(
+            account.id,
+            target,
+            secondId,
+        );
+        assert(typeof retryClaim === 'object');
+        expect(retryClaim.token).not.toBe(firstClaim.token);
+        expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
+            firstId,
+        );
+
+        await accountRepository.completeMove(account.id, retryClaim.token);
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: true,
+        });
+        expect(
+            await accountRepository.claimMove(account.id, target, secondId),
+        ).toBe('sent');
+        expect(
+            await accountRepository.claimMove(
+                account.id,
+                new URL('https://other.example/users/new'),
+                secondId,
+            ),
+        ).toBe('different-target');
+    });
+
+    it('prevents expired holders from releasing or completing a newer claim', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const target = new URL('https://elsewhere.example/users/new');
+        const activityId = new URL('https://example.com/move/one');
+        const first = await accountRepository.claimMove(
+            account.id,
+            target,
+            activityId,
+        );
+        assert(typeof first === 'object');
+        await client('account_moves')
+            .where('account_id', account.id)
+            .update({
+                claimed_at: client.raw('DATE_SUB(NOW(6), INTERVAL 6 MINUTE)'),
+            });
+        const second = await accountRepository.claimMove(
+            account.id,
+            target,
+            new URL('https://example.com/move/two'),
+        );
+        assert(typeof second === 'object');
+        expect(second.token).not.toBe(first.token);
+        expect(second.activityId).toEqual(activityId);
+
+        await accountRepository.releaseMove(account.id, first.token);
+        expect(
+            await accountRepository.completeMove(account.id, first.token),
+        ).toBe(false);
+        expect(
+            await accountRepository.claimMove(account.id, target, activityId),
+        ).toBe('busy');
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: false,
+        });
+        expect(
+            await accountRepository.completeMove(account.id, second.token),
+        ).toBe(true);
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            sent: true,
+        });
+    });
+
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),

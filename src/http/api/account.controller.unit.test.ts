@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import type { AccountMoveService } from '@/account/account-move.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AppContext, HonoContextVariables } from '@/app';
 import { error, ok } from '@/core/result';
@@ -24,6 +25,7 @@ import type { Site } from '@/site/site.service';
 describe('AccountController aliases', () => {
     let accountRepository: KnexAccountRepository;
     let accountService: AccountService;
+    let accountMoveService: AccountMoveService;
     let controller: AccountController;
     let account: Account;
     let site: Site;
@@ -66,6 +68,10 @@ describe('AccountController aliases', () => {
             setWebfingerHost: vi.fn(),
             validateWebfingerHost: vi.fn(),
         } as unknown as AccountService;
+        accountMoveService = {
+            getMove: vi.fn().mockResolvedValue(null),
+            move: vi.fn(),
+        } as unknown as AccountMoveService;
         controller = new AccountController(
             {} as AccountView,
             accountRepository,
@@ -73,6 +79,7 @@ describe('AccountController aliases', () => {
             {} as FedifyContextFactory,
             {} as AccountPostsView,
             accountService,
+            accountMoveService,
         );
     });
 
@@ -98,6 +105,16 @@ describe('AccountController aliases', () => {
                     method: 'DELETE',
                     path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleRemoveAccountAlias',
+                }),
+                expect.objectContaining({
+                    method: 'POST',
+                    path: '/.ghost/activitypub/:version/migration',
+                    methodName: 'handleMoveAccount',
+                }),
+                expect.objectContaining({
+                    method: 'GET',
+                    path: '/.ghost/activitypub/:version/migration',
+                    methodName: 'handleGetAccountMigration',
                 }),
                 expect.objectContaining({
                     method: 'GET',
@@ -133,6 +150,47 @@ describe('AccountController aliases', () => {
                 ),
             ).toEqual([GhostRole.Owner, GhostRole.Administrator]);
         }
+        for (const methodName of [
+            'handleGetAccountMigration',
+            'handleMoveAccount',
+        ]) {
+            expect(
+                Reflect.getMetadata(
+                    ROLES_METADATA_KEY,
+                    AccountController.prototype,
+                    methodName,
+                ),
+            ).toEqual([GhostRole.Owner]);
+        }
+    });
+
+    it('reports outbound migration status', async () => {
+        vi.mocked(accountMoveService.getMove).mockResolvedValue({
+            target: new URL('https://mastodon.social/users/new'),
+            sent: true,
+        });
+        const response = await controller.handleGetAccountMigration(
+            createContext(),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            targetApId: 'https://mastodon.social/users/new',
+            sent: true,
+        });
+    });
+
+    it('accepts an owner-initiated migration and returns its destination', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            ok({ target: new URL('https://mastodon.social/users/new') }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@new@mastodon.social' }),
+        );
+        expect(response.status).toBe(200);
+        expect(accountMoveService.move).toHaveBeenCalledWith(
+            account,
+            '@new@mastodon.social',
+        );
     });
 
     it('serves aliases through mounted routes', async () => {

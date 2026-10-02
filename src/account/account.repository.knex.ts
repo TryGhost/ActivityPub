@@ -447,6 +447,93 @@ export class KnexAccountRepository {
         return rows.map((row) => new URL(row.ap_id));
     }
 
+    async getMove(
+        accountId: number,
+    ): Promise<{ target: URL; sent: boolean } | null> {
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('target_ap_id', 'sent_at');
+        return row
+            ? { target: new URL(row.target_ap_id), sent: row.sent_at !== null }
+            : null;
+    }
+
+    async claimMove(
+        accountId: number,
+        target: URL,
+        activityId: URL,
+    ): Promise<
+        | { token: string; activityId: URL }
+        | 'busy'
+        | 'sent'
+        | 'different-target'
+    > {
+        const token = randomUUID();
+        await this.db('account_moves')
+            .insert({
+                account_id: accountId,
+                target_ap_id: target.href,
+                activity_id: activityId.href,
+                claim_token: token,
+                claimed_at: this.db.fn.now(6),
+            })
+            .onConflict('account_id')
+            .ignore();
+
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('target_ap_id', 'activity_id', 'claim_token', 'sent_at');
+
+        if (row.target_ap_id !== target.href) return 'different-target';
+        if (row.sent_at !== null) return 'sent';
+        if (row.claim_token === token) return { token, activityId };
+
+        // Allow a failed or interrupted delivery to be retried. The original
+        // activity ID remains stable so remote servers can deduplicate it.
+        const claimed = await this.db('account_moves')
+            .where('account_id', accountId)
+            .whereNull('sent_at')
+            .where((query) =>
+                query
+                    .whereNull('claimed_at')
+                    .orWhereRaw(
+                        'claimed_at < DATE_SUB(NOW(6), INTERVAL 5 MINUTE)',
+                    ),
+            )
+            .update({ claimed_at: this.db.fn.now(6), claim_token: token });
+        return claimed === 1
+            ? { token, activityId: new URL(row.activity_id) }
+            : 'busy';
+    }
+
+    async getMoveActivityId(accountId: number): Promise<URL> {
+        const row = await this.db('account_moves')
+            .where('account_id', accountId)
+            .first('activity_id');
+        return new URL(row.activity_id);
+    }
+
+    async completeMove(accountId: number, token: string): Promise<boolean> {
+        const updated = await this.db('account_moves')
+            .where('account_id', accountId)
+            .where('claim_token', token)
+            .whereNull('sent_at')
+            .update({
+                sent_at: this.db.fn.now(6),
+                claimed_at: null,
+                claim_token: null,
+            });
+        return updated === 1;
+    }
+
+    async releaseMove(accountId: number, token: string): Promise<void> {
+        await this.db('account_moves')
+            .where('account_id', accountId)
+            .where('claim_token', token)
+            .whereNull('sent_at')
+            .update({ claimed_at: null, claim_token: null });
+    }
+
     /**
      * Look up an internal account by its WebFinger handle
      *
