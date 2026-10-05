@@ -59,6 +59,32 @@ services:
       mysql:
         condition: service_healthy
 
+  migrate-schema:
+    profiles: [schema]
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql-schema:3306)/activitypub
+    depends_on:
+      mysql-schema:
+        condition: service_healthy
+
+  mysql-schema:
+    profiles: [schema]
+    image: mysql:8.4.11@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=activitypub
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
+      interval: 1s
+      retries: 120
+
   nginx:
     build: dev/nginx
     ports:
