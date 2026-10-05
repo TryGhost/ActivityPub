@@ -13,11 +13,12 @@ mysql_exec() {
     compose exec -T -e MYSQL_PWD=root mysql-schema "$@"
 }
 
-trap 'compose rm --stop --force mysql-schema' EXIT
+out=migrate/schema.sql
+
+trap 'rm -f "$out.tmp"; compose rm --stop --force mysql-schema' EXIT
 
 compose run --rm migrate-schema
 
-out=migrate/schema.sql
 version=$(mysql_exec mysql -uroot -N -e 'SELECT version FROM schema_migrations' activitypub)
 
 {
