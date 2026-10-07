@@ -114,12 +114,10 @@ export class LikeController {
             );
         }
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
         const like = new Like({
             id: likeId,
-            actor: actor,
-            object: objectToLike,
+            actor: account.apId,
+            object: objectToLike.id,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
@@ -240,11 +238,9 @@ export class LikeController {
 
         const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
         const undo = new Undo({
             id: undoId,
-            actor: actor,
+            actor: account.apId,
             object: likeToUndo,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),

@@ -98,13 +98,12 @@ export class FollowController {
             return Conflict('Already following this account');
         }
 
-        const actor = await lookupActor(apCtx, followerAccount.apId.toString());
         const actorToFollow = await lookupActor(
             apCtx,
             accountToFollow.apId.toString(),
         );
 
-        if (!actor || !actorToFollow) {
+        if (!actorToFollow) {
             return NotFound('Remote account could not be found');
         }
 
@@ -122,8 +121,8 @@ export class FollowController {
 
             const follow = new Follow({
                 id: followId,
-                actor: actor,
-                object: actorToFollow,
+                actor: followerAccount.apId,
+                object: actorToFollow.id,
             });
 
             const followJson = await follow.toJsonLd();
@@ -224,7 +223,7 @@ export class FollowController {
         const follow = new Follow({
             id: null,
             actor: new URL(unfollowerAccount.apId),
-            object: actorToUnfollow,
+            object: actorToUnfollow.id,
         });
 
         const unfollow = new Undo({

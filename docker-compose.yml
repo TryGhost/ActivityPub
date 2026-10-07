@@ -49,12 +49,6 @@ services:
       fake-gcs:
         condition: service_healthy
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.76.0@sha256:ab6f1a1f0fb49ea08bcd19f6b84f6081d0d44b364b6de148e1798eb5816bacac
-    restart: always
-    environment:
-      COLLECTOR_ZIPKIN_HOST_PORT: :9411
-
   migrate:
     build: migrate
     volumes:
@@ -64,6 +58,32 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  migrate-schema:
+    profiles: [schema]
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql-schema:3306)/activitypub
+    depends_on:
+      mysql-schema:
+        condition: service_healthy
+
+  mysql-schema:
+    profiles: [schema]
+    image: mysql:8.4.11@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=activitypub
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
+      interval: 1s
+      retries: 120
 
   nginx:
     build: dev/nginx
@@ -102,7 +122,7 @@ services:
       retries: 120
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-emulators@sha256:8d8573471c489a409f03891d2c24d177fa531276184f7002b9a2d853d1b3ed54
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:588.0.0-emulators@sha256:be2f0e582a94c9e06e7a384fe2b3b39d590eeb8da65a110eda991598c100fe80
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -249,7 +269,7 @@ services:
   pubsub-testing:
     networks:
       - test_network
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-emulators@sha256:8d8573471c489a409f03891d2c24d177fa531276184f7002b9a2d853d1b3ed54
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:588.0.0-emulators@sha256:be2f0e582a94c9e06e7a384fe2b3b39d590eeb8da65a110eda991598c100fe80
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -279,7 +299,7 @@ services:
           - bob.test
           - charlie.test
           - fake-external-activitypub.test
-    image: caddy:2@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
+    image: caddy:2@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772
     ports:
       - "444:443"
     volumes:

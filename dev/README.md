@@ -9,6 +9,7 @@ This directory contains all development-related tools, configurations, and utili
 Contains Docker-related files and configurations for running tests and other containerized operations
 
 - `cucumber-tests` - Docker configuration for running `cucumber` tests
+- `schema-dump` - Applies all migrations to a throwaway MySQL container and writes the resulting schema to `migrate/schema.sql`
 
 ### `/fake-gcs`
 
