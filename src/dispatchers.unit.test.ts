@@ -5,6 +5,7 @@ import { Announce, Follow, Person, Undo } from '@fedify/vocab';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
+import type { AccountMoveService } from '@/account/account-move.service';
 import type { Account as AccountType } from '@/account/types';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
@@ -495,6 +496,9 @@ describe('dispatchers', () => {
         const mockAccountService = {
             getAliases: vi.fn().mockResolvedValue([]),
         } as unknown as AccountService;
+        const mockAccountMoveService = {
+            getMove: vi.fn().mockResolvedValue(null),
+        } as unknown as AccountMoveService;
 
         const mockAccountForActor: Account = {
             id: 1,
@@ -529,6 +533,7 @@ describe('dispatchers', () => {
                 getActorKeyPairs: vi.fn().mockResolvedValue([]),
             } as unknown as FedifyRequestContext;
             vi.mocked(mockAccountService.getAliases).mockResolvedValue([]);
+            vi.mocked(mockAccountMoveService.getMove).mockResolvedValue(null);
         });
 
         it('returns a Person', async () => {
@@ -544,6 +549,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
@@ -573,6 +579,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
             const jsonLd = (await result?.toJsonLd({
@@ -586,6 +593,28 @@ describe('dispatchers', () => {
                   : [];
 
             expect(aliases).toContain('https://mastodon.social/users/old');
+        });
+
+        it('advertises movedTo after the Move has been submitted', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({ site: mockSite, account: mockAccountForActor }),
+            );
+            vi.mocked(mockAccountMoveService.getMove).mockResolvedValue({
+                target: new URL('https://mastodon.social/users/new'),
+                sent: true,
+            });
+
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+                mockAccountMoveService,
+            );
+            const result = await dispatcher(actorCtx, 'testuser');
+            expect(result?.successorId?.href).toBe(
+                'https://mastodon.social/users/new',
+            );
         });
 
         it('returns a Person without icon when avatarUrl is null', async () => {
@@ -606,6 +635,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
@@ -631,6 +661,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
@@ -646,6 +677,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
@@ -660,6 +692,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
@@ -674,6 +707,7 @@ describe('dispatchers', () => {
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,
                 mockAccountService,
+                mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
 
