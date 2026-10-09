@@ -23,7 +23,7 @@ All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-kn
 2. **Expose your local port 80 (nginx) with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
     - Use `tailscale funnel 80` or `ngrok http 80` to expose your local **port 80** (not 2368!), on which **nginx** will be running
 3. **Configure Ghost**
-    - In the Ghost monorepo, create a `config.local.json` file under `ghost/core/config.local.json`, with the following configuration:
+    - In the Ghost monorepo, create a `config.local.json` file under `ghost/config.local.json`, with the following configuration:
     ```
     {
         "url": <Tailscale or ngrok URL from step 2>
