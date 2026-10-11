@@ -185,8 +185,8 @@ importers:
         specifier: 2.4.0
         version: 2.4.0
       '@google-cloud/pubsub':
-        specifier: 6.1.0
-        version: 6.1.0(supports-color@11.0.0)
+        specifier: 6.2.0
+        version: 6.2.0(supports-color@11.0.0)
       '@google-cloud/storage':
         specifier: 8.2.0
         version: 8.2.0(supports-color@11.0.0)
@@ -722,8 +722,8 @@ packages:
     resolution: {integrity: sha512-x1L+lrIHgaMwN5fAhnNVS7rh0BZn9eKmqOBXnOUM3jkilF4GE4ooETS9SYnCtPCVHwQtByDTh5b7KIMUW7XAHQ==}
     engines: {node: '>=22'}
 
-  '@google-cloud/pubsub@6.1.0':
-    resolution: {integrity: sha512-amPObGHTojTGLeaSTogY22vGkNc/cWaNXphS64Jmwkn2rcvIHnYnwsFwQaxYd+BfML48ninINn5gziRmcfOqPA==}
+  '@google-cloud/pubsub@6.2.0':
+    resolution: {integrity: sha512-E9mJwt+j5HuQTkK1aJXnNmuXgG5hPRbSqRHisOm+N55Fm2RAxDCpX4ii2Hws7te3FMENpcmDS0BqQv+GIjQcXw==}
     engines: {node: '>=22'}
 
   '@google-cloud/storage@8.2.0':
@@ -1698,9 +1698,6 @@ packages:
 
   '@types/node@20.19.43':
     resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
-
-  '@types/node@22.20.4':
-    resolution: {integrity: sha512-zJRE40jpHtKqE/C4fgHrAKQLJuSpzEnP9ff9Y7YtoR3Wd2pwqzlekDeEuUQXjRd+QCYnVnNwuJYmhdk9XV8gvA==}
 
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
@@ -4260,7 +4257,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/pubsub@6.1.0(supports-color@11.0.0)':
+  '@google-cloud/pubsub@6.2.0(supports-color@11.0.0)':
     dependencies:
       '@google-cloud/paginator': 7.1.0
       '@google-cloud/precise-date': 6.1.0
@@ -5227,10 +5224,6 @@ snapshots:
   '@types/node@16.9.1': {}
 
   '@types/node@20.19.43':
-    dependencies:
-      undici-types: 6.21.0
-
-  '@types/node@22.20.4':
     dependencies:
       undici-types: 6.21.0
 
@@ -6622,7 +6615,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.2
-      '@types/node': 22.20.4
+      '@types/node': 22.20.5
       long: 5.3.2
 
   pvtsutils@1.3.6:
