@@ -320,18 +320,25 @@ describe('KnexAccountRepository', () => {
     it('reserves a single Move and persists the destination after delivery', async () => {
         const [account] = await fixtureManager.createInternalAccount();
         const target = new URL('https://mastodon.social/users/new');
+        const handle = '@new@mastodon.social';
         const firstId = new URL('https://example.com/moves/first');
         const secondId = new URL('https://example.com/moves/second');
 
         const firstClaim = await accountRepository.claimMove(
             account.id,
             target,
+            handle,
             firstId,
         );
         assert(typeof firstClaim === 'object');
         expect(firstClaim.activityId).toEqual(firstId);
         expect(
-            await accountRepository.claimMove(account.id, target, secondId),
+            await accountRepository.claimMove(
+                account.id,
+                target,
+                handle,
+                secondId,
+            ),
         ).toBe('busy');
         expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
             firstId,
@@ -341,6 +348,7 @@ describe('KnexAccountRepository', () => {
         const retryClaim = await accountRepository.claimMove(
             account.id,
             target,
+            handle,
             secondId,
         );
         assert(typeof retryClaim === 'object');
@@ -352,15 +360,22 @@ describe('KnexAccountRepository', () => {
         await accountRepository.completeMove(account.id, retryClaim.token);
         expect(await accountRepository.getMove(account.id)).toEqual({
             target,
+            targetHandle: handle,
             sent: true,
         });
         expect(
-            await accountRepository.claimMove(account.id, target, secondId),
+            await accountRepository.claimMove(
+                account.id,
+                target,
+                handle,
+                secondId,
+            ),
         ).toBe('sent');
         expect(
             await accountRepository.claimMove(
                 account.id,
                 new URL('https://other.example/users/new'),
+                '@new@other.example',
                 secondId,
             ),
         ).toBe('different-target');
@@ -369,10 +384,12 @@ describe('KnexAccountRepository', () => {
     it('prevents expired holders from releasing or completing a newer claim', async () => {
         const [account] = await fixtureManager.createInternalAccount();
         const target = new URL('https://elsewhere.example/users/new');
+        const handle = '@new@elsewhere.example';
         const activityId = new URL('https://example.com/move/one');
         const first = await accountRepository.claimMove(
             account.id,
             target,
+            handle,
             activityId,
         );
         assert(typeof first === 'object');
@@ -384,6 +401,7 @@ describe('KnexAccountRepository', () => {
         const second = await accountRepository.claimMove(
             account.id,
             target,
+            handle,
             new URL('https://example.com/move/two'),
         );
         assert(typeof second === 'object');
@@ -395,10 +413,16 @@ describe('KnexAccountRepository', () => {
             await accountRepository.completeMove(account.id, first.token),
         ).toBe(false);
         expect(
-            await accountRepository.claimMove(account.id, target, activityId),
+            await accountRepository.claimMove(
+                account.id,
+                target,
+                handle,
+                activityId,
+            ),
         ).toBe('busy');
         expect(await accountRepository.getMove(account.id)).toEqual({
             target,
+            targetHandle: handle,
             sent: false,
         });
         expect(
@@ -406,6 +430,7 @@ describe('KnexAccountRepository', () => {
         ).toBe(true);
         expect(await accountRepository.getMove(account.id)).toEqual({
             target,
+            targetHandle: handle,
             sent: true,
         });
     });

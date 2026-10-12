@@ -449,18 +449,23 @@ export class KnexAccountRepository {
 
     async getMove(
         accountId: number,
-    ): Promise<{ target: URL; sent: boolean } | null> {
+    ): Promise<{ target: URL; targetHandle: string; sent: boolean } | null> {
         const row = await this.db('account_moves')
             .where('account_id', accountId)
-            .first('target_ap_id', 'sent_at');
+            .first('target_ap_id', 'target_handle', 'sent_at');
         return row
-            ? { target: new URL(row.target_ap_id), sent: row.sent_at !== null }
+            ? {
+                  target: new URL(row.target_ap_id),
+                  targetHandle: row.target_handle,
+                  sent: row.sent_at !== null,
+              }
             : null;
     }
 
     async claimMove(
         accountId: number,
         target: URL,
+        targetHandle: string,
         activityId: URL,
     ): Promise<
         | { token: string; activityId: URL }
@@ -473,6 +478,7 @@ export class KnexAccountRepository {
             .insert({
                 account_id: accountId,
                 target_ap_id: target.href,
+                target_handle: targetHandle,
                 activity_id: activityId.href,
                 claim_token: token,
                 claimed_at: this.db.fn.now(6),

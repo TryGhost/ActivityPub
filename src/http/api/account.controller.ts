@@ -506,6 +506,7 @@ export class AccountController {
         const move = await this.accountMoveService.getMove(account.id);
         return ok({
             targetApId: move?.target.href ?? null,
+            targetHandle: move?.targetHandle ?? null,
             sent: move?.sent ?? false,
         });
     }
@@ -548,7 +549,12 @@ export class AccountController {
             }
         }
 
-        return ok({ targetApId: getValue(result).target.href, sent: true });
+        const move = getValue(result);
+        return ok({
+            targetApId: move.target.href,
+            targetHandle: move.targetHandle,
+            sent: true,
+        });
     }
 
     @APIRoute('GET', 'domain')

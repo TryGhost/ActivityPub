@@ -1,6 +1,7 @@
 CREATE TABLE account_moves (
     account_id INT UNSIGNED PRIMARY KEY,
     target_ap_id VARCHAR(1024) NOT NULL,
+    target_handle VARCHAR(512) NOT NULL,
     activity_id VARCHAR(1024) NOT NULL,
     claim_token CHAR(36) NULL,
     claimed_at TIMESTAMP(6) NULL,

@@ -603,6 +603,7 @@ describe('dispatchers', () => {
             );
             vi.mocked(mockAccountMoveService.getMove).mockResolvedValue({
                 target: new URL('https://mastodon.social/users/new'),
+                targetHandle: '@new@mastodon.social',
                 sent: true,
             });
 

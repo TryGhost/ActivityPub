@@ -167,6 +167,7 @@ describe('AccountController aliases', () => {
     it('reports outbound migration status', async () => {
         vi.mocked(accountMoveService.getMove).mockResolvedValue({
             target: new URL('https://mastodon.social/users/new'),
+            targetHandle: '@new@mastodon.social',
             sent: true,
         });
         const response = await controller.handleGetAccountMigration(
@@ -175,18 +176,38 @@ describe('AccountController aliases', () => {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual({
             targetApId: 'https://mastodon.social/users/new',
+            targetHandle: '@new@mastodon.social',
             sent: true,
+        });
+    });
+
+    it('reports no destination before a migration starts', async () => {
+        const response = await controller.handleGetAccountMigration(
+            createContext(),
+        );
+        expect(await response.json()).toEqual({
+            targetApId: null,
+            targetHandle: null,
+            sent: false,
         });
     });
 
     it('accepts an owner-initiated migration and returns its destination', async () => {
         vi.mocked(accountMoveService.move).mockResolvedValue(
-            ok({ target: new URL('https://mastodon.social/users/new') }),
+            ok({
+                target: new URL('https://mastodon.social/users/new'),
+                targetHandle: '@new@mastodon.social',
+            }),
         );
         const response = await controller.handleMoveAccount(
             createContext({ targetHandle: '@new@mastodon.social' }),
         );
         expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            targetApId: 'https://mastodon.social/users/new',
+            targetHandle: '@new@mastodon.social',
+            sent: true,
+        });
         expect(accountMoveService.move).toHaveBeenCalledWith(
             account,
             '@new@mastodon.social',

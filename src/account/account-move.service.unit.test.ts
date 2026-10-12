@@ -74,6 +74,28 @@ describe('AccountMoveService', () => {
         expect(repository.completeMove).toHaveBeenCalledWith(1, 'claim-one');
     });
 
+    it('keeps the handle that resolved, since actor URLs may hold internal IDs', async () => {
+        const misskeyTarget = new URL('https://misskey.io/users/9h5x0a1b2c');
+        vi.mocked(lookupActorProfile).mockResolvedValue(ok(misskeyTarget));
+        vi.mocked(lookupObject).mockResolvedValue(
+            new Person({ id: misskeyTarget, aliases: [source] }),
+        );
+
+        const result = await service.move(account, '@Louis@MissKey.io');
+
+        if (isError(result)) throw new Error('Expected migration to succeed');
+        expect(getValue(result)).toEqual({
+            target: misskeyTarget,
+            targetHandle: '@Louis@misskey.io',
+        });
+        expect(repository.claimMove).toHaveBeenCalledWith(
+            1,
+            misskeyTarget,
+            '@Louis@misskey.io',
+            moveId,
+        );
+    });
+
     it('requires the destination actor to alias the source', async () => {
         vi.mocked(lookupObject).mockResolvedValue(new Person({ id: target }));
         const result = await service.move(account, '@bryan@mastodon.social');

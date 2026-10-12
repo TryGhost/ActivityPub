@@ -25,10 +25,15 @@ export class AccountMoveService {
     async move(
         account: Account,
         targetHandle: string,
-    ): Promise<Result<{ target: URL }, MoveError>> {
+    ): Promise<Result<{ target: URL; targetHandle: string }, MoveError>> {
         if (!account.isInternal || !isHandle(targetHandle)) {
             return error({ type: 'invalid-handle' });
         }
+
+        // Some servers (e.g. Misskey) put an internal ID in the actor URL, so
+        // the handle that resolved is kept for showing the destination later
+        const [, username, domain] = targetHandle.split('@');
+        const resolvedHandle = `@${username}@${domain.toLowerCase()}`;
 
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const lookup = await lookupActorProfile(ctx, targetHandle);
@@ -61,13 +66,16 @@ export class AccountMoveService {
         const claim = await this.accountRepository.claimMove(
             account.id,
             targetId,
+            resolvedHandle,
             ctx.getObjectUri(Move, { id: uuidv4() }),
         );
         if (claim === 'different-target') {
             return error({ type: 'different-target' });
         }
         if (claim === 'busy') return error({ type: 'busy' });
-        if (claim === 'sent') return ok({ target: targetId });
+        if (claim === 'sent') {
+            return ok({ target: targetId, targetHandle: resolvedHandle });
+        }
 
         try {
             const move = new Move({
@@ -96,7 +104,7 @@ export class AccountMoveService {
             throw err;
         }
 
-        return ok({ target: targetId });
+        return ok({ target: targetId, targetHandle: resolvedHandle });
     }
 
     async getMove(accountId: number) {
