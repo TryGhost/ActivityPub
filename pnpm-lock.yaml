@@ -191,8 +191,8 @@ importers:
         specifier: 8.2.0
         version: 8.2.0(supports-color@11.0.0)
       '@hono/node-server':
-        specifier: 2.1.3
-        version: 2.1.3(hono@4.13.13)
+        specifier: 2.1.4
+        version: 2.1.4(hono@4.13.13)
       '@js-temporal/polyfill':
         specifier: 0.5.1
         version: 0.5.1
@@ -743,11 +743,11 @@ packages:
     resolution: {integrity: sha512-1UZvlLwQJQ2vMmVY5+VdzR+7XIg0uA0TDZDv6m+vTipBX5uG0mnCPW2wRc+ZdqjMW11AygbfLskuDC6IuTxQ0w==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
-  '@hono/node-server@2.1.3':
-    resolution: {integrity: sha512-TA//nWMqPhbfdfneACk6t5a9eqbS9lABEPyKn0/xZTah3H3U2XaVg85rJFl0/Fyit0I552YDHgXGVSf3GwqbUw==}
+  '@hono/node-server@2.1.4':
+    resolution: {integrity: sha512-2g1qeHl4BduwDn6L8nkAvDrPUWPMlkQ//a5NhP/zIyaXKMjZNRV+cG9Csu+BiJFf6+68pqzjf4Hi5sJGKHuS1g==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4
+      hono: ^4 || ^5.0.0-0
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -4319,7 +4319,7 @@ snapshots:
     dependencies:
       '@logtape/logtape': 1.3.11
 
-  '@hono/node-server@2.1.3(hono@4.13.13)':
+  '@hono/node-server@2.1.4(hono@4.13.13)':
     dependencies:
       hono: 4.13.13
 
