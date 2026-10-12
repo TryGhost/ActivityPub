@@ -96,6 +96,16 @@ describe('AccountMoveService', () => {
         );
     });
 
+    it('rejects a destination that resolves to this account', async () => {
+        vi.mocked(lookupActorProfile).mockResolvedValue(ok(source));
+        vi.mocked(lookupObject).mockClear();
+        const result = await service.move(account, '@index@example.com');
+        if (!isError(result)) throw new Error('Expected migration to fail');
+        expect(getError(result)).toEqual({ type: 'self-move' });
+        expect(lookupObject).not.toHaveBeenCalled();
+        expect(repository.claimMove).not.toHaveBeenCalled();
+    });
+
     it('requires the destination actor to alias the source', async () => {
         vi.mocked(lookupObject).mockResolvedValue(new Person({ id: target }));
         const result = await service.move(account, '@bryan@mastodon.social');

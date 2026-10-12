@@ -533,8 +533,12 @@ export class AccountController {
             const moveError = getError(result);
             switch (moveError.type) {
                 case 'invalid-handle':
-                case 'self-move':
                     return BadRequest('Invalid destination handle');
+                case 'self-move':
+                    return BadRequest(
+                        'Destination is this account',
+                        'SELF_MOVE',
+                    );
                 case 'target-unavailable':
                     return new Response(null, { status: 404 });
                 case 'alias-required':

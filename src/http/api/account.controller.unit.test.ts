@@ -214,6 +214,33 @@ describe('AccountController aliases', () => {
         );
     });
 
+    it('identifies a move to this account so clients can explain it', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            error({ type: 'self-move' }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@index@example.com' }),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'Destination is this account',
+            code: 'SELF_MOVE',
+        });
+    });
+
+    it('rejects an invalid destination handle without a code', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            error({ type: 'invalid-handle' }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@new@localhost' }),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'Invalid destination handle',
+        });
+    });
+
     it('serves aliases through mounted routes', async () => {
         const app = new Hono<{ Variables: HonoContextVariables }>();
         const routeRegistry = new RouteRegistry();
