@@ -100,11 +100,12 @@ export const actorDispatcher = (
             liked: account.apLiked,
             url: account.url || account.apId,
             ...(aliases.length > 0 ? { aliases } : {}),
-            // Advertise while a claim is held (Misskey verifies movedTo on
-            // receipt, before completeMove) or after the Move was marked sent.
-            // A released claim keeps the row for retries, but must not publish
-            // movedTo when nothing was queued.
-            ...(move?.sent || move?.claimed ? { successor: move.target } : {}),
+            // Advertise as soon as the destination is locked in. Misskey
+            // verifies movedTo when it receives the Move, which can arrive
+            // before completeMove. A failed send may have reached some
+            // inboxes already, so releasing the worker claim must not
+            // withdraw the destination from the profile.
+            ...(move ? { successor: move.target } : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),

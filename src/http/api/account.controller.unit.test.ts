@@ -169,7 +169,6 @@ describe('AccountController aliases', () => {
             target: new URL('https://mastodon.social/users/new'),
             targetHandle: '@new@mastodon.social',
             sent: true,
-            claimed: false,
         });
         const response = await controller.handleGetAccountMigration(
             createContext(),
