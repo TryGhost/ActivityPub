@@ -241,6 +241,70 @@ describe('AccountController aliases', () => {
         });
     });
 
+    it.each([
+        { type: 'target-unavailable', status: 404, body: null },
+        {
+            type: 'alias-required',
+            status: 422,
+            body: { message: 'Destination actor must alias this account' },
+        },
+        {
+            type: 'different-target',
+            status: 409,
+            body: { message: 'Account migration already started' },
+        },
+        {
+            type: 'busy',
+            status: 409,
+            body: { message: 'Account migration already started' },
+        },
+    ] as const)(
+        'responds $status when the move fails with $type',
+        async ({ type, status, body }) => {
+            vi.mocked(accountMoveService.move).mockResolvedValue(
+                error({ type }),
+            );
+            const response = await controller.handleMoveAccount(
+                createContext({ targetHandle: '@new@mastodon.social' }),
+            );
+            expect(response.status).toBe(status);
+            if (body) {
+                expect(await response.json()).toEqual(body);
+            } else {
+                expect(await response.text()).toBe('');
+            }
+        },
+    );
+
+    it.each([
+        { case: 'no body', body: undefined },
+        { case: 'no destination handle', body: {} },
+        { case: 'a non-string handle', body: { targetHandle: 42 } },
+    ])('rejects a move request with $case', async ({ body }) => {
+        const response = await controller.handleMoveAccount(
+            createContext(body),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'A destination handle is required',
+        });
+        expect(accountMoveService.move).not.toHaveBeenCalled();
+    });
+
+    it.each(['handleGetAccountMigration', 'handleMoveAccount'] as const)(
+        '%s responds 404 when the site has no account',
+        async (method) => {
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                null as unknown as Account,
+            );
+            const response = await controller[method](
+                createContext({ targetHandle: '@new@mastodon.social' }),
+            );
+            expect(response.status).toBe(404);
+            expect(accountMoveService.move).not.toHaveBeenCalled();
+        },
+    );
+
     it('serves aliases through mounted routes', async () => {
         const app = new Hono<{ Variables: HonoContextVariables }>();
         const routeRegistry = new RouteRegistry();

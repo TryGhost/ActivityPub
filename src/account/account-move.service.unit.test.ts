@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Move, Person } from '@fedify/vocab';
+import { Move, Note, Person } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountMoveService } from '@/account/account-move.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FedifyContext } from '@/app';
-import { getError, getValue, isError, ok } from '@/core/result';
+import { error, getError, getValue, isError, ok } from '@/core/result';
 import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 
 vi.mock('@/lookup-helpers', () => ({
@@ -34,6 +34,7 @@ describe('AccountMoveService', () => {
     let service: AccountMoveService;
 
     beforeEach(() => {
+        vi.clearAllMocks();
         vi.mocked(lookupActorProfile).mockResolvedValue(ok(target));
         vi.mocked(lookupObject).mockResolvedValue(
             new Person({ id: target, aliases: [source] }),
@@ -98,13 +99,78 @@ describe('AccountMoveService', () => {
 
     it('rejects a destination that resolves to this account', async () => {
         vi.mocked(lookupActorProfile).mockResolvedValue(ok(source));
-        vi.mocked(lookupObject).mockClear();
         const result = await service.move(account, '@index@example.com');
         if (!isError(result)) throw new Error('Expected migration to fail');
         expect(getError(result)).toEqual({ type: 'self-move' });
         expect(lookupObject).not.toHaveBeenCalled();
         expect(repository.claimMove).not.toHaveBeenCalled();
     });
+
+    it.each([
+        { case: 'a malformed handle', handle: 'bryan', isInternal: true },
+        {
+            case: 'an external account',
+            handle: '@bryan@mastodon.social',
+            isInternal: false,
+        },
+    ])(
+        'rejects $case without looking it up',
+        async ({ handle, isInternal }) => {
+            const result = await service.move(
+                { ...account, isInternal },
+                handle,
+            );
+            if (!isError(result)) throw new Error('Expected migration to fail');
+            expect(getError(result)).toEqual({ type: 'invalid-handle' });
+            expect(lookupActorProfile).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        {
+            case: 'the handle does not resolve',
+            arrange: () =>
+                vi
+                    .mocked(lookupActorProfile)
+                    .mockResolvedValue(error('lookup-error')),
+        },
+        {
+            case: 'the actor cannot be fetched',
+            arrange: () =>
+                vi
+                    .mocked(lookupObject)
+                    .mockRejectedValue(new Error('fetch failed')),
+        },
+        {
+            case: 'the handle resolves to something other than an actor',
+            arrange: () =>
+                vi
+                    .mocked(lookupObject)
+                    .mockResolvedValue(new Note({ id: target })),
+        },
+        {
+            case: 'the fetched actor has a different ID',
+            arrange: () =>
+                vi.mocked(lookupObject).mockResolvedValue(
+                    new Person({
+                        id: new URL('https://evil.example/users/bryan'),
+                        aliases: [source],
+                    }),
+                ),
+        },
+    ])(
+        'reports the destination as unavailable when $case',
+        async ({ arrange }) => {
+            arrange();
+            const result = await service.move(
+                account,
+                '@bryan@mastodon.social',
+            );
+            if (!isError(result)) throw new Error('Expected migration to fail');
+            expect(getError(result)).toEqual({ type: 'target-unavailable' });
+            expect(repository.claimMove).not.toHaveBeenCalled();
+        },
+    );
 
     it('requires the destination actor to alias the source', async () => {
         vi.mocked(lookupObject).mockResolvedValue(new Person({ id: target }));
