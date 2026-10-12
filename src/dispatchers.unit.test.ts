@@ -595,17 +595,30 @@ describe('dispatchers', () => {
             expect(aliases).toContain('https://mastodon.social/users/old');
         });
 
-        it('advertises movedTo after the Move has been submitted', async () => {
+        it.each([
+            {
+                case: 'a pending move',
+                move: {
+                    target: new URL('https://mastodon.social/users/new'),
+                    targetHandle: '@new@mastodon.social',
+                    sent: false,
+                },
+            },
+            {
+                case: 'a sent move',
+                move: {
+                    target: new URL('https://mastodon.social/users/new'),
+                    targetHandle: '@new@mastodon.social',
+                    sent: true,
+                },
+            },
+        ])('advertises movedTo for $case', async ({ move }) => {
             vi.mocked(
                 mockHostDataContextLoader.loadDataForHost,
             ).mockResolvedValue(
                 ok({ site: mockSite, account: mockAccountForActor }),
             );
-            vi.mocked(mockAccountMoveService.getMove).mockResolvedValue({
-                target: new URL('https://mastodon.social/users/new'),
-                targetHandle: '@new@mastodon.social',
-                sent: true,
-            });
+            vi.mocked(mockAccountMoveService.getMove).mockResolvedValue(move);
 
             const dispatcher = actorDispatcher(
                 mockHostDataContextLoader,

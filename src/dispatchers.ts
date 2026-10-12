@@ -100,7 +100,10 @@ export const actorDispatcher = (
             liked: account.apLiked,
             url: account.url || account.apId,
             ...(aliases.length > 0 ? { aliases } : {}),
-            ...(move?.sent ? { successor: move.target } : {}),
+            // Advertise as soon as the destination is claimed, so Misskey (and
+            // forks) can verify movedTo when they receive the Move, before
+            // completeMove has marked it sent
+            ...(move ? { successor: move.target } : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
