@@ -199,6 +199,17 @@ describe('AccountMoveService', () => {
         expect(repository.completeMove).not.toHaveBeenCalled();
     });
 
+    it('keeps the claim when completion fails after the Move was queued', async () => {
+        vi.mocked(repository.completeMove).mockRejectedValue(
+            new Error('database unavailable'),
+        );
+        await expect(
+            service.move(account, '@bryan@mastodon.social'),
+        ).rejects.toThrow('database unavailable');
+        expect(context.sendActivity).toHaveBeenCalledTimes(1);
+        expect(repository.releaseMove).not.toHaveBeenCalled();
+    });
+
     it('does not report success when a newer request owns the claim', async () => {
         vi.mocked(repository.completeMove).mockResolvedValue(false);
         const result = await service.move(account, '@bryan@mastodon.social');

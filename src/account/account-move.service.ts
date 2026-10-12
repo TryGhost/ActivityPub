@@ -94,15 +94,18 @@ export class AccountMoveService {
                 move,
                 { preferSharedInbox: true },
             );
-            const completed = await this.accountRepository.completeMove(
-                account.id,
-                claim.token,
-            );
-            if (!completed) return error({ type: 'busy' });
         } catch (err) {
             await this.accountRepository.releaseMove(account.id, claim.token);
             throw err;
         }
+
+        // The Move is already queued, so a completion failure keeps the claim
+        // and waits for the stale-claim window instead of re-sending at once
+        const completed = await this.accountRepository.completeMove(
+            account.id,
+            claim.token,
+        );
+        if (!completed) return error({ type: 'busy' });
 
         return ok({ target: targetId, targetHandle: resolvedHandle });
     }
