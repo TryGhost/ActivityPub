@@ -597,12 +597,14 @@ describe('dispatchers', () => {
 
         it.each([
             {
-                case: 'a pending move',
+                case: 'an active claim',
                 move: {
                     target: new URL('https://mastodon.social/users/new'),
                     targetHandle: '@new@mastodon.social',
                     sent: false,
+                    claimed: true,
                 },
+                successor: 'https://mastodon.social/users/new',
             },
             {
                 case: 'a sent move',
@@ -610,9 +612,21 @@ describe('dispatchers', () => {
                     target: new URL('https://mastodon.social/users/new'),
                     targetHandle: '@new@mastodon.social',
                     sent: true,
+                    claimed: false,
                 },
+                successor: 'https://mastodon.social/users/new',
             },
-        ])('advertises movedTo for $case', async ({ move }) => {
+            {
+                case: 'a released claim',
+                move: {
+                    target: new URL('https://mastodon.social/users/new'),
+                    targetHandle: '@new@mastodon.social',
+                    sent: false,
+                    claimed: false,
+                },
+                successor: undefined,
+            },
+        ])('handles movedTo for $case', async ({ move, successor }) => {
             vi.mocked(
                 mockHostDataContextLoader.loadDataForHost,
             ).mockResolvedValue(
@@ -626,9 +640,7 @@ describe('dispatchers', () => {
                 mockAccountMoveService,
             );
             const result = await dispatcher(actorCtx, 'testuser');
-            expect(result?.successorId?.href).toBe(
-                'https://mastodon.social/users/new',
-            );
+            expect(result?.successorId?.href).toBe(successor);
         });
 
         it('returns a Person without icon when avatarUrl is null', async () => {

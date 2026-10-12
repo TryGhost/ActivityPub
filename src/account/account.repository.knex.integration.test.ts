@@ -345,6 +345,12 @@ describe('KnexAccountRepository', () => {
         );
 
         await accountRepository.releaseMove(account.id, firstClaim.token);
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            targetHandle: handle,
+            sent: false,
+            claimed: false,
+        });
         const retryClaim = await accountRepository.claimMove(
             account.id,
             target,
@@ -356,12 +362,19 @@ describe('KnexAccountRepository', () => {
         expect(await accountRepository.getMoveActivityId(account.id)).toEqual(
             firstId,
         );
+        expect(await accountRepository.getMove(account.id)).toEqual({
+            target,
+            targetHandle: handle,
+            sent: false,
+            claimed: true,
+        });
 
         await accountRepository.completeMove(account.id, retryClaim.token);
         expect(await accountRepository.getMove(account.id)).toEqual({
             target,
             targetHandle: handle,
             sent: true,
+            claimed: false,
         });
         expect(
             await accountRepository.claimMove(
@@ -424,6 +437,7 @@ describe('KnexAccountRepository', () => {
             target,
             targetHandle: handle,
             sent: false,
+            claimed: true,
         });
         expect(
             await accountRepository.completeMove(account.id, second.token),
@@ -432,6 +446,7 @@ describe('KnexAccountRepository', () => {
             target,
             targetHandle: handle,
             sent: true,
+            claimed: false,
         });
     });
 

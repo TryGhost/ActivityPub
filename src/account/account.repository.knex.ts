@@ -447,17 +447,21 @@ export class KnexAccountRepository {
         return rows.map((row) => new URL(row.ap_id));
     }
 
-    async getMove(
-        accountId: number,
-    ): Promise<{ target: URL; targetHandle: string; sent: boolean } | null> {
+    async getMove(accountId: number): Promise<{
+        target: URL;
+        targetHandle: string;
+        sent: boolean;
+        claimed: boolean;
+    } | null> {
         const row = await this.db('account_moves')
             .where('account_id', accountId)
-            .first('target_ap_id', 'target_handle', 'sent_at');
+            .first('target_ap_id', 'target_handle', 'sent_at', 'claim_token');
         return row
             ? {
                   target: new URL(row.target_ap_id),
                   targetHandle: row.target_handle,
                   sent: row.sent_at !== null,
+                  claimed: row.claim_token !== null,
               }
             : null;
     }

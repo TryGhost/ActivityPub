@@ -100,10 +100,11 @@ export const actorDispatcher = (
             liked: account.apLiked,
             url: account.url || account.apId,
             ...(aliases.length > 0 ? { aliases } : {}),
-            // Advertise as soon as the destination is claimed, so Misskey (and
-            // forks) can verify movedTo when they receive the Move, before
-            // completeMove has marked it sent
-            ...(move ? { successor: move.target } : {}),
+            // Advertise while a claim is held (Misskey verifies movedTo on
+            // receipt, before completeMove) or after the Move was marked sent.
+            // A released claim keeps the row for retries, but must not publish
+            // movedTo when nothing was queued.
+            ...(move?.sent || move?.claimed ? { successor: move.target } : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
