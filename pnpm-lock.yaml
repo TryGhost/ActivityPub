@@ -197,8 +197,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1
       '@logtape/logtape':
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: 2.4.1
+        version: 2.4.1
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -1209,8 +1209,8 @@ packages:
   '@logtape/logtape@1.3.11':
     resolution: {integrity: sha512-mxkQOyySbjNGweavPudypBf0qZJxLOTXl2NAXYnsZF/ds5dQpTLA7YMSJbc8uFWlTkG+YjAnVL8tQWivIVPOJg==}
 
-  '@logtape/logtape@2.4.0':
-    resolution: {integrity: sha512-xhvG/NwfBXs+a+oJxl6xOmqA4zX8giP1brvd5lVbL3qUHUkZfVt+4QE/+9p/Vf76JNwe/upH3XYTNItocKQ8Qg==}
+  '@logtape/logtape@2.4.1':
+    resolution: {integrity: sha512-faEZkjQf5pI8WsnCXbpBInC9SeWqYUNAtLviTLkCI3JLHFkV1bKrfxbIJc96TVqqVjSUz8LYtX0JWKdiBwEpCg==}
 
   '@mswjs/interceptors@0.44.0':
     resolution: {integrity: sha512-IYHevRStF4ijM20GI9c9Ndhw483NSAjCydQhUr4/zIB0BNLsTVw3vFAxTo6TlvX4QnV60wEHttUa9539TTAq+A==}
@@ -4052,8 +4052,8 @@ snapshots:
       '@inquirer/prompts': 7.10.1(@types/node@22.20.5)
       '@jimp/core': 1.6.1(supports-color@11.0.0)
       '@jimp/wasm-webp': 1.6.1
-      '@logtape/file': 2.4.1(@logtape/logtape@2.4.0)
-      '@logtape/logtape': 2.4.0
+      '@logtape/file': 2.4.1(@logtape/logtape@2.4.1)
+      '@logtape/logtape': 2.4.1
       '@optique/config': 1.3.4(@standard-schema/spec@1.1.0)
       '@optique/core': 1.3.4
       '@optique/discover': 1.3.4
@@ -4092,7 +4092,7 @@ snapshots:
       '@fedify/vocab': 2.4.4
       '@fedify/vocab-runtime': 2.4.4
       '@fedify/webfinger': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.12.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
@@ -4118,7 +4118,7 @@ snapshots:
       '@david/dax': dax@0.46.1
       '@fxts/core': 1.28.0
       '@inquirer/prompts': 7.10.1(@types/node@22.20.5)
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       '@optique/core': 1.3.4
       '@optique/run': 1.3.4
       chalk: 5.6.2
@@ -4131,7 +4131,7 @@ snapshots:
   '@fedify/redis@2.4.4(@fedify/fedify@2.4.4)(ioredis@5.11.1(supports-color@11.0.0))':
     dependencies:
       '@fedify/fedify': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       ioredis: 5.11.1(supports-color@11.0.0)
       temporal-polyfill: 1.0.5
 
@@ -4139,13 +4139,13 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.4.4
       '@fedify/vocab': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       temporal-polyfill: 1.0.5
 
   '@fedify/sqlite@2.4.4(@fedify/fedify@2.4.4)':
     dependencies:
       '@fedify/fedify': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       es-toolkit: 1.52.0
       temporal-polyfill: 1.0.5
 
@@ -4154,7 +4154,7 @@ snapshots:
   '@fedify/vocab-runtime@2.4.4':
     dependencies:
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4174,7 +4174,7 @@ snapshots:
       '@fedify/vocab-runtime': 2.4.4
       '@fedify/vocab-tools': 2.4.4
       '@fedify/webfinger': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4186,7 +4186,7 @@ snapshots:
   '@fedify/webfinger@2.4.4':
     dependencies:
       '@fedify/vocab-runtime': 2.4.4
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.46.1
 
@@ -4801,13 +4801,13 @@ snapshots:
     dependencies:
       wasm-feature-detect: 1.9.0
 
-  '@logtape/file@2.4.1(@logtape/logtape@2.4.0)':
+  '@logtape/file@2.4.1(@logtape/logtape@2.4.1)':
     dependencies:
-      '@logtape/logtape': 2.4.0
+      '@logtape/logtape': 2.4.1
 
   '@logtape/logtape@1.3.11': {}
 
-  '@logtape/logtape@2.4.0': {}
+  '@logtape/logtape@2.4.1': {}
 
   '@mswjs/interceptors@0.44.0(supports-color@11.0.0)':
     dependencies:
