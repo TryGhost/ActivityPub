@@ -15,25 +15,23 @@ A multi-tenant ActivityPub server for [Ghost](https://ghost.org/), built with [F
 
 # Running locally for development
 
-All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-known/nodeinfo` are proxied to this ActivityPub service using nginx. All other requests are forwarded to Ghost. This setup has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
+Ghost's host-based `pnpm dev` proxies `/.ghost/activitypub/*`, `/.well-known/webfinger`, and `/.well-known/nodeinfo` to this service (default target `127.0.0.1:8080`). This setup has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
 
 ## Setup
 
 1. **[Install Ghost](https://ghost.org/docs/install/)** using `Install from source` instructions
-2. **Expose your local port 80 (nginx) with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
-    - Use `tailscale funnel 80` or `ngrok http 80` to expose your local **port 80** (not 2368!), on which **nginx** will be running
-3. **Configure Ghost**
-    - In the Ghost monorepo, create a `config.local.json` file under `ghost/config.local.json`, with the following configuration:
-    ```
-    {
-        "url": <Tailscale or ngrok URL from step 2>
-    }
-    ```
-4. **Start the ActivityPub Service**
+2. **Start the ActivityPub Service**
     - Run `pnpm dev && pnpm logs` in the root directory of this project
-5. **Start Ghost**
-    - Run `pnpm dev` in the Ghost monorepo
-    - If you were already running Ghost locally, make sure to restart it!
+3. **Expose Ghost's development port with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
+    - Use `tailscale funnel --bg 2368` or `ngrok http 2368` to expose Ghost's Admin development server (**port 2368** in the main checkout, or `GHOST_DEV_PORT` from `.ghost-dev.env` in a worktree — not port 80)
+4. **Start Ghost with the public URL**
+    - In the Ghost monorepo, run:
+    ```
+    ACTIVITYPUB_PROXY_TARGET=127.0.0.1:8080 url=https://<your-tailnet-or-ngrok-url>/ pnpm dev
+    ```
+    - `pnpm dev` sets `url` itself, so a `url` in `ghost/config.local.json` has no effect
+    - Recent Ghost checkouts default `ACTIVITYPUB_PROXY_TARGET` to `127.0.0.1:8080`; set it explicitly on older ones
+    - If you were already running Ghost locally, make sure to restart it with the `url=` override
 
 ## 🏗️ Architecture & Development Guidelines
 

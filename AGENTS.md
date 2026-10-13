@@ -37,9 +37,13 @@ pnpm wipe-db        # wipe the database
 pnpm fix            # attempt to repair a broken local environment
 ```
 
-Local services: nginx `:80`→`:8080`, MySQL `:3307` (user `ghost` / pass
+Local services: app `:8080`, MySQL `:3307` (user `ghost` / pass
 `password` / db `activitypub`), Pub/Sub emulator `:8085`, GCS emulator `:4443`.
-Expose port 80 to the internet with `tailscale funnel 80`.
+Ghost's `pnpm dev` proxies ActivityPub routes to `127.0.0.1:8080` (set
+`ACTIVITYPUB_PROXY_TARGET` explicitly on older Ghost checkouts). Expose Ghost's
+development port (2368, or a worktree's `GHOST_DEV_PORT`) with
+`tailscale funnel --bg 2368`, and start Ghost with
+`url=https://<your-tailnet-url>/ pnpm dev`.
 
 ## Migrations
 
