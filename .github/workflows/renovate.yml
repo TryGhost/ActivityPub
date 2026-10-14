@@ -1,0 +1,73 @@
+name: Renovate
+
+# Self-hosted Renovate runner, replacing Mend's hosted scheduler.
+#
+# Renovate merges at most two PRs per run: one, then a single retry. So
+# throughput is "runs inside the automerge window, times two". Mend ran this
+# repo a few times a day, mostly outside the window, and green PRs sat open
+# for weeks. Running it ourselves every 30 minutes inside the window clears a
+# week of updates in a morning.
+#
+# .github/renovate.json5 stays the source of truth for package rules and the
+# automergeSchedule. A tick outside that window can open or update PRs but
+# can't merge anything.
+on:
+  schedule:
+    # Merge window: Monday to Thursday, 08:00 to 16:00 UTC. The last tick is
+    # 15:47 because GitHub delivers scheduled runs late, sometimes by an hour,
+    # and a late tick that lands after 16:00 is a harmless no-op. Off-the-hour
+    # minutes avoid top-of-hour scheduler contention.
+    - cron: '17,47 8-15 * * 1-4'
+    # Outside the window, open and update PRs every four hours so they're
+    # green and waiting when the window opens.
+    - cron: '17 0,4,16,20 * * *'
+    - cron: '17 8,12 * * 0,5,6'
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Renovate log level for this manual run'
+        required: false
+        default: 'info'
+        type: choice
+        options: [info, debug, trace]
+      ignoreSchedule:
+        description: 'Allow merging outside the automerge window for this run'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    # Forks with Actions enabled would otherwise try to mint the app token.
+    if: github.repository == 'TryGhost/ActivityPub'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.TRYGHOST_RENOVATE_APP_ID }}
+          private-key: ${{ secrets.TRYGHOST_RENOVATE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ActivityPub
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@e09d604f8f803bb527bd8321ed5be06c460b8682 # v46.2.2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          RENOVATE_REPOSITORIES: TryGhost/ActivityPub
+          # Already onboarded under Mend, so never open an onboarding PR.
+          RENOVATE_ONBOARDING: 'false'
+          # Manual escape hatch for draining the queue outside the window.
+          RENOVATE_FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.ignoreSchedule && '{"automergeSchedule":null}' || '{}' }}

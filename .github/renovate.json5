@@ -3,26 +3,29 @@
     'github>tryghost/renovate-config',
     'docker:pinDigests',
   ],
-  // Only automerge during EU office hours (Monday–Thursday, 07:00–16:59 UTC).
+  // Only automerge during working hours (Monday–Thursday, 08:00–15:59 UTC).
   // Merging to main ships straight to production, so we don't want anything
   // landing while there's no engineer around to pick it up.
   //
   // Two things to know. The schedule controls when PRs merge, not when
   // Renovate opens them. And it only works while we use Renovate's own
   // automerge rather than GitHub's, which is what platformAutomerge turns off.
+  //
+  // Renovate itself runs from .github/workflows/renovate.yml, which ticks
+  // every 30 minutes inside this window. Keep the two in step.
   platformAutomerge: false,
+  timezone: 'Etc/UTC',
   automergeSchedule: [
-    '* 7-16 * * 1,2,3,4',
+    '* 8-15 * * 1-4',
   ],
-  // Renovate merges one PR per job, then restarts once and rebases every
+  // Renovate merges one PR per run, then restarts once and rebases every
   // other automerge PR because main moved. That restarts their CI, so nothing
-  // else can merge until the next job, and the same handful of digest PRs
+  // else can merge until the next run, and the same handful of digest PRs
   // win every time while everything behind them starves for weeks.
   //
-  // Only rebasing on conflict keeps the other PRs green, so the job Mend
-  // runs after each push to main can keep merging through the queue. The
-  // main ruleset doesn't require branches to be up to date, so a green PR
-  // that's behind main still merges.
+  // Only rebasing on conflict keeps the other PRs green, so each run can
+  // merge the next two in line. The main ruleset doesn't require branches to
+  // be up to date, so a green PR that's behind main still merges.
   rebaseWhen: 'conflicted',
   lockFileMaintenance: {
     enabled: true,
