@@ -163,43 +163,43 @@ Given('{string} is following Us', async function (actorName) {
             body: JSON.stringify(activity),
         },
     );
-    assert.ok(response.ok, `Expected Follow to be accepted, got ${response.status}`);
+    assert.ok(
+        response.ok,
+        `Expected Follow to be accepted, got ${response.status}`,
+    );
     await waitForFollowerToBeAdded(actor.id);
 });
 
-Given(
-    '{string} has aliased Us',
-    async function (actorName) {
-        const actor = this.actors[actorName];
-        if (!actor) {
-            throw new Error(`Could not find Actor ${actorName}`);
-        }
+Given('{string} has aliased Us', async function (actorName) {
+    const actor = this.actors[actorName];
+    if (!actor) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
 
-        if (isInternalAccount(actorName)) {
-            const response = await fetchActivityPub(
-                `${siteOriginForInternalActor(actor)}/.ghost/activitypub/v1/aliases`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sourceHandle: '@index@self.test',
-                    }),
+    if (isInternalAccount(actorName)) {
+        const response = await fetchActivityPub(
+            `${siteOriginForInternalActor(actor)}/.ghost/activitypub/v1/aliases`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-            );
-            assert.ok(
-                response.ok,
-                `Expected alias to be created, got ${response.status}`,
-            );
-            return;
-        }
-
-        throw new Error(
-            `Aliasing Us from remote actor ${actorName} is not supported in this step; create the actor with an alias instead`,
+                body: JSON.stringify({
+                    sourceHandle: '@index@self.test',
+                }),
+            },
         );
-    },
-);
+        assert.ok(
+            response.ok,
+            `Expected alias to be created, got ${response.status}`,
+        );
+        return;
+    }
+
+    throw new Error(
+        `Aliasing Us from remote actor ${actorName} is not supported in this step; create the actor with an alias instead`,
+    );
+});
 
 When('we migrate to {string}', async function (actorName) {
     const actor = this.actors[actorName];
@@ -270,20 +270,17 @@ Then(
     },
 );
 
-Then(
-    'a Move activity is sent to {string}',
-    async function (actorName) {
-        const actor = this.actors[actorName];
-        if (!actor) {
-            throw new Error(`Could not find Actor ${actorName}`);
-        }
+Then('a Move activity is sent to {string}', async function (actorName) {
+    const actor = this.actors[actorName];
+    if (!actor) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
 
-        const inbox = new URL(actor.inbox);
-        const found = await waitForRequest('POST', inbox.pathname, (call) => {
-            const json = JSON.parse(call.request.body);
-            return json.type === 'Move';
-        });
+    const inbox = new URL(actor.inbox);
+    const found = await waitForRequest('POST', inbox.pathname, (call) => {
+        const json = JSON.parse(call.request.body);
+        return json.type === 'Move';
+    });
 
-        assert.ok(found, `Expected a Move activity to be sent to ${actorName}`);
-    },
-);
+    assert.ok(found, `Expected a Move activity to be sent to ${actorName}`);
+});
