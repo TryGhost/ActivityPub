@@ -75,6 +75,22 @@
       automerge: false,
     },
 
+    // Keep the MySQL image on the major that Cloud SQL actually runs.
+    // Reviewing majors by hand isn't enough: a server major bump looks like
+    // routine Renovate noise, CI stays green, and we end up testing against a
+    // MySQL that production doesn't have. When Cloud SQL moves to a new
+    // major, bump allowedVersions with it.
+    {
+      description: 'Pin the MySQL image to the Cloud SQL major',
+      matchDatasources: [
+        'docker',
+      ],
+      matchDepNames: [
+        'mysql',
+      ],
+      allowedVersions: '<9',
+    },
+
     // Redis needs the extra care. ioredis is the client under @fedify/redis,
     // and a major can pair it with a version outside that peer range — pnpm
     // only warns. Majors also change wire-level behavior: v6 switched the
