@@ -75,9 +75,8 @@
       automerge: false,
     },
 
-    // Keep in sync with the production MySQL version.
     {
-      description: 'Pin the MySQL image to the Cloud SQL major',
+      description: 'Pin the MySQL image major — keep in sync with the production MySQL version',
       matchDatasources: [
         'docker',
       ],
