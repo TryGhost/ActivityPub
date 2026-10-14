@@ -557,11 +557,7 @@ describe('MoveHandler', () => {
         });
         accountService.ensureByApId.mockResolvedValue(ok(targetAccount));
 
-        await handler.migrateInternalFollowers(
-            ctx,
-            sourceAccount,
-            targetActor,
-        );
+        await handler.migrateInternalFollowers(ctx, sourceAccount, targetActor);
 
         expect(accountService.migrateFollow).toHaveBeenCalledOnce();
         expect(accountService.migrateFollow).toHaveBeenCalledWith(

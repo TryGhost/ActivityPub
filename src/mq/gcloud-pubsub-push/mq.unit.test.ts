@@ -81,8 +81,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 TOPIC,
             );
 
-            const inbox =
-                'https://alice.test/.ghost/activitypub/inbox/index';
+            const inbox = 'https://alice.test/.ghost/activitypub/inbox/index';
             const message = {
                 id: 'move-123',
                 type: 'outbox',
