@@ -25,7 +25,9 @@ export async function reset() {
     const db = getClient();
 
     const tables = [
+        'account_aliases',
         'account_delivery_backoffs',
+        'account_moves',
         'accounts',
         'blocks',
         'bluesky_integration_account_handles',

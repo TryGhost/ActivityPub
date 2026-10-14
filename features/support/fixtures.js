@@ -262,7 +262,7 @@ export async function createActivity(type, object, actor, extras = {}) {
 
 export async function createActor(
     name,
-    { remote = true, type = 'Person', aliases } = {},
+    { remote = true, type = 'Person', aliases, ghostShaped = false } = {},
 ) {
     if (remote === false) {
         return {
@@ -298,13 +298,30 @@ export async function createActor(
         };
     }
 
+    const host = 'https://fake-external-activitypub.test';
+    const actorPath = ghostShaped
+        ? `/.ghost/activitypub/users/${name}`
+        : `/user/${name}`;
+    const inboxPath = ghostShaped
+        ? `/.ghost/activitypub/inbox/${name}`
+        : `/inbox/${name}`;
+    const followersPath = ghostShaped
+        ? `/.ghost/activitypub/followers/${name}`
+        : `/followers/${name}`;
+    const followingPath = ghostShaped
+        ? `/.ghost/activitypub/following/${name}`
+        : `/following/${name}`;
+    const likedPath = ghostShaped
+        ? `/.ghost/activitypub/liked/${name}`
+        : `/liked/${name}`;
+
     const user = {
         '@context': [
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/data-integrity/v1',
         ],
-        id: `https://fake-external-activitypub.test/user/${name}`,
-        url: `https://fake-external-activitypub.test/user/${name}`,
+        id: `${host}${actorPath}`,
+        url: `${host}${actorPath}`,
         type,
 
         handle: `@${name}@fake-external-activitypub.test`,
@@ -313,17 +330,17 @@ export async function createActor(
         name,
         summary: 'A test actor for testing',
 
-        inbox: `https://fake-external-activitypub.test/inbox/${name}`,
-        outbox: `https://fake-external-activitypub.test/inbox/${name}`,
-        followers: `https://fake-external-activitypub.test/followers/${name}`,
-        following: `https://fake-external-activitypub.test/following/${name}`,
-        liked: `https://fake-external-activitypub.test/liked/${name}`,
+        inbox: `${host}${inboxPath}`,
+        outbox: `${host}${inboxPath}`,
+        followers: `${host}${followersPath}`,
+        following: `${host}${followingPath}`,
+        liked: `${host}${likedPath}`,
 
         'https://w3id.org/security#publicKey': {
-            id: 'https://fake-external-activitypub.test/user#main-key',
+            id: `${host}${actorPath}#main-key`,
             type: 'https://w3id.org/security#Key',
             'https://w3id.org/security#owner': {
-                id: 'https://fake-external-activitypub.test/user',
+                id: `${host}${actorPath}`,
             },
             'https://w3id.org/security#publicKeyPem':
                 '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
@@ -340,7 +357,7 @@ export async function createActor(
         externalActivityPub.register(
             {
                 method: 'POST',
-                endpoint: `/inbox/${name}`,
+                endpoint: inboxPath,
             },
             {
                 status: 202,
@@ -349,7 +366,7 @@ export async function createActor(
         externalActivityPub.register(
             {
                 method: 'GET',
-                endpoint: `/user/${name}`,
+                endpoint: actorPath,
             },
             {
                 status: 200,
@@ -362,7 +379,7 @@ export async function createActor(
         externalActivityPub.register(
             {
                 method: 'GET',
-                endpoint: `/followers/${name}`,
+                endpoint: followersPath,
             },
             {
                 status: 200,
@@ -380,7 +397,7 @@ export async function createActor(
         externalActivityPub.register(
             {
                 method: 'GET',
-                endpoint: `/following/${name}`,
+                endpoint: followingPath,
             },
             {
                 status: 200,
@@ -404,13 +421,11 @@ export async function createActor(
                 status: 200,
                 body: {
                     subject: `acct:${name}@fake-external-activitypub.test`,
-                    aliases: [
-                        `https://fake-external-activitypub.test/user/${name}`,
-                    ],
+                    aliases: [`${host}${actorPath}`],
                     links: [
                         {
                             rel: 'self',
-                            href: `https://fake-external-activitypub.test/user/${name}`,
+                            href: `${host}${actorPath}`,
                             type: 'application/activity+json',
                         },
                         {

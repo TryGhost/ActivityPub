@@ -1,0 +1,128 @@
+import { isActor, Move, PUBLIC_COLLECTION } from '@fedify/vocab';
+import { v4 as uuidv4 } from 'uuid';
+
+import type { Account } from '@/account/account.entity';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { MoveHandler } from '@/activity-handlers/move.handler';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { error, getValue, isError, ok, type Result } from '@/core/result';
+import { isHandle } from '@/helpers/activitypub/actor';
+import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
+
+type MoveError =
+    | { type: 'invalid-handle' }
+    | { type: 'target-unavailable' }
+    | { type: 'alias-required' }
+    | { type: 'self-move' }
+    | { type: 'different-target' }
+    | { type: 'busy' };
+
+export class AccountMoveService {
+    constructor(
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly moveHandler: MoveHandler,
+    ) {}
+
+    async move(
+        account: Account,
+        targetHandle: string,
+    ): Promise<Result<{ target: URL; targetHandle: string }, MoveError>> {
+        if (!account.isInternal || !isHandle(targetHandle)) {
+            return error({ type: 'invalid-handle' });
+        }
+
+        // Some servers (e.g. Misskey) put an internal ID in the actor URL, so
+        // the handle that resolved is kept for showing the destination later
+        const [, username, domain] = targetHandle.split('@');
+        const resolvedHandle = `@${username}@${domain.toLowerCase()}`;
+
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const lookup = await lookupActorProfile(ctx, targetHandle);
+        if (isError(lookup)) return error({ type: 'target-unavailable' });
+
+        const targetId = getValue(lookup);
+        if (targetId.href === account.apId.href) {
+            return error({ type: 'self-move' });
+        }
+
+        // Fetch the destination actor before emitting Move. A destination must
+        // explicitly list the source in alsoKnownAs to prove reciprocal control.
+        let target: unknown;
+        try {
+            target = await lookupObject(ctx, targetId);
+        } catch (_err) {
+            return error({ type: 'target-unavailable' });
+        }
+        if (!isActor(target) || target.id?.href !== targetId.href) {
+            return error({ type: 'target-unavailable' });
+        }
+        if (
+            !Array.from(target.aliasIds).some(
+                (alias) => alias.href === account.apId.href,
+            )
+        ) {
+            return error({ type: 'alias-required' });
+        }
+
+        const claim = await this.accountRepository.claimMove(
+            account.id,
+            targetId,
+            resolvedHandle,
+            ctx.getObjectUri(Move, { id: uuidv4() }),
+        );
+        if (claim === 'different-target') {
+            return error({ type: 'different-target' });
+        }
+        if (claim === 'busy') return error({ type: 'busy' });
+        if (claim === 'sent') {
+            return ok({ target: targetId, targetHandle: resolvedHandle });
+        }
+
+        try {
+            const move = new Move({
+                id: claim.activityId,
+                actor: account.apId,
+                object: account.apId,
+                target: targetId,
+                to: PUBLIC_COLLECTION,
+                cc: account.apFollowers,
+            });
+
+            await ctx.data.globaldb.set([move.id!.href], await move.toJsonLd());
+
+            // Migrate same-instance followers in-process (ADR-0001) before
+            // federating Move. Uses the already-fetched target; failures
+            // release the claim because MQ will not redeliver to internal inboxes.
+            await this.moveHandler.migrateInternalFollowers(
+                ctx,
+                account,
+                target,
+            );
+
+            await ctx.sendActivity(
+                { username: account.username },
+                'followers',
+                move,
+                { preferSharedInbox: true },
+            );
+        } catch (err) {
+            await this.accountRepository.releaseMove(account.id, claim.token);
+            throw err;
+        }
+
+        // The Move is already queued, so a completion failure keeps the claim
+        // and waits for the stale-claim window instead of re-sending at once
+        const completed = await this.accountRepository.completeMove(
+            account.id,
+            claim.token,
+        );
+        if (!completed) return error({ type: 'busy' });
+
+        return ok({ target: targetId, targetHandle: resolvedHandle });
+    }
+
+    async getMove(accountId: number) {
+        return this.accountRepository.getMove(accountId);
+    }
+}

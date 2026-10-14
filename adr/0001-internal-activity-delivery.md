@@ -32,10 +32,12 @@ We will implement a phased approach to optimize internal activity delivery:
 - Stop sending Create activities over the network when both sender and recipient are internal accounts
 - Rely on existing domain layer logic for feed updates and notifications
 - Implement detection logic to identify internal vs external recipients
+- Extended in practice to Like, Announce, Delete, Undo, and Update (same MQ internal-inbox drop)
 
 **Phase 2: Other Activity Types**
 - Investigate Follow, Accept, and other activity types to determine safety of internal optimization
 - Extend the optimization to additional activity types where safe
+- **Move (done):** outbound Move migrates same-instance followers in-process; MQ drops Move delivery to internal inboxes; external followers still receive Move over the network
 
 **Implementation Strategy:**
 - Add internal account check in activity delivery logic

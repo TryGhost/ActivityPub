@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import type { AccountMoveService } from '@/account/account-move.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AppContext, HonoContextVariables } from '@/app';
 import { error, ok } from '@/core/result';
@@ -24,6 +25,7 @@ import type { Site } from '@/site/site.service';
 describe('AccountController aliases', () => {
     let accountRepository: KnexAccountRepository;
     let accountService: AccountService;
+    let accountMoveService: AccountMoveService;
     let controller: AccountController;
     let account: Account;
     let site: Site;
@@ -66,6 +68,10 @@ describe('AccountController aliases', () => {
             setWebfingerHost: vi.fn(),
             validateWebfingerHost: vi.fn(),
         } as unknown as AccountService;
+        accountMoveService = {
+            getMove: vi.fn().mockResolvedValue(null),
+            move: vi.fn(),
+        } as unknown as AccountMoveService;
         controller = new AccountController(
             {} as AccountView,
             accountRepository,
@@ -73,6 +79,7 @@ describe('AccountController aliases', () => {
             {} as FedifyContextFactory,
             {} as AccountPostsView,
             accountService,
+            accountMoveService,
         );
     });
 
@@ -98,6 +105,16 @@ describe('AccountController aliases', () => {
                     method: 'DELETE',
                     path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleRemoveAccountAlias',
+                }),
+                expect.objectContaining({
+                    method: 'POST',
+                    path: '/.ghost/activitypub/:version/migration',
+                    methodName: 'handleMoveAccount',
+                }),
+                expect.objectContaining({
+                    method: 'GET',
+                    path: '/.ghost/activitypub/:version/migration',
+                    methodName: 'handleGetAccountMigration',
                 }),
                 expect.objectContaining({
                     method: 'GET',
@@ -133,7 +150,160 @@ describe('AccountController aliases', () => {
                 ),
             ).toEqual([GhostRole.Owner, GhostRole.Administrator]);
         }
+        for (const methodName of [
+            'handleGetAccountMigration',
+            'handleMoveAccount',
+        ]) {
+            expect(
+                Reflect.getMetadata(
+                    ROLES_METADATA_KEY,
+                    AccountController.prototype,
+                    methodName,
+                ),
+            ).toEqual([GhostRole.Owner]);
+        }
     });
+
+    it('reports outbound migration status', async () => {
+        vi.mocked(accountMoveService.getMove).mockResolvedValue({
+            target: new URL('https://mastodon.social/users/new'),
+            targetHandle: '@new@mastodon.social',
+            sent: true,
+        });
+        const response = await controller.handleGetAccountMigration(
+            createContext(),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            targetApId: 'https://mastodon.social/users/new',
+            targetHandle: '@new@mastodon.social',
+            sent: true,
+        });
+    });
+
+    it('reports no destination before a migration starts', async () => {
+        const response = await controller.handleGetAccountMigration(
+            createContext(),
+        );
+        expect(await response.json()).toEqual({
+            targetApId: null,
+            targetHandle: null,
+            sent: false,
+        });
+    });
+
+    it('accepts an owner-initiated migration and returns its destination', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            ok({
+                target: new URL('https://mastodon.social/users/new'),
+                targetHandle: '@new@mastodon.social',
+            }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@new@mastodon.social' }),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            targetApId: 'https://mastodon.social/users/new',
+            targetHandle: '@new@mastodon.social',
+            sent: true,
+        });
+        expect(accountMoveService.move).toHaveBeenCalledWith(
+            account,
+            '@new@mastodon.social',
+        );
+    });
+
+    it('identifies a move to this account so clients can explain it', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            error({ type: 'self-move' }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@index@example.com' }),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'Destination is this account',
+            code: 'SELF_MOVE',
+        });
+    });
+
+    it('rejects an invalid destination handle without a code', async () => {
+        vi.mocked(accountMoveService.move).mockResolvedValue(
+            error({ type: 'invalid-handle' }),
+        );
+        const response = await controller.handleMoveAccount(
+            createContext({ targetHandle: '@new@localhost' }),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'Invalid destination handle',
+        });
+    });
+
+    it.each([
+        { type: 'target-unavailable', status: 404, body: null },
+        {
+            type: 'alias-required',
+            status: 422,
+            body: { message: 'Destination actor must alias this account' },
+        },
+        {
+            type: 'different-target',
+            status: 409,
+            body: { message: 'Account migration already started' },
+        },
+        {
+            type: 'busy',
+            status: 409,
+            body: { message: 'Account migration already started' },
+        },
+    ] as const)(
+        'responds $status when the move fails with $type',
+        async ({ type, status, body }) => {
+            vi.mocked(accountMoveService.move).mockResolvedValue(
+                error({ type }),
+            );
+            const response = await controller.handleMoveAccount(
+                createContext({ targetHandle: '@new@mastodon.social' }),
+            );
+            expect(response.status).toBe(status);
+            if (body) {
+                expect(await response.json()).toEqual(body);
+            } else {
+                expect(await response.text()).toBe('');
+            }
+        },
+    );
+
+    it.each([
+        { case: 'no body', body: undefined },
+        { case: 'no destination handle', body: {} },
+        { case: 'a non-string handle', body: { targetHandle: 42 } },
+    ])('rejects a move request with $case', async ({ body }) => {
+        const response = await controller.handleMoveAccount(
+            createContext(body),
+        );
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            message: 'A destination handle is required',
+        });
+        expect(accountMoveService.move).not.toHaveBeenCalled();
+    });
+
+    it.each(['handleGetAccountMigration', 'handleMoveAccount'] as const)(
+        '%s responds 404 when the site has no account',
+        async (method) => {
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                null as unknown as Account,
+            );
+            const response = await controller[method](
+                createContext({ targetHandle: '@new@mastodon.social' }),
+            );
+            expect(response.status).toBe(404);
+            expect(accountMoveService.move).not.toHaveBeenCalled();
+        },
+    );
 
     it('serves aliases through mounted routes', async () => {
         const app = new Hono<{ Variables: HonoContextVariables }>();

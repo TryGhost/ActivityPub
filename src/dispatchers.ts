@@ -23,6 +23,7 @@ import {
 import * as Sentry from '@sentry/node';
 
 import type { AccountService } from '@/account/account.service';
+import type { AccountMoveService } from '@/account/account-move.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
 import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
@@ -42,6 +43,7 @@ import type { PostService } from '@/post/post.service';
 export const actorDispatcher = (
     hostDataContextLoader: HostDataContextLoader,
     accountService: AccountService,
+    accountMoveService: AccountMoveService,
 ) =>
     async function actorDispatcher(
         ctx: FedifyRequestContext,
@@ -74,6 +76,7 @@ export const actorDispatcher = (
 
         const { account } = getValue(hostData);
         const aliases = await accountService.getAliases(account.id);
+        const move = await accountMoveService.getMove(account.id);
 
         const person = new Person({
             id: new URL(account.apId),
@@ -97,6 +100,12 @@ export const actorDispatcher = (
             liked: account.apLiked,
             url: account.url || account.apId,
             ...(aliases.length > 0 ? { aliases } : {}),
+            // Advertise as soon as the destination is locked in. Misskey
+            // verifies movedTo when it receives the Move, which can arrive
+            // before completeMove. A failed send may have reached some
+            // inboxes already, so releasing the worker claim must not
+            // withdraw the destination from the profile.
+            ...(move ? { successor: move.target } : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),

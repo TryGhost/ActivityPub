@@ -53,6 +53,7 @@ import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import { DomainBlockedEvent } from '@/account/events/domain-blocked.event';
 import { DomainUnblockedEvent } from '@/account/events/domain-unblocked.event';
 import { NotificationsReadEvent } from '@/account/events/notifications-read-event';
+import { dispatchMoveActivity } from '@/activity-dispatchers/move.dispatcher';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
 import type { CreateHandler } from '@/activity-handlers/create.handler';
 import type { DeleteHandler } from '@/activity-handlers/delete.handler';
@@ -602,6 +603,11 @@ globalFedify.setObjectDispatcher(
             container.resolve<DeleteDispatcher>('deleteDispatcher');
         return deleteDispatcher.dispatch(ctx, data);
     }),
+);
+globalFedify.setObjectDispatcher(
+    Move,
+    '/.ghost/activitypub/move/{id}',
+    spanWrapper(dispatchMoveActivity),
 );
 globalFedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
