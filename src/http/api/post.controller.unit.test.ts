@@ -6,6 +6,7 @@ import type { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
 import { error, ok } from '@/core/result';
+import { getRelatedActivities } from '@/db';
 import { PostController } from '@/http/api/post.controller';
 import {
     Audience,
@@ -18,6 +19,10 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
 import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
+
+vi.mock('@/db', () => ({
+    getRelatedActivities: vi.fn(),
+}));
 
 describe('Post API', () => {
     let site: Site;
@@ -265,5 +270,100 @@ describe('Post API', () => {
         const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(404);
+    });
+});
+
+describe('Post API - delete', () => {
+    let site: Site;
+    let account: AccountEntity;
+    let postService: PostService;
+    let postController: PostController;
+    let logger: {
+        info: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+    };
+
+    function getMockAppContext(postApId: string) {
+        return {
+            req: {
+                param: (key: string) => (key === 'id' ? postApId : null),
+            },
+            get: (key: string) => {
+                if (key === 'site') {
+                    return site;
+                }
+                if (key === 'account') {
+                    return account;
+                }
+                if (key === 'logger') {
+                    return logger;
+                }
+                if (key === 'globaldb') {
+                    return { delete: vi.fn().mockResolvedValue(undefined) };
+                }
+            },
+        } as unknown as AppContext;
+    }
+
+    beforeEach(async () => {
+        site = {
+            id: 123,
+            host: 'example.com',
+            webhook_secret: 'secret',
+            ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+        };
+
+        account = await createTestInternalAccount(456, {
+            host: new URL('http://example.com'),
+            username: 'foobar',
+            name: 'Foo Bar',
+            bio: 'Just a foobar',
+            url: null,
+            avatarUrl: new URL('http://example.com/avatar/foobar.png'),
+            bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
+            customFields: null,
+        });
+        logger = { info: vi.fn(), error: vi.fn() };
+        postService = {
+            deleteByApId: vi.fn().mockResolvedValue(ok(undefined)),
+        } as unknown as PostService;
+        postController = new PostController(
+            postService,
+            {} as unknown as AccountService,
+            {} as unknown as KnexPostRepository,
+            {} as unknown as Federation<ContextData>,
+        );
+    });
+
+    it('should return 204 after removing related activities', async () => {
+        vi.mocked(getRelatedActivities).mockResolvedValue([
+            { id: 'https://example.com/activities/1' },
+        ]);
+
+        const response = await postController.handleDeletePost(
+            getMockAppContext(`https://${site.host}/posts/789`),
+        );
+
+        expect(response.status).toBe(204);
+    });
+
+    it('should return 500 without exposing error details when cleanup fails', async () => {
+        const dbError = Object.assign(new Error('connect ECONNREFUSED'), {
+            code: 'ECONNREFUSED',
+            sql: 'select * from key_value where ...',
+            sqlMessage: 'Table activitypub.key_value does not exist',
+        });
+        vi.mocked(getRelatedActivities).mockRejectedValue(dbError);
+
+        const response = await postController.handleDeletePost(
+            getMockAppContext(`https://${site.host}/posts/789`),
+        );
+
+        expect(response.status).toBe(500);
+        await expect(response.text()).resolves.toBe('');
+        expect(logger.error).toHaveBeenCalledWith(
+            'Error deleting post - {error}',
+            { error: dbError },
+        );
     });
 });
