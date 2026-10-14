@@ -1,6 +1,6 @@
 services:
   mysql-test:
-    image: mysql:8.4.11@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
+    image: mysql:26.7.0@sha256:893418c8a7a34c60d2d961cc30ef136095da141478562ed2101ae3f5faba9c3f
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: __JOB_NAME__
