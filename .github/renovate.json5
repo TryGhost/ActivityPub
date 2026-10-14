@@ -75,11 +75,7 @@
       automerge: false,
     },
 
-    // Keep the MySQL image on the major that Cloud SQL actually runs.
-    // Reviewing majors by hand isn't enough: a server major bump looks like
-    // routine Renovate noise, CI stays green, and we end up testing against a
-    // MySQL that production doesn't have. When Cloud SQL moves to a new
-    // major, bump allowedVersions with it.
+    // Keep in sync with the production MySQL version.
     {
       description: 'Pin the MySQL image to the Cloud SQL major',
       matchDatasources: [
