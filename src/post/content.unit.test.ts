@@ -379,6 +379,25 @@ describe('ContentPreparer', () => {
                 );
             });
 
+            it('should treat mention names literally rather than as regular expressions', () => {
+                const content =
+                    'Hello @user+1@example.xyz and @userX1@exampleXxyz';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user+1@example.xyz',
+                            href: new URL('https://example.xyz/@user+1?q=$&'),
+                            account: account,
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user+1?q=$&" data-profile="@user+1@example.xyz" rel="nofollow noopener noreferrer">@user+1@example.xyz</a> and @userX1@exampleXxyz',
+                );
+            });
+
             it('should not modify content when no mentions are provided', () => {
                 const content = 'Hello @user@example.xyz, how are you?';
                 const result = preparer.prepare(content, {
