@@ -34,6 +34,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # CI installs Node from .nvmrc but production runs the Dockerfile base
+      # image. Renovate sees the two at different times (nodejs.org vs Docker
+      # Hub), so a Node bump can arrive touching only one of them.
+      - name: Check .nvmrc matches the Dockerfile Node version
+        run: |
+          nvmrc=$(tr -d '[:space:]' < .nvmrc)
+          dockerfile=$(sed -nE 's/^FROM node:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' Dockerfile | head -n 1)
+          if [ "$nvmrc" != "$dockerfile" ]; then
+            echo "::error file=.nvmrc::.nvmrc is ${nvmrc} but the Dockerfile base image is node:${dockerfile:-<not found>}. Update both together."
+            exit 1
+          fi
+
       - name: Setup Biome
         uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51 # v2
 
