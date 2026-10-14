@@ -5,6 +5,7 @@ import { Move, Note, Person } from '@fedify/vocab';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountMoveService } from '@/account/account-move.service';
+import type { MoveHandler } from '@/activity-handlers/move.handler';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FedifyContext } from '@/app';
 import { error, getError, getValue, isError, ok } from '@/core/result';
@@ -31,6 +32,7 @@ describe('AccountMoveService', () => {
 
     let repository: KnexAccountRepository;
     let context: FedifyContext;
+    let moveHandler: MoveHandler;
     let service: AccountMoveService;
 
     beforeEach(() => {
@@ -53,9 +55,16 @@ describe('AccountMoveService', () => {
             sendActivity: vi.fn().mockResolvedValue(undefined),
             data: { globaldb: { set: vi.fn().mockResolvedValue(undefined) } },
         } as unknown as FedifyContext;
-        service = new AccountMoveService(repository, {
-            getFedifyContext: () => context,
-        } as FedifyContextFactory);
+        moveHandler = {
+            migrateInternalFollowers: vi.fn().mockResolvedValue(undefined),
+        } as unknown as MoveHandler;
+        service = new AccountMoveService(
+            repository,
+            {
+                getFedifyContext: () => context,
+            } as FedifyContextFactory,
+            moveHandler,
+        );
     });
 
     it('sends a stable Move from the source to its followers', async () => {
@@ -63,6 +72,21 @@ describe('AccountMoveService', () => {
         expect(isError(result)).toBe(false);
         if (isError(result)) throw new Error('Expected migration to succeed');
         expect(getValue(result).target.href).toBe(target.href);
+        expect(moveHandler.migrateInternalFollowers).toHaveBeenCalledOnce();
+        expect(moveHandler.migrateInternalFollowers).toHaveBeenCalledWith(
+            context,
+            account,
+            expect.any(Person),
+        );
+        const migratedTarget = vi.mocked(moveHandler.migrateInternalFollowers)
+            .mock.calls[0][2] as Person;
+        expect(migratedTarget.id?.href).toBe(target.href);
+        expect(
+            vi.mocked(moveHandler.migrateInternalFollowers).mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            vi.mocked(context.sendActivity).mock.invocationCallOrder[0],
+        );
         const sent = vi.mocked(context.sendActivity).mock.calls[0];
         expect(sent[0]).toEqual({ username: 'index' });
         expect(sent[1]).toBe('followers');
@@ -185,6 +209,7 @@ describe('AccountMoveService', () => {
     it('does not send a duplicate Move when already sent', async () => {
         vi.mocked(repository.claimMove).mockResolvedValue('sent');
         await service.move(account, '@bryan@mastodon.social');
+        expect(moveHandler.migrateInternalFollowers).not.toHaveBeenCalled();
         expect(context.sendActivity).not.toHaveBeenCalled();
     });
 
@@ -195,6 +220,19 @@ describe('AccountMoveService', () => {
         await expect(
             service.move(account, '@bryan@mastodon.social'),
         ).rejects.toThrow('queue unavailable');
+        expect(moveHandler.migrateInternalFollowers).toHaveBeenCalledOnce();
+        expect(repository.releaseMove).toHaveBeenCalledWith(1, 'claim-one');
+        expect(repository.completeMove).not.toHaveBeenCalled();
+    });
+
+    it('releases the claim when internal follower migration fails', async () => {
+        vi.mocked(moveHandler.migrateInternalFollowers).mockRejectedValue(
+            new Error('migration failed'),
+        );
+        await expect(
+            service.move(account, '@bryan@mastodon.social'),
+        ).rejects.toThrow('migration failed');
+        expect(context.sendActivity).not.toHaveBeenCalled();
         expect(repository.releaseMove).toHaveBeenCalledWith(1, 'claim-one');
         expect(repository.completeMove).not.toHaveBeenCalled();
     });

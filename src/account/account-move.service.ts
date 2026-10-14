@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { MoveHandler } from '@/activity-handlers/move.handler';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import { isHandle } from '@/helpers/activitypub/actor';
@@ -20,6 +21,7 @@ export class AccountMoveService {
     constructor(
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly moveHandler: MoveHandler,
     ) {}
 
     async move(
@@ -88,6 +90,16 @@ export class AccountMoveService {
             });
 
             await ctx.data.globaldb.set([move.id!.href], await move.toJsonLd());
+
+            // Migrate same-instance followers in-process (ADR-0001) before
+            // federating Move. Uses the already-fetched target; failures
+            // release the claim because MQ will not redeliver to internal inboxes.
+            await this.moveHandler.migrateInternalFollowers(
+                ctx,
+                account,
+                target,
+            );
+
             await ctx.sendActivity(
                 { username: account.username },
                 'followers',

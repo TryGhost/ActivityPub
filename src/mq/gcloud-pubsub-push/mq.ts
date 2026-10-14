@@ -143,7 +143,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 message.activity?.type === 'Announce' ||
                 message.activity?.type === 'Delete' ||
                 message.activity?.type === 'Undo' ||
-                message.activity?.type === 'Update';
+                message.activity?.type === 'Update' ||
+                message.activity?.type === 'Move';
 
             if (
                 activityTypeIsHandledByDomain &&

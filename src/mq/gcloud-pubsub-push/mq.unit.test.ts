@@ -64,10 +64,73 @@ describe('GCloudPubSubPushMessageQueue', () => {
             recordDeliveryFailure: vi.fn(),
             clearDeliveryFailure: vi.fn(),
             getActiveDeliveryBackoff: vi.fn(),
+            shouldDeliverActivity: vi.fn(),
         } as unknown as AccountService;
     });
 
     describe('enqueue', () => {
+        it('should drop Move activities destined for internal Ghost inboxes', async () => {
+            (
+                mockAccountService.shouldDeliverActivity as Mock
+            ).mockResolvedValue(false);
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const inbox =
+                'https://alice.test/.ghost/activitypub/inbox/index';
+            const message = {
+                id: 'move-123',
+                type: 'outbox',
+                inbox,
+                activity: { type: 'Move' },
+            };
+
+            await mq.enqueue(message);
+
+            expect(
+                mockAccountService.shouldDeliverActivity,
+            ).toHaveBeenCalledWith(new URL(inbox));
+            expect(mockTopic.publishMessage).not.toHaveBeenCalled();
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    'due to inbox URL being an internal account',
+                ),
+                expect.objectContaining({ fedifyId: message.id }),
+            );
+        });
+
+        it('should still publish Move activities to external inboxes', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            (
+                mockAccountService.getActiveDeliveryBackoff as Mock
+            ).mockResolvedValue(null);
+
+            const message = {
+                id: 'move-456',
+                type: 'outbox',
+                inbox: 'https://mastodon.social/inbox',
+                activity: { type: 'Move' },
+            };
+
+            await mq.enqueue(message);
+
+            expect(
+                mockAccountService.shouldDeliverActivity,
+            ).not.toHaveBeenCalled();
+            expect(mockTopic.publishMessage).toHaveBeenCalledTimes(1);
+        });
+
         it('should publish a message', async () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,

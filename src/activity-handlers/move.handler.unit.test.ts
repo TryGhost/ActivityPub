@@ -337,6 +337,126 @@ describe('MoveHandler', () => {
         );
     });
 
+    it('migrates followers without federating Follow or Undo for Ghost→Ghost', async () => {
+        sourceAccount = await createTestInternalAccount(2, {
+            host: new URL('https://old.ghost.example'),
+            username: 'index',
+            name: 'Old Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        targetAccount = await createTestInternalAccount(3, {
+            host: new URL('https://new.ghost.example'),
+            username: 'index',
+            name: 'New Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        sourceActor = new Person({
+            id: sourceAccount.apId,
+            inbox: sourceAccount.apInbox,
+            preferredUsername: sourceAccount.username,
+        });
+        targetActor = new Person({
+            id: targetAccount.apId,
+            inbox: targetAccount.apInbox,
+            preferredUsername: targetAccount.username,
+            aliases: [sourceAccount.apId],
+        });
+        vi.mocked(lookupObject).mockResolvedValue(targetActor);
+        accountService.getAccountByApId.mockResolvedValue({
+            id: sourceAccount.id,
+        });
+        accountService.getAccountById.mockResolvedValue(sourceAccount);
+        accountService.ensureByApId.mockResolvedValue(ok(targetAccount));
+
+        await handler.handle(ctx, createMove());
+
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(accountService.migrateFollow).toHaveBeenCalledWith(
+            followerAccount,
+            sourceAccount,
+            targetAccount,
+        );
+        expect(ctx.sendActivity).not.toHaveBeenCalled();
+    });
+
+    it('skips Follow federation when the Move target is internal', async () => {
+        targetAccount = await createTestInternalAccount(3, {
+            host: new URL('https://ghost.example'),
+            username: 'index',
+            name: 'Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        targetActor = new Person({
+            id: targetAccount.apId,
+            inbox: targetAccount.apInbox,
+            preferredUsername: targetAccount.username,
+            aliases: [sourceAccount.apId],
+        });
+        vi.mocked(lookupObject).mockResolvedValue(targetActor);
+        accountService.ensureByApId.mockResolvedValue(ok(targetAccount));
+
+        await handler.handle(ctx, createMove());
+
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(ctx.sendActivity).toHaveBeenCalledOnce();
+        expect(ctx.sendActivity).toHaveBeenCalledWith(
+            { username: followerAccount.username },
+            expect.objectContaining({ id: sourceAccount.apId }),
+            expect.any(Undo),
+        );
+    });
+
+    it('skips Undo federation when the Move source is internal', async () => {
+        sourceAccount = await createTestInternalAccount(2, {
+            host: new URL('https://ghost.example'),
+            username: 'index',
+            name: 'Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        sourceActor = new Person({
+            id: sourceAccount.apId,
+            inbox: sourceAccount.apInbox,
+            preferredUsername: sourceAccount.username,
+        });
+        targetActor = new Person({
+            id: targetAccount.apId,
+            inbox: targetAccount.apInbox,
+            preferredUsername: targetAccount.username,
+            aliases: [sourceAccount.apId],
+        });
+        vi.mocked(lookupObject).mockResolvedValue(targetActor);
+        accountService.getAccountByApId.mockResolvedValue({
+            id: sourceAccount.id,
+        });
+        accountService.getAccountById.mockResolvedValue(sourceAccount);
+
+        await handler.handle(ctx, createMove());
+
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(ctx.sendActivity).toHaveBeenCalledOnce();
+        expect(ctx.sendActivity).toHaveBeenCalledWith(
+            { username: followerAccount.username },
+            targetActor,
+            expect.any(Follow),
+        );
+    });
+
     it('keeps the old follow when sending the target Follow fails', async () => {
         vi.mocked(ctx.sendActivity).mockRejectedValueOnce(
             new Error('send failed'),
@@ -377,6 +497,79 @@ describe('MoveHandler', () => {
             targetAccount,
         );
         expect(accountService.unfollowAccount).not.toHaveBeenCalled();
+    });
+
+    it('migrateInternalFollowers throws when ensureByApId fails', async () => {
+        accountService.ensureByApId.mockResolvedValue(error('network-failure'));
+
+        await expect(
+            handler.migrateInternalFollowers(ctx, sourceAccount, targetActor),
+        ).rejects.toThrow('Move target account not found');
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
+    });
+
+    it('migrateInternalFollowers propagates follower migration failures', async () => {
+        sourceAccount = await createTestInternalAccount(2, {
+            host: new URL('https://ghost.example'),
+            username: 'index',
+            name: 'Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        accountService.migrateFollow.mockRejectedValue(
+            new Error('database unavailable'),
+        );
+
+        await expect(
+            handler.migrateInternalFollowers(ctx, sourceAccount, targetActor),
+        ).rejects.toThrow('database unavailable');
+    });
+
+    it('migrateInternalFollowers migrates followers for an outbound Ghost→Ghost move', async () => {
+        sourceAccount = await createTestInternalAccount(2, {
+            host: new URL('https://old.ghost.example'),
+            username: 'index',
+            name: 'Old Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        targetAccount = await createTestInternalAccount(3, {
+            host: new URL('https://new.ghost.example'),
+            username: 'index',
+            name: 'New Ghost',
+            bio: null,
+            url: null,
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+        targetActor = new Person({
+            id: targetAccount.apId,
+            inbox: targetAccount.apInbox,
+            preferredUsername: targetAccount.username,
+            aliases: [sourceAccount.apId],
+        });
+        accountService.ensureByApId.mockResolvedValue(ok(targetAccount));
+
+        await handler.migrateInternalFollowers(
+            ctx,
+            sourceAccount,
+            targetActor,
+        );
+
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(accountService.migrateFollow).toHaveBeenCalledWith(
+            followerAccount,
+            sourceAccount,
+            targetAccount,
+        );
+        expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
 
     it('ignores embedded target aliases when authoritative target does not alias the source', async () => {

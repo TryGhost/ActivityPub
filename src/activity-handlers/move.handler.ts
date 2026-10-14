@@ -80,8 +80,6 @@ export class MoveHandler {
             return;
         }
 
-        const sourceActor = this.createSourceActor(sourceAccount);
-
         if (!this.targetAliasesSource(targetActor.aliasIds, move.actorId)) {
             ctx.data.logger.debug(
                 'Move target does not alias source account, exit early',
@@ -99,6 +97,7 @@ export class MoveHandler {
         }
 
         const targetAccount = getValue(targetAccountResult);
+        const sourceActor = this.createSourceActor(sourceAccount);
 
         const followers =
             await this.accountService.getInternalFollowerAccounts(
@@ -130,6 +129,52 @@ export class MoveHandler {
                     target: targetAccount.apId.href,
                 });
             }
+        }
+    }
+
+    /**
+     * Migrate same-instance followers for an outbound Move. Uses the already
+     * validated source account and destination actor from AccountMoveService
+     * so we do not re-fetch or soft-exit. Failures propagate so the outbound
+     * claim can be released (MQ will not redeliver Move to internal inboxes).
+     */
+    async migrateInternalFollowers(
+        ctx: FedifyContext,
+        sourceAccount: Account,
+        targetActor: Actor,
+    ) {
+        if (!targetActor.id) {
+            throw new Error('Move target missing id');
+        }
+
+        const targetAccountResult = await this.accountService.ensureByApId(
+            targetActor.id,
+        );
+
+        if (isError(targetAccountResult)) {
+            throw new Error('Move target account not found');
+        }
+
+        const targetAccount = getValue(targetAccountResult);
+        const sourceActor = this.createSourceActor(sourceAccount);
+        const followers =
+            await this.accountService.getInternalFollowerAccounts(
+                sourceAccount,
+            );
+
+        if (followers.length === 0) {
+            return;
+        }
+
+        for (const follower of followers) {
+            await this.moveFollower(
+                ctx,
+                follower,
+                sourceAccount,
+                targetAccount,
+                targetActor,
+                sourceActor,
+            );
         }
     }
 
@@ -230,7 +275,11 @@ export class MoveHandler {
         if (alreadyFollowingTarget) {
             await this.accountService.unfollowAccount(follower, sourceAccount);
         } else {
-            await this.sendFollow(ctx, follower, targetActor);
+            // Internal destinations are updated via migrateFollow; skip the
+            // Follow hairpin (same pattern as follow.controller).
+            if (!targetAccount.isInternal) {
+                await this.sendFollow(ctx, follower, targetActor);
+            }
             await this.accountService.migrateFollow(
                 follower,
                 sourceAccount,
@@ -238,7 +287,15 @@ export class MoveHandler {
             );
         }
 
-        await this.sendUndoFollow(ctx, follower, sourceAccount, sourceActor);
+        // Internal sources already reflect the unfollow locally; skip Undo.
+        if (!sourceAccount.isInternal) {
+            await this.sendUndoFollow(
+                ctx,
+                follower,
+                sourceAccount,
+                sourceActor,
+            );
+        }
     }
 
     private async sendFollow(
