@@ -75,6 +75,17 @@
       automerge: false,
     },
 
+    {
+      description: 'Pin the MySQL image major — keep in sync with the production MySQL version',
+      matchDatasources: [
+        'docker',
+      ],
+      matchDepNames: [
+        'mysql',
+      ],
+      allowedVersions: '<9',
+    },
+
     // Redis needs the extra care. ioredis is the client under @fedify/redis,
     // and a major can pair it with a version outside that peer range — pnpm
     // only warns. Majors also change wire-level behavior: v6 switched the
