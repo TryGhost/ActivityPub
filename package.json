@@ -72,7 +72,7 @@
     "@fedify/vocab": "2.4.4",
     "@fedify/vocab-runtime": "2.4.4",
     "@fedify/webfinger": "2.4.4",
-    "@google-cloud/pubsub": "6.2.0",
+    "@google-cloud/pubsub": "6.3.0",
     "@google-cloud/storage": "8.4.0",
     "@hono/node-server": "2.1.4",
     "@js-temporal/polyfill": "0.5.1",
