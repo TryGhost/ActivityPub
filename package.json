@@ -93,7 +93,7 @@
     "mysql2": "3.24.5",
     "node-html-parser": "9.0.4",
     "reflect-metadata": "0.2.2",
-    "sanitize-html": "2.18.0",
+    "sanitize-html": "2.18.1",
     "sharp": "0.35.5",
     "uuid": "14.0.3",
     "x-forwarded-fetch": "0.2.0",
