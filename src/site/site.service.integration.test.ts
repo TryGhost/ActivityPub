@@ -42,6 +42,7 @@ describe('SiteService', () => {
         await db('sites').truncate();
         await db('users').truncate();
         await db('accounts').truncate();
+        await db('bluesky_integration_account_handles').truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         const events = new AsyncEvents();
@@ -263,6 +264,56 @@ describe('SiteService', () => {
         const newSite = allSites.find((s) => s.host === 'domain-b.tld');
         expect(newSite).toBeDefined();
         expect(newSite?.ghost_uuid).toBe(ghostUUID);
+    });
+
+    it('Releases the Bluesky domain handle of the previous host when a site changes domains', async () => {
+        const ghostUUID = 'some-ghost-uuid';
+
+        const siteSettings = (host: string, site_uuid: string | null) => ({
+            site: {
+                icon: '',
+                title: 'Title',
+                description: 'Description',
+                cover_image: '',
+                site_uuid,
+                url: `https://${host}/`,
+            },
+        });
+
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockResolvedValue(siteSettings('domain-a.tld', ghostUUID));
+
+        const siteA = await service.initialiseSiteForHost('domain-a.tld');
+        const accountA = await accountService.getAccountForSite(siteA);
+
+        await db('bluesky_integration_account_handles').insert({
+            account_id: accountA.id,
+            handle: 'domain-a.tld',
+            confirmed: true,
+            did: 'did:plc:bridged',
+            domain_handle: 'domain-a.tld',
+            domain_handle_status: 'active',
+        });
+
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) =>
+                Promise.resolve(
+                    host === 'domain-a.tld'
+                        ? siteSettings(host, null)
+                        : siteSettings(host, ghostUUID),
+                ),
+            );
+
+        await service.initialiseSiteForHost('domain-b.tld');
+
+        const row = await db('bluesky_integration_account_handles')
+            .where('account_id', accountA.id)
+            .first();
+
+        expect(row.domain_handle_status).toBe('released');
+        expect(row.did).toBe('did:plc:bridged');
     });
 
     it('Rejects ghost_uuid reassignment when the existing host still claims it', async () => {

@@ -7,29 +7,19 @@ export type BlueskyApiError =
     | { type: 'api-error'; status: number; message: string }
     | { type: 'not-found' };
 
-interface Label {
-    val: string;
-}
-
-export interface Actor {
+export interface Profile {
+    did: string;
     handle: string;
-    labels?: Label[];
-}
-
-interface SearchActorsResponse {
-    actors: Actor[];
 }
 
 export const BLUESKY_API_BASE_URL = 'https://public.api.bsky.app/xrpc';
-export const BLUESKY_API_SEARCH_ACTORS_ENDPOINT = 'app.bsky.actor.searchActors';
+export const BLUESKY_API_GET_PROFILE_ENDPOINT = 'app.bsky.actor.getProfile';
 
 export class BlueskyApiClient {
     constructor(private readonly logger: Logger) {}
 
-    async searchActors(
-        query: string,
-    ): Promise<Result<Actor[], BlueskyApiError>> {
-        const url = `${BLUESKY_API_BASE_URL}/${BLUESKY_API_SEARCH_ACTORS_ENDPOINT}?q=${encodeURIComponent(query)}`;
+    async getProfile(did: string): Promise<Result<Profile, BlueskyApiError>> {
+        const url = `${BLUESKY_API_BASE_URL}/${BLUESKY_API_GET_PROFILE_ENDPOINT}?actor=${encodeURIComponent(did)}`;
 
         try {
             const response = await fetch(url, {
@@ -40,10 +30,15 @@ export class BlueskyApiClient {
                 signal: AbortSignal.timeout(10000), // 10 second timeout
             });
 
+            // The AppView answers 400 for accounts it hasn't indexed yet
+            if (response.status === 400 || response.status === 404) {
+                return error({ type: 'not-found' });
+            }
+
             if (!response.ok) {
                 this.logger.warn(
                     `Bluesky API returned non-OK status: ${response.status}`,
-                    { query, status: response.status },
+                    { did, status: response.status },
                 );
 
                 return error({
@@ -53,12 +48,12 @@ export class BlueskyApiClient {
                 });
             }
 
-            const data: SearchActorsResponse = await response.json();
+            const data: Profile = await response.json();
 
-            return ok(data.actors);
+            return ok({ did: data.did, handle: data.handle });
         } catch (err) {
-            this.logger.error('Failed to search Bluesky actors', {
-                query,
+            this.logger.error('Failed to get Bluesky profile', {
+                did,
                 error: err,
             });
 
