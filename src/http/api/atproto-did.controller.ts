@@ -28,12 +28,14 @@ export class AtprotoDidController {
 
         // Root domain handle lookups can reach us on the root domain when the
         // proxy serves both it and `www.` for a site on `www.`, or the other
-        // way round
-        const hosts = host.startsWith('www.')
-            ? [host, host.slice('www.'.length)]
-            : [host, `www.${host}`];
+        // way round. The other host can be a different site though (eg one
+        // left behind by a www/non-www domain change), so its DID is only
+        // served for a claim on the requested host
+        const counterpart = host.startsWith('www.')
+            ? host.slice('www.'.length)
+            : `www.${host}`;
 
-        for (const candidate of hosts) {
+        for (const candidate of [host, counterpart]) {
             const site = await this.siteService.getSiteByHost(candidate);
 
             if (!site) {
@@ -46,7 +48,10 @@ export class AtprotoDidController {
                 continue;
             }
 
-            const did = await this.blueskyService.getDomainHandleDid(account);
+            const did = await this.blueskyService.getDomainHandleDid(
+                account,
+                candidate === host ? undefined : host,
+            );
 
             if (did) {
                 return new Response(did, {

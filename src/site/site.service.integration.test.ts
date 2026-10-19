@@ -316,6 +316,63 @@ describe('SiteService', () => {
         expect(row.did).toBe('did:plc:bridged');
     });
 
+    it.each([
+        [null, 'released'],
+        ['unavailable', 'released'],
+        ['claiming', 'released'],
+        ['opted_out', 'opted_out'],
+    ])(
+        'Changes a %s Bluesky domain handle to %s when a site changes domains',
+        async (status, expected) => {
+            const ghostUUID = 'some-ghost-uuid';
+
+            const siteSettings = (host: string, site_uuid: string | null) => ({
+                site: {
+                    icon: '',
+                    title: 'Title',
+                    description: 'Description',
+                    cover_image: '',
+                    site_uuid,
+                    url: `https://${host}/`,
+                },
+            });
+
+            ghostService.getSiteSettings = vi
+                .fn()
+                .mockResolvedValue(siteSettings('domain-a.tld', ghostUUID));
+
+            const siteA = await service.initialiseSiteForHost('domain-a.tld');
+            const accountA = await accountService.getAccountForSite(siteA);
+
+            await db('bluesky_integration_account_handles').insert({
+                account_id: accountA.id,
+                handle: 'index.domain-a.tld.ap.brid.gy',
+                confirmed: true,
+                did: 'did:plc:bridged',
+                domain_handle: status ? 'domain-a.tld' : null,
+                domain_handle_status: status,
+            });
+
+            ghostService.getSiteSettings = vi
+                .fn()
+                .mockImplementation((host: string) =>
+                    Promise.resolve(
+                        host === 'domain-a.tld'
+                            ? siteSettings(host, null)
+                            : siteSettings(host, ghostUUID),
+                    ),
+                );
+
+            await service.initialiseSiteForHost('domain-b.tld');
+
+            const row = await db('bluesky_integration_account_handles')
+                .where('account_id', accountA.id)
+                .first();
+
+            expect(row.domain_handle_status).toBe(expected);
+        },
+    );
+
     it('Rejects ghost_uuid reassignment when the existing host still claims it', async () => {
         const ghostUUID = 'existing-ghost-uuid';
 

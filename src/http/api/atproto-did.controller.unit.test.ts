@@ -19,11 +19,26 @@ describe('AtprotoDidController', () => {
     const sites: Record<string, Site> = {
         'www.example.com': { id: 1, host: 'www.example.com' } as Site,
         'blog.example.org': { id: 2, host: 'blog.example.org' } as Site,
+        'other.net': { id: 3, host: 'other.net' } as Site,
+        'www.other.net': { id: 4, host: 'www.other.net' } as Site,
+        'news.test': { id: 5, host: 'news.test' } as Site,
+        'www.news.test': { id: 6, host: 'www.news.test' } as Site,
     };
 
     const accounts: Record<number, Account> = {
         1: { id: 11 } as Account,
         2: { id: 22 } as Account,
+        3: { id: 33 } as Account,
+        4: { id: 44 } as Account,
+        5: { id: 55 } as Account,
+        6: { id: 66 } as Account,
+    };
+
+    // The domain each account claimed, for accounts serving their DID
+    const claims: Record<number, string> = {
+        11: 'example.com',
+        44: 'www.other.net',
+        66: 'news.test',
     };
 
     function ctxForHost(host?: string) {
@@ -44,8 +59,16 @@ describe('AtprotoDidController', () => {
         } as unknown as KnexAccountRepository;
 
         blueskyService = {
-            getDomainHandleDid: vi.fn(async (account: Account) =>
-                account.id === 11 ? did : null,
+            getDomainHandleDid: vi.fn(
+                async (account: Account, domain?: string) => {
+                    const claim = claims[account.id];
+
+                    if (!claim || (domain !== undefined && domain !== claim)) {
+                        return null;
+                    }
+
+                    return did;
+                },
             ),
         } as unknown as BlueskyService;
 
@@ -84,6 +107,33 @@ describe('AtprotoDidController', () => {
         );
 
         expect(await response.text()).toBe(did);
+    });
+
+    it('serves the DID of the counterpart site that claimed the requested domain', async () => {
+        // news.test has a site of its own (eg released after moving to
+        // www.news.test), and www.news.test claimed news.test
+        const response = await controller.handleGetAtprotoDid(
+            ctxForHost('news.test'),
+        );
+
+        expect(blueskyService.getDomainHandleDid).toHaveBeenCalledWith(
+            accounts[5],
+            undefined,
+        );
+        expect(blueskyService.getDomainHandleDid).toHaveBeenCalledWith(
+            accounts[6],
+            'news.test',
+        );
+        expect(await response.text()).toBe(did);
+    });
+
+    it('does not serve the DID of a counterpart site that claimed another domain', async () => {
+        // www.other.net claimed www.other.net, not other.net
+        const response = await controller.handleGetAtprotoDid(
+            ctxForHost('other.net'),
+        );
+
+        expect(response.status).toBe(404);
     });
 
     it('returns 404 when the site has not claimed a domain handle', async () => {

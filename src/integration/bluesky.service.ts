@@ -94,6 +94,23 @@ interface IntegrationRow {
     domain_handle_claimed_at: Date | null;
 }
 
+type DomainHandleState = Pick<
+    IntegrationRow,
+    | 'domain_handle'
+    | 'domain_handle_status'
+    | 'domain_handle_reason'
+    | 'domain_handle_claimed_at'
+>;
+
+function domainHandleStateOf(row: DomainHandleState): DomainHandleState {
+    return {
+        domain_handle: row.domain_handle,
+        domain_handle_status: row.domain_handle_status,
+        domain_handle_reason: row.domain_handle_reason,
+        domain_handle_claimed_at: row.domain_handle_claimed_at,
+    };
+}
+
 export function toDomainHandle(row: {
     domain_handle: string | null;
     domain_handle_status: DomainHandleStatus | null;
@@ -301,7 +318,7 @@ export class BlueskyService {
             row.domain_handle_status === null ||
             row.domain_handle_status === 'released'
         ) {
-            await this.claimDomainHandle(account, row.did, row.handle);
+            await this.claimDomainHandle(account, row.did, row.handle, row);
         } else if (row.domain_handle_status === 'claiming') {
             await this.checkDomainHandleClaim(account, row);
         }
@@ -341,7 +358,7 @@ export class BlueskyService {
             return error({ type: 'not-confirmed' });
         }
 
-        await this.claimDomainHandle(account, row.did, row.handle);
+        await this.claimDomainHandle(account, row.did, row.handle, row);
 
         return ok(toDetails((await this.getRow(account))!));
     }
@@ -393,13 +410,17 @@ export class BlueskyService {
      * Get the DID to serve at /.well-known/atproto-did for the account, if it
      * claimed a domain handle
      *
-     * The requested host isn't compared with the domain: lookups usually
+     * Without `domain`, any domain the account claimed counts: lookups usually
      * arrive on the site's host after the handle's domain redirects there (eg
      * from `example.com` to `www.example.com`), and serving the DID for some
      * other domain that redirects to us is harmless - a handle is only valid
-     * if the account's DID document claims it too
+     * if the account's DID document claims it too. With `domain`, only a claim
+     * for that domain counts
      */
-    async getDomainHandleDid(account: Account): Promise<string | null> {
+    async getDomainHandleDid(
+        account: Account,
+        domain?: string,
+    ): Promise<string | null> {
         const row = await this.getRow(account);
 
         if (
@@ -407,6 +428,13 @@ export class BlueskyService {
             !row.domain_handle ||
             (row.domain_handle_status !== 'claiming' &&
                 row.domain_handle_status !== 'active')
+        ) {
+            return null;
+        }
+
+        if (
+            domain !== undefined &&
+            row.domain_handle.toLowerCase() !== domain.toLowerCase()
         ) {
             return null;
         }
@@ -510,11 +538,16 @@ export class BlueskyService {
      * over HTTPS in atproto handle resolution, so a domain that already points
      * at another account (eg the publisher's own Bluesky account) must be
      * left alone
+     *
+     * `expected` is the domain handle state the caller read. Nothing is
+     * changed if it has changed since, eg because an overlapping confirmation
+     * is claiming the domain, or the site moved to another domain
      */
     private async claimDomainHandle(
         account: Account,
         did: string,
         currentHandle: string,
+        expected: DomainHandleState,
     ) {
         const candidates = getDomainHandleCandidates(account);
 
@@ -523,7 +556,7 @@ export class BlueskyService {
         const inUse = candidates.find((domain) => domain === currentHandle);
 
         if (inUse) {
-            await this.updateDomainHandle(account, {
+            await this.updateDomainHandleIf(account, expected, {
                 domain_handle: inUse,
                 domain_handle_status: 'active',
                 domain_handle_reason: null,
@@ -536,14 +569,19 @@ export class BlueskyService {
             null;
 
         for (const domain of candidates) {
-            const reason = await this.tryDomainHandle(account, did, domain);
+            const outcome = await this.tryDomainHandle(
+                account,
+                did,
+                domain,
+                expected,
+            );
 
-            if (reason === null) {
+            if (outcome === 'claimed' || outcome === 'superseded') {
                 return;
             }
 
             // Report why the preferred domain can't be used
-            failure ??= { domain, reason };
+            failure ??= { domain, reason: outcome };
         }
 
         if (failure) {
@@ -552,7 +590,7 @@ export class BlueskyService {
                 { id: account.id, ...failure },
             );
 
-            await this.updateDomainHandle(account, {
+            await this.updateDomainHandleIf(account, expected, {
                 domain_handle: failure.domain,
                 domain_handle_status: 'unavailable',
                 domain_handle_reason: failure.reason,
@@ -562,12 +600,15 @@ export class BlueskyService {
 
     /**
      * Claim `domain` as the handle, or return why it can't be used
+     *
+     * Returns `superseded` if the domain handle state is no longer `expected`
      */
     private async tryDomainHandle(
         account: Account,
         did: string,
         domain: string,
-    ): Promise<DomainHandleReason | null> {
+        expected: DomainHandleState,
+    ): Promise<DomainHandleReason | 'claimed' | 'superseded'> {
         const dnsResult = await this.atprotoHandleResolver.resolveDns(domain);
 
         if (isError(dnsResult)) {
@@ -581,31 +622,37 @@ export class BlueskyService {
         }
 
         // We don't serve the DID for this domain yet, so anything served
-        // there comes from something else
-        const existingDid =
-            await this.atprotoHandleResolver.resolveHttps(domain);
+        // there comes from something else. It only matters without a DNS
+        // record, which takes precedence
+        if (dnsDids.length === 0) {
+            const existingDid =
+                await this.atprotoHandleResolver.resolveHttps(domain);
 
-        if (existingDid !== null && existingDid !== did) {
-            return 'taken';
+            if (existingDid !== null && existingDid !== did) {
+                return 'taken';
+            }
         }
 
-        await this.updateDomainHandle(account, {
+        const claim: DomainHandleState = {
             domain_handle: domain,
             domain_handle_status: 'claiming',
             domain_handle_reason: null,
             domain_handle_claimed_at: new Date(),
-        });
+        };
+
+        if (!(await this.updateDomainHandleIf(account, expected, claim))) {
+            return 'superseded';
+        }
 
         const servedDid = await this.atprotoHandleResolver.resolveHttps(domain);
 
         // A DNS record for the account is enough on its own
         if (servedDid !== did && !dnsDids.includes(did)) {
-            await this.updateDomainHandle(account, {
-                domain_handle: null,
-                domain_handle_status: null,
-                domain_handle_reason: null,
-                domain_handle_claimed_at: null,
-            });
+            await this.updateDomainHandleIf(
+                account,
+                claim,
+                domainHandleStateOf(expected),
+            );
 
             return 'not_reachable';
         }
@@ -617,13 +664,12 @@ export class BlueskyService {
                 `username ${domain}`,
             );
         } catch (err) {
-            // Leave it untried, so the next check claims it again
-            await this.updateDomainHandle(account, {
-                domain_handle: null,
-                domain_handle_status: null,
-                domain_handle_reason: null,
-                domain_handle_claimed_at: null,
-            });
+            // Leave it as it was, so the next check claims it again
+            await this.updateDomainHandleIf(
+                account,
+                claim,
+                domainHandleStateOf(expected),
+            );
 
             throw err;
         }
@@ -633,7 +679,7 @@ export class BlueskyService {
             domain,
         });
 
-        return null;
+        return 'claimed';
     }
 
     /**
@@ -644,7 +690,7 @@ export class BlueskyService {
         row: IntegrationRow,
     ) {
         if (row.handle === row.domain_handle) {
-            await this.updateDomainHandle(account, {
+            await this.updateDomainHandleIf(account, row, {
                 domain_handle_status: 'active',
                 domain_handle_reason: null,
             });
@@ -660,7 +706,7 @@ export class BlueskyService {
                 { id: account.id, domain: row.domain_handle },
             );
 
-            await this.updateDomainHandle(account, {
+            await this.updateDomainHandleIf(account, row, {
                 domain_handle_status: 'unavailable',
                 domain_handle_reason: 'rejected',
             });
@@ -722,6 +768,40 @@ export class BlueskyService {
         >,
     ) {
         await this.db(TABLE).where('account_id', account.id).update(values);
+    }
+
+    /**
+     * Update the domain handle only if its status and claim time are still
+     * the ones in `expected`
+     *
+     * @returns whether it was updated
+     */
+    private async updateDomainHandleIf(
+        account: Account,
+        expected: Pick<
+            DomainHandleState,
+            'domain_handle_status' | 'domain_handle_claimed_at'
+        >,
+        values: Partial<DomainHandleState>,
+    ): Promise<boolean> {
+        const query = this.db(TABLE).where('account_id', account.id);
+
+        if (expected.domain_handle_status === null) {
+            query.whereNull('domain_handle_status');
+        } else {
+            query.where('domain_handle_status', expected.domain_handle_status);
+        }
+
+        if (expected.domain_handle_claimed_at === null) {
+            query.whereNull('domain_handle_claimed_at');
+        } else {
+            query.where(
+                'domain_handle_claimed_at',
+                expected.domain_handle_claimed_at,
+            );
+        }
+
+        return (await query.update(values)) > 0;
     }
 
     private async getBridgyAccount() {

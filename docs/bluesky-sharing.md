@@ -103,11 +103,12 @@ A domain is an atproto handle for whichever account it points at, via a DNS
    (e.g. `example.com` for a site on `www.example.com`, or a custom webfinger
    domain), then the site's host
 3. For each domain:
-    - Skips it if a DNS `_atproto` record, or the domain's
-      `/.well-known/atproto-did`, points at any other account (`taken`) - e.g.
-      when the publisher already uses the domain for their own Bluesky account.
-      DNS takes precedence over HTTPS in handle resolution, so serving our DID
-      would not take the handle over, but it would never become ours either
+    - Skips it if a DNS `_atproto` record points at any other account, or if
+      there's no DNS record and the domain's `/.well-known/atproto-did` points
+      at another account (`taken`) - e.g. when the publisher already uses the
+      domain for their own Bluesky account. DNS takes precedence over HTTPS in
+      handle resolution, so serving our DID would not take the handle over,
+      but it would never become ours either
     - Skips it if its DNS can't be checked (`dns_error`), rather than risk
       treating a temporary failure as "no record"
     - Starts serving the DID at `/.well-known/atproto-did`, and checks the
@@ -119,6 +120,14 @@ A domain is an atproto handle for whichever account it points at, via a DNS
       account and updates the handle
 4. Marks the domain handle `active` once the Bluesky profile uses it, or
    `unavailable` (`rejected`) if that hasn't happened after 10 minutes
+
+Requests for `/.well-known/atproto-did` only follow redirects to HTTPS URLs on
+public addresses, as the domain is set by whoever runs the site.
+
+Each step only updates the domain handle if it's still in the state the step
+started from, so overlapping confirmations don't claim the domain twice or undo
+each other, and a claim in progress when the site moves to another domain is
+dropped.
 
 ### Statuses
 
@@ -138,6 +147,10 @@ A domain is an atproto handle for whichever account it points at, via a DNS
 | `rejected`      | Bridgy Fed didn't switch to the domain in time                |
 
 `domainHandle` is `null` until the domain handle has been tried
+
+When a site on `www.` uses its root domain, and the root domain is a site of
+its own too (e.g. one left behind by a www/non-www domain change), lookups for
+the root domain fall back to the `www.` site only if it claimed the root domain.
 
 ### Proxy configuration
 

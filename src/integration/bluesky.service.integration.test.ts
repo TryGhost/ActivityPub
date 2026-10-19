@@ -837,6 +837,170 @@ describe('BlueskyService', () => {
         });
     });
 
+    describe('claim races and DNS precedence', () => {
+        const did = 'did:plc:bridged';
+        const otherDid = 'did:plc:someoneelse';
+
+        let account: Account;
+        let domain: string;
+        let defaultHandle: string;
+
+        beforeEach(async () => {
+            [account] = await fixtureManager.createInternalAccount();
+            domain = account.apId.hostname;
+            defaultHandle = `${account.username}.${domain}.ap.brid.gy`;
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+                { did },
+            );
+
+            vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
+                ok({ did, handle: defaultHandle }),
+            );
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                ok([]),
+            );
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockReset()
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(did);
+        });
+
+        async function getRow() {
+            return client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first();
+        }
+
+        async function setRow(values: Record<string, unknown>) {
+            await client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .update(values);
+        }
+
+        it('should claim a domain whose DNS points at the account even if it serves another DID', async () => {
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                ok([did]),
+            );
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockReset()
+                .mockResolvedValue(otherDid);
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            expect((await getRow()).domain_handle_status).toBe('claiming');
+            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
+        });
+
+        it('should not claim the domain when another request claimed it first', async () => {
+            const otherClaimAt = new Date('2026-01-01T00:00:00.000Z');
+
+            vi.mocked(atprotoHandleResolver.resolveDns).mockImplementation(
+                async () => {
+                    await setRow({
+                        domain_handle: domain,
+                        domain_handle_status: 'claiming',
+                        domain_handle_claimed_at: otherClaimAt,
+                    });
+
+                    return ok([]);
+                },
+            );
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            const row = await getRow();
+            expect(row.domain_handle_status).toBe('claiming');
+            expect(row.domain_handle_claimed_at).toEqual(otherClaimAt);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should not claim the domain when the site moved to another domain meanwhile', async () => {
+            vi.mocked(atprotoHandleResolver.resolveDns).mockImplementation(
+                async () => {
+                    await setRow({ domain_handle_status: 'released' });
+
+                    return ok([]);
+                },
+            );
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            expect((await getRow()).domain_handle_status).toBe('released');
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(await blueskyService.getDomainHandleDid(account)).toBeNull();
+        });
+
+        it('should leave a newer claim alone when its own claim fails', async () => {
+            const newerClaimAt = new Date('2030-01-01T00:00:00.000Z');
+
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockReset()
+                .mockResolvedValueOnce(null)
+                .mockImplementationOnce(async () => {
+                    // Another request claims the domain again before this
+                    // request's self-check fails
+                    await setRow({ domain_handle_claimed_at: newerClaimAt });
+
+                    return null;
+                });
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            const row = await getRow();
+            expect(row.domain_handle).toBe(domain);
+            expect(row.domain_handle_status).toBe('claiming');
+            expect(row.domain_handle_claimed_at).toEqual(newerClaimAt);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should not mark a released domain handle as active', async () => {
+            await setRow({
+                domain_handle: domain,
+                domain_handle_status: 'claiming',
+                domain_handle_claimed_at: new Date(),
+            });
+
+            vi.mocked(blueskyApiClient.getProfile).mockImplementation(
+                async () => {
+                    await setRow({ domain_handle_status: 'released' });
+
+                    return ok({ did, handle: domain });
+                },
+            );
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            expect((await getRow()).domain_handle_status).toBe('released');
+        });
+
+        it('should only serve the DID for the claimed domain when asked for a domain', async () => {
+            await setRow({
+                domain_handle: domain,
+                domain_handle_status: 'active',
+            });
+
+            expect(
+                await blueskyService.getDomainHandleDid(account, domain),
+            ).toBe(did);
+            expect(
+                await blueskyService.getDomainHandleDid(
+                    account,
+                    domain.toUpperCase(),
+                ),
+            ).toBe(did);
+            expect(
+                await blueskyService.getDomainHandleDid(
+                    account,
+                    `www.${domain}`,
+                ),
+            ).toBeNull();
+        });
+    });
+
     describe('retryDomainHandleForAccount', () => {
         const did = 'did:plc:bridged';
 
