@@ -168,13 +168,10 @@ export class ContentPreparer {
         preparedContent += content.substring(lastEnd);
 
         for (const mention of mentions) {
-            const mentionRegex = new RegExp(
-                mention.name.replace(/\./g, '\\.'), // Escape the dot (.) character
-                'g',
-            );
-            preparedContent = preparedContent.replace(
-                mentionRegex,
-                `<a href="${mention.href}" data-profile="${mention.name}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
+            preparedContent = preparedContent.replaceAll(
+                mention.name,
+                () =>
+                    `<a href="${mention.href}" data-profile="${mention.name}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
             );
         }
 
