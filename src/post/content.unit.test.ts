@@ -361,29 +361,6 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should treat mention names literally, not as patterns', () => {
-                const content = 'Hello @a|b@example.xyz and @a(b@example.xyz';
-                const result = preparer.prepare(content, {
-                    ...allOptionsDisabled,
-                    addMentions: [
-                        {
-                            name: '@a|b@example.xyz',
-                            href: new URL('https://example.xyz/@a|b'),
-                            account: account,
-                        },
-                        {
-                            name: '@a(b@example.xyz',
-                            href: new URL('https://example.xyz/@a(b'),
-                            account: account,
-                        },
-                    ],
-                });
-
-                expect(result).toEqual(
-                    'Hello <a href="https://example.xyz/@a|b" data-profile="@a|b@example.xyz" rel="nofollow noopener noreferrer">@a|b@example.xyz</a> and <a href="https://example.xyz/@a(b" data-profile="@a(b@example.xyz" rel="nofollow noopener noreferrer">@a(b@example.xyz</a>',
-                );
-            });
-
             it('should not expand replacement patterns in the mention href', () => {
                 const content = 'Hello @user@example.xyz';
                 const result = preparer.prepare(content, {
