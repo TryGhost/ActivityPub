@@ -91,7 +91,7 @@
     "linkify-html": "4.3.3",
     "linkifyjs": "4.3.3",
     "mysql2": "3.24.6",
-    "node-html-parser": "9.0.4",
+    "node-html-parser": "9.0.5",
     "reflect-metadata": "0.2.2",
     "sanitize-html": "2.18.1",
     "sharp": "0.35.5",
