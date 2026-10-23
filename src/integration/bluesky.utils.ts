@@ -1,43 +1,38 @@
-import type { Actor } from '@/integration/bluesky-api.client';
+import type { Account } from '@/account/account.entity';
+import { getAccountHandleHost } from '@/account/utils';
 
-export const BRIDGY_FED_LABEL = 'bridged-from-bridgy-fed-activitypub';
+function withoutWww(host: string) {
+    return host.toLowerCase().replace(/^www\./, '');
+}
 
-export function findValidBridgyHandle(
-    actors: Actor[],
-    domain: string,
-): string | null {
-    // Find Bridgy Fed actors
-    const bridgyActors = actors.filter((actor) => {
-        if (!actor.labels) return false;
+/**
+ * Domains an account could use as its Bluesky handle, best first
+ *
+ * The account's fediverse handle domain comes first (`example.com` for a site
+ * on `www.example.com`, or a custom webfinger domain), then the site's own
+ * host, so a site on `www.` still gets a handle if its root domain is taken
+ */
+export function getDomainHandleCandidates(
+    account: Pick<Account, 'apId' | 'webfingerHost'>,
+): string[] {
+    const candidates = [
+        withoutWww(getAccountHandleHost(account)),
+        account.apId.hostname.toLowerCase(),
+    ];
 
-        return actor.labels.some((label) => label.val === BRIDGY_FED_LABEL);
-    });
+    return [...new Set(candidates)];
+}
 
-    // Normalize domain by stripping www. prefix if present
-    const normalizedDomain = domain.startsWith('www.')
-        ? domain.substring(4)
-        : domain;
+/**
+ * The handle Bridgy Fed gives an ActivityPub account by default, eg
+ * `index.example.com.ap.brid.gy` for `@index@example.com`
+ *
+ * @see https://fed.brid.gy/docs#fediverse-get-started
+ */
+export function getDefaultBridgyHandle(
+    account: Pick<Account, 'apId' | 'webfingerHost' | 'username'>,
+): string {
+    const username = account.username.toLowerCase().replace(/[_~]/g, '-');
 
-    // Find actors with a handle ending in .{domain}.ap.brid.gy
-    const expectedHandleSuffix = `.${normalizedDomain}.ap.brid.gy`;
-
-    const matchingActors = bridgyActors.filter((actor) =>
-        actor.handle.endsWith(expectedHandleSuffix),
-    );
-
-    if (matchingActors.length === 0) {
-        return null;
-    }
-
-    // Prefer handles that are not 'handle.invalid'
-    const validActor =
-        matchingActors.find((actor) => actor.handle !== 'handle.invalid') ||
-        matchingActors[0];
-
-    // If all matching actors have handle.invalid, return null
-    if (validActor.handle === 'handle.invalid') {
-        return null;
-    }
-
-    return validActor.handle;
+    return `${username}.${withoutWww(getAccountHandleHost(account))}.ap.brid.gy`;
 }
