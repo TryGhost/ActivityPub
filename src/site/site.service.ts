@@ -91,7 +91,7 @@ export class SiteService {
             host,
         });
 
-        if (!rows || !rows.length) {
+        if (!rows?.length) {
             return null;
         }
 
