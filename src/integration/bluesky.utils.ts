@@ -22,17 +22,3 @@ export function getDomainHandleCandidates(
 
     return [...new Set(candidates)];
 }
-
-/**
- * The handle Bridgy Fed gives an ActivityPub account by default, eg
- * `index.example.com.ap.brid.gy` for `@index@example.com`
- *
- * @see https://fed.brid.gy/docs#fediverse-get-started
- */
-export function getDefaultBridgyHandle(
-    account: Pick<Account, 'apId' | 'webfingerHost' | 'username'>,
-): string {
-    const username = account.username.toLowerCase().replace(/[_~]/g, '-');
-
-    return `${username}.${withoutWww(getAccountHandleHost(account))}.ap.brid.gy`;
-}

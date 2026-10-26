@@ -230,6 +230,7 @@ export class FixtureManager {
             domain_handle_status?: string | null;
             domain_handle_reason?: string | null;
             domain_handle_claimed_at?: Date | null;
+            domain_handle_automatic?: boolean;
         } = {},
     ) {
         const resolvedHandle =

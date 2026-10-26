@@ -63,7 +63,8 @@ response of `200 OK` will be returned with the following body:
     "domainHandle": {
         "domain": "example.com",
         "status": "claiming",
-        "reason": null
+        "reason": null,
+        "automatic": true
     }
 }
 ```
@@ -79,17 +80,23 @@ regarding the status of the Bluesky sharing feature:
     "blueskyDomainHandle": {
         "domain": "example.com",
         "status": "active",
-        "reason": null
+        "reason": null,
+        "automatic": true
     }
 }
 ```
 
 ## Domain handles
 
-When the handle is confirmed, the service tries to switch the Bluesky handle to
-the site's domain, so `example.com` is used instead of
-`index.example.com.ap.brid.gy`. This happens automatically, both for new and
-existing Bluesky accounts, the next time the handle is confirmed
+The service can switch the Bluesky handle to the site's domain, so `example.com`
+is used instead of `index.example.com.ap.brid.gy`:
+
+- when Bluesky sharing is enabled, it happens automatically once the handle is
+  confirmed (`domainHandle.automatic` is `true`), so the client can present
+  enabling as a single step
+- accounts that enabled Bluesky sharing before domain handles existed keep
+  their handle, as it may be shared elsewhere, until the publisher asks for
+  the domain (see [Using the domain later](#using-the-domain-later))
 
 ### How it works
 
@@ -136,7 +143,6 @@ dropped.
 | `claiming`    | The DID is served for the domain, waiting for Bridgy Fed to switch      |
 | `active`      | The Bluesky account uses the domain as its handle                       |
 | `unavailable` | The domain can't be used, see `reason`                                  |
-| `opted_out`   | The publisher chose the default handle                                  |
 | `released`    | The site moved to another domain (see [Domain changes](#domain-changes)) |
 
 | `reason`        | Meaning                                                      |
@@ -160,29 +166,29 @@ default handle keeps working as before. A site on `www.` can only use its root
 domain if the root domain redirects to `www.` keeping the path, or is routed to
 this service as well
 
-### Retrying and opting out
+### Using the domain later
 
-To try the domain handle again (e.g. after fixing the proxy configuration, or
-after opting out), make an empty POST request to:
+To use the domain as the handle for an account that enabled Bluesky sharing
+before domain handles existed, or to try again (e.g. after the publisher freed
+up the domain on another Bluesky account), make an empty POST request to:
 
 ```
 /.ghost/activitypub/v2/actions/bluesky/domain-handle
 ```
 
-To go back to the default handle, make a DELETE request to the same endpoint.
-This sends Bridgy Fed a `username <default handle>` DM, stops serving the DID,
-and the domain handle is not tried again until the POST request above is made
-
-Both return the same body as `/confirm-handle`, or a `400 Bad Request` if the
-integration is not enabled or the handle is not confirmed yet
+It returns the same body as `/confirm-handle`, with `domainHandle.automatic` set
+to `false`, or a `400 Bad Request` if the integration is not enabled or the
+handle is not confirmed yet. Keep confirming the handle while the status is
+`claiming` to see the outcome
 
 ### Domain changes
 
 When a site moves to a new domain, it registers as a new site with a new
 ActivityPub account, so Bluesky sharing starts out disabled for it. The previous
 site's account stops serving its DID (`released`), so the old domain stops
-resolving to the old Bluesky account. If the publication moves back, the domain
-handle is claimed again
+resolving to the old Bluesky account. If the publication moves back, the
+publisher can use the domain again (see
+[Using the domain later](#using-the-domain-later))
 
 If the old account is moved to the new one (see `/v1/migration`), Bridgy Fed
 moves the bridged Bluesky account - its DID and followers - to the new actor.

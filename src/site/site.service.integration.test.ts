@@ -320,7 +320,6 @@ describe('SiteService', () => {
         [null, 'released'],
         ['unavailable', 'released'],
         ['claiming', 'released'],
-        ['opted_out', 'opted_out'],
     ])(
         'Changes a %s Bluesky domain handle to %s when a site changes domains',
         async (status, expected) => {
@@ -351,6 +350,7 @@ describe('SiteService', () => {
                 did: 'did:plc:bridged',
                 domain_handle: status ? 'domain-a.tld' : null,
                 domain_handle_status: status,
+                domain_handle_automatic: true,
             });
 
             ghostService.getSiteSettings = vi
@@ -370,6 +370,7 @@ describe('SiteService', () => {
                 .first();
 
             expect(row.domain_handle_status).toBe(expected);
+            expect(row.domain_handle_automatic).toBe(0);
         },
     );
 

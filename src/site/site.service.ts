@@ -71,9 +71,8 @@ export class SiteService {
 
                 // The publication moved to this host, so the previous host's
                 // account stops serving its Bluesky DID for its old domain.
-                // It's claimed again if the publication ever moves back.
-                // Any status changes (bar a choice of the default handle), so
-                // a claim already in progress for the old account is dropped
+                // Every status changes, so a claim already in progress for the
+                // old account is dropped too
                 await trx('bluesky_integration_account_handles')
                     .whereIn(
                         'account_id',
@@ -82,12 +81,10 @@ export class SiteService {
                             .where('sites.host', verifiedOwnerHost)
                             .select('users.account_id'),
                     )
-                    .where((query) =>
-                        query
-                            .whereNull('domain_handle_status')
-                            .orWhereNot('domain_handle_status', 'opted_out'),
-                    )
-                    .update({ domain_handle_status: 'released' });
+                    .update({
+                        domain_handle_status: 'released',
+                        domain_handle_automatic: false,
+                    });
             }
 
             const [id] = await trx('sites').insert({

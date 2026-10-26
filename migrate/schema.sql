@@ -115,6 +115,7 @@ CREATE TABLE `bluesky_integration_account_handles` (
   `domain_handle_status` varchar(32) DEFAULT NULL,
   `domain_handle_reason` varchar(32) DEFAULT NULL,
   `domain_handle_claimed_at` timestamp(6) NULL DEFAULT NULL,
+  `domain_handle_automatic` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_bluesky_integration_account_handles_account` (`account_id`),
   UNIQUE KEY `idx_bluesky_integration_account_handles_handle` (`handle`),

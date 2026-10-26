@@ -119,17 +119,17 @@ export class BlueskyController {
 
     @APIRoute('POST', 'actions/bluesky/domain-handle', 'v2')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
-    async handleRetryDomainHandle(ctx: AppContext) {
+    async handleUseDomainHandle(ctx: AppContext) {
         const account = ctx.get('account');
         const logger = ctx.get('logger');
 
         let result: Awaited<
-            ReturnType<BlueskyService['retryDomainHandleForAccount']>
+            ReturnType<BlueskyService['useDomainHandleForAccount']>
         >;
 
         try {
             result =
-                await this.blueskyService.retryDomainHandleForAccount(account);
+                await this.blueskyService.useDomainHandleForAccount(account);
         } catch (error) {
             logger.error('Failed to set up Bluesky domain handle', { error });
 
@@ -155,43 +155,6 @@ export class BlueskyController {
 
             return InternalServerError(
                 'Failed to set up Bluesky domain handle',
-            );
-        }
-
-        return integrationResponse(getValue(result));
-    }
-
-    @APIRoute('DELETE', 'actions/bluesky/domain-handle', 'v2')
-    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
-    async handleUseDefaultHandle(ctx: AppContext) {
-        const account = ctx.get('account');
-        const logger = ctx.get('logger');
-
-        let result: Awaited<
-            ReturnType<BlueskyService['useDefaultHandleForAccount']>
-        >;
-
-        try {
-            result =
-                await this.blueskyService.useDefaultHandleForAccount(account);
-        } catch (error) {
-            logger.error('Failed to switch to the default Bluesky handle', {
-                error,
-            });
-
-            return InternalServerError(
-                'Failed to switch to the default Bluesky handle',
-            );
-        }
-
-        if (isError(result)) {
-            const err = getError(result);
-
-            return jsonResponse(
-                err.type === 'not-enabled'
-                    ? NOT_ENABLED_RESPONSE_BODY
-                    : NOT_CONFIRMED_RESPONSE_BODY,
-                400,
             );
         }
 

@@ -177,6 +177,7 @@ describe('BlueskyService', () => {
             expect(handleMapping).toBeDefined();
             expect(handleMapping.handle).toBeNull();
             expect(handleMapping.confirmed).toBe(0);
+            expect(handleMapping.domain_handle_automatic).toBe(1);
         });
 
         it('should not send a follow request to brid.gy if the Bluesky integration is already enabled for the account', async () => {
@@ -338,6 +339,16 @@ describe('BlueskyService', () => {
                 .mockResolvedValueOnce(did);
         });
 
+        // As enabling Bluesky sharing does
+        async function enableNewIntegration() {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                false,
+                undefined,
+                { domain_handle_automatic: true },
+            );
+        }
+
         async function getRow() {
             return client('bluesky_integration_account_handles')
                 .where('account_id', account.id)
@@ -387,7 +398,12 @@ describe('BlueskyService', () => {
             expect(getValue(result as Ok<unknown>)).toEqual({
                 handleConfirmed: true,
                 handle: domain,
-                domainHandle: { domain, status: 'active', reason: null },
+                domainHandle: {
+                    domain,
+                    status: 'active',
+                    reason: null,
+                    automatic: false,
+                },
             });
 
             expect(bridgyFedClient.getBridgedDid).not.toHaveBeenCalled();
@@ -395,7 +411,7 @@ describe('BlueskyService', () => {
         });
 
         it('should return an unconfirmed status while the account is not bridged yet', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(bridgyFedClient.getBridgedDid).mockResolvedValue(
                 error({ type: 'not-found' }),
@@ -414,7 +430,7 @@ describe('BlueskyService', () => {
         });
 
         it('should store the DID and return an unconfirmed status while the profile is not available', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
                 error({ type: 'not-found' }),
@@ -433,7 +449,7 @@ describe('BlueskyService', () => {
         });
 
         it('should return an error when Bridgy Fed fails', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             const apiError = {
                 type: 'network-error' as const,
@@ -451,7 +467,7 @@ describe('BlueskyService', () => {
         });
 
         it('should return an error when the Bluesky API fails', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             const apiError = {
                 type: 'api-error' as const,
@@ -470,7 +486,7 @@ describe('BlueskyService', () => {
         });
 
         it('should not confirm an invalid handle', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
                 ok({ did, handle: 'handle.invalid' }),
@@ -487,7 +503,7 @@ describe('BlueskyService', () => {
         });
 
         it('should confirm the handle and claim the domain handle', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             const result =
                 await blueskyService.confirmHandleForAccount(account);
@@ -495,7 +511,12 @@ describe('BlueskyService', () => {
             expect(getValue(result as Ok<unknown>)).toEqual({
                 handleConfirmed: true,
                 handle: defaultHandle,
-                domainHandle: { domain, status: 'claiming', reason: null },
+                domainHandle: {
+                    domain,
+                    status: 'claiming',
+                    reason: null,
+                    automatic: true,
+                },
             });
 
             expect(atprotoHandleResolver.resolveDns).toHaveBeenCalledWith(
@@ -510,7 +531,7 @@ describe('BlueskyService', () => {
         });
 
         it('should send the username message to brid.gy', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             await blueskyService.confirmHandleForAccount(account);
 
@@ -538,7 +559,7 @@ describe('BlueskyService', () => {
             );
         });
 
-        it('should claim the domain handle for an account confirmed before domain handles existed', async () => {
+        it('should not set up the domain handle for an account that enabled Bluesky sharing before domain handles existed', async () => {
             await fixtureManager.enableBlueskyIntegration(
                 account,
                 true,
@@ -551,13 +572,14 @@ describe('BlueskyService', () => {
             expect(
                 (getValue(result as Ok<unknown>) as { domainHandle: unknown })
                     .domainHandle,
-            ).toEqual({ domain, status: 'claiming', reason: null });
+            ).toBeNull();
 
-            expect(await getSentDms()).toEqual([`username ${domain}`]);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(atprotoHandleResolver.resolveDns).not.toHaveBeenCalled();
         });
 
         it('should not claim a domain that points at another account in DNS', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
                 ok([otherDid]),
@@ -569,7 +591,12 @@ describe('BlueskyService', () => {
             expect(
                 (getValue(result as Ok<unknown>) as { domainHandle: unknown })
                     .domainHandle,
-            ).toEqual({ domain, status: 'unavailable', reason: 'taken' });
+            ).toEqual({
+                domain,
+                status: 'unavailable',
+                reason: 'taken',
+                automatic: true,
+            });
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
             expect(atprotoHandleResolver.resolveHttps).not.toHaveBeenCalled();
@@ -577,7 +604,7 @@ describe('BlueskyService', () => {
         });
 
         it('should not claim a domain with DNS records for several accounts', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
                 ok([did, otherDid]),
@@ -590,7 +617,7 @@ describe('BlueskyService', () => {
         });
 
         it('should not claim a domain that serves another account over HTTPS', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveHttps)
                 .mockReset()
@@ -603,7 +630,7 @@ describe('BlueskyService', () => {
         });
 
         it('should not claim a domain when its DNS cannot be checked', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
                 error({ type: 'dns-error', code: 'ESERVFAIL' }),
@@ -618,7 +645,7 @@ describe('BlueskyService', () => {
         });
 
         it('should not claim a domain that does not serve the DID', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveHttps)
                 .mockReset()
@@ -635,7 +662,7 @@ describe('BlueskyService', () => {
         });
 
         it('should claim a domain whose DNS already points at the account', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
                 ok([did]),
@@ -657,7 +684,7 @@ describe('BlueskyService', () => {
             );
             account = wwwAccount;
 
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockImplementation(
                 async (candidate) =>
@@ -681,7 +708,7 @@ describe('BlueskyService', () => {
             );
             account = wwwAccount;
 
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(atprotoHandleResolver.resolveDns).mockImplementation(
                 async (candidate) =>
@@ -700,7 +727,7 @@ describe('BlueskyService', () => {
         });
 
         it('should mark the domain handle as active without a message when the account already uses it', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
                 ok({ did, handle: domain }),
@@ -735,7 +762,12 @@ describe('BlueskyService', () => {
             expect(getValue(result as Ok<unknown>)).toEqual({
                 handleConfirmed: true,
                 handle: domain,
-                domainHandle: { domain, status: 'active', reason: null },
+                domainHandle: {
+                    domain,
+                    status: 'active',
+                    reason: null,
+                    automatic: false,
+                },
             });
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
@@ -782,7 +814,7 @@ describe('BlueskyService', () => {
             expect(await blueskyService.getDomainHandleDid(account)).toBeNull();
         });
 
-        it('should claim the domain handle again after it was released', async () => {
+        it('should not set up the domain handle again after it was released', async () => {
             await fixtureManager.enableBlueskyIntegration(
                 account,
                 true,
@@ -796,8 +828,8 @@ describe('BlueskyService', () => {
 
             await blueskyService.confirmHandleForAccount(account);
 
-            expect((await getRow()).domain_handle_status).toBe('claiming');
-            expect(await getSentDms()).toEqual([`username ${domain}`]);
+            expect((await getRow()).domain_handle_status).toBe('released');
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
 
         it('should take the handle over from another row that still has it', async () => {
@@ -808,7 +840,7 @@ describe('BlueskyService', () => {
                 true,
                 defaultHandle,
             );
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             await blueskyService.confirmHandleForAccount(account);
 
@@ -821,7 +853,7 @@ describe('BlueskyService', () => {
         });
 
         it('should leave the domain handle untried when the message cannot be sent', async () => {
-            await fixtureManager.enableBlueskyIntegration(account, false);
+            await enableNewIntegration();
 
             vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
                 new Error('Failed to send'),
@@ -854,7 +886,7 @@ describe('BlueskyService', () => {
                 account,
                 true,
                 defaultHandle,
-                { did },
+                { did, domain_handle_automatic: true },
             );
 
             vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
@@ -1001,10 +1033,10 @@ describe('BlueskyService', () => {
         });
     });
 
-    describe('retryDomainHandleForAccount', () => {
+    describe('useDomainHandleForAccount', () => {
         const did = 'did:plc:bridged';
 
-        it('should claim the domain handle again', async () => {
+        it('should claim the domain handle when asked to', async () => {
             const [account] = await fixtureManager.createInternalAccount();
             const domain = account.apId.hostname;
 
@@ -1031,21 +1063,68 @@ describe('BlueskyService', () => {
                 .mockResolvedValueOnce(did);
 
             const result =
-                await blueskyService.retryDomainHandleForAccount(account);
+                await blueskyService.useDomainHandleForAccount(account);
 
             expect(getValue(result as Ok<unknown>)).toEqual({
                 handleConfirmed: true,
                 handle: 'index.example.com.ap.brid.gy',
-                domainHandle: { domain, status: 'claiming', reason: null },
+                domainHandle: {
+                    domain,
+                    status: 'claiming',
+                    reason: null,
+                    automatic: false,
+                },
             });
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
+        });
+
+        it('should claim the domain handle for an account that enabled Bluesky sharing before domain handles existed', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const domain = account.apId.hostname;
+            const defaultHandle = `${account.username}.${domain}.ap.brid.gy`;
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+            );
+
+            vi.mocked(bridgyFedClient.getBridgedDid).mockResolvedValue(ok(did));
+            vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
+                ok({ did, handle: defaultHandle }),
+            );
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                ok([]),
+            );
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(did);
+
+            const result =
+                await blueskyService.useDomainHandleForAccount(account);
+
+            expect(
+                (getValue(result as Ok<unknown>) as { domainHandle: unknown })
+                    .domainHandle,
+            ).toEqual({
+                domain,
+                status: 'claiming',
+                reason: null,
+                automatic: false,
+            });
+
+            const create = vi.mocked(fedifyContext.sendActivity).mock
+                .calls[0][2] as Create;
+            expect((await create.getObject())!.content).toBe(
+                `username ${domain}`,
+            );
         });
 
         it('should return an error if the Bluesky integration is not enabled', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 
             const result =
-                await blueskyService.retryDomainHandleForAccount(account);
+                await blueskyService.useDomainHandleForAccount(account);
 
             expect(getError(result as ResultError<unknown>)).toEqual({
                 type: 'not-enabled',
@@ -1062,108 +1141,12 @@ describe('BlueskyService', () => {
             );
 
             const result =
-                await blueskyService.retryDomainHandleForAccount(account);
+                await blueskyService.useDomainHandleForAccount(account);
 
             expect(getError(result as ResultError<unknown>)).toEqual({
                 type: 'not-confirmed',
             });
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('useDefaultHandleForAccount', () => {
-        const did = 'did:plc:bridged';
-
-        it('should switch back to the default handle', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-            const domain = account.apId.hostname;
-
-            await fixtureManager.enableBlueskyIntegration(
-                account,
-                true,
-                domain,
-                {
-                    did,
-                    domain_handle: domain,
-                    domain_handle_status: 'active',
-                },
-            );
-
-            const result =
-                await blueskyService.useDefaultHandleForAccount(account);
-
-            expect(
-                (getValue(result as Ok<unknown>) as { domainHandle: unknown })
-                    .domainHandle,
-            ).toEqual({ domain, status: 'opted_out', reason: null });
-
-            const create = vi.mocked(fedifyContext.sendActivity).mock
-                .calls[0][2] as Create;
-            const note = await create.getObject();
-
-            expect(note!.content).toBe(
-                `username ${account.username.toLowerCase().replace(/[_~]/g, '-')}.${domain}.ap.brid.gy`,
-            );
-            expect(await blueskyService.getDomainHandleDid(account)).toBeNull();
-        });
-
-        it('should not message brid.gy when the domain handle is not in use', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-            const domain = account.apId.hostname;
-
-            await fixtureManager.enableBlueskyIntegration(
-                account,
-                true,
-                'index.example.com.ap.brid.gy',
-                {
-                    did,
-                    domain_handle: domain,
-                    domain_handle_status: 'unavailable',
-                    domain_handle_reason: 'taken',
-                },
-            );
-
-            await blueskyService.useDefaultHandleForAccount(account);
-
-            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-
-            const row = await client('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .first();
-            expect(row.domain_handle_status).toBe('opted_out');
-            expect(row.domain_handle_reason).toBeNull();
-        });
-
-        it('should not claim the domain handle again on confirmation after opting out', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-            const domain = account.apId.hostname;
-
-            await fixtureManager.enableBlueskyIntegration(
-                account,
-                true,
-                'index.example.com.ap.brid.gy',
-                {
-                    did,
-                    domain_handle: domain,
-                    domain_handle_status: 'opted_out',
-                },
-            );
-
-            await blueskyService.confirmHandleForAccount(account);
-
-            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            expect(atprotoHandleResolver.resolveDns).not.toHaveBeenCalled();
-        });
-
-        it('should return an error if the Bluesky integration is not enabled', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-
-            const result =
-                await blueskyService.useDefaultHandleForAccount(account);
-
-            expect(getError(result as ResultError<unknown>)).toEqual({
-                type: 'not-enabled',
-            });
         });
     });
 
@@ -1174,7 +1157,6 @@ describe('BlueskyService', () => {
             ['claiming', did],
             ['active', did],
             ['unavailable', null],
-            ['opted_out', null],
             ['released', null],
             [null, null],
         ])(

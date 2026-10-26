@@ -16,10 +16,7 @@ import {
     type Result,
 } from '@/core/result';
 import type { AtprotoHandleResolver } from '@/integration/atproto-handle.resolver';
-import {
-    getDefaultBridgyHandle,
-    getDomainHandleCandidates,
-} from '@/integration/bluesky.utils';
+import { getDomainHandleCandidates } from '@/integration/bluesky.utils';
 import type {
     BlueskyApiClient,
     BlueskyApiError,
@@ -44,7 +41,6 @@ const TABLE = 'bluesky_integration_account_handles';
  *   switch the handle to it
  * - `active`: the Bluesky account uses the domain as its handle
  * - `unavailable`: the domain can't be used, see the reason
- * - `opted_out`: the publisher went back to the default handle
  * - `released`: the site moved to another domain, so it no longer serves the
  *   DID for this one
  */
@@ -52,7 +48,6 @@ export type DomainHandleStatus =
     | 'claiming'
     | 'active'
     | 'unavailable'
-    | 'opted_out'
     | 'released';
 
 /**
@@ -72,6 +67,11 @@ export interface DomainHandle {
     domain: string;
     status: DomainHandleStatus;
     reason: DomainHandleReason | null;
+    /**
+     * Whether the domain is being set up as part of enabling Bluesky sharing,
+     * rather than because the publisher asked for it later
+     */
+    automatic: boolean;
 }
 
 export interface BlueskyIntegrationDetails {
@@ -92,6 +92,12 @@ interface IntegrationRow {
     domain_handle_status: DomainHandleStatus | null;
     domain_handle_reason: DomainHandleReason | null;
     domain_handle_claimed_at: Date | null;
+    /**
+     * Set when Bluesky sharing is enabled, so the domain is set up as part of
+     * it. Accounts that enabled it before domain handles existed only switch
+     * when the publisher asks, as their handle may be shared elsewhere
+     */
+    domain_handle_automatic: boolean | number;
 }
 
 type DomainHandleState = Pick<
@@ -100,6 +106,7 @@ type DomainHandleState = Pick<
     | 'domain_handle_status'
     | 'domain_handle_reason'
     | 'domain_handle_claimed_at'
+    | 'domain_handle_automatic'
 >;
 
 function domainHandleStateOf(row: DomainHandleState): DomainHandleState {
@@ -108,6 +115,7 @@ function domainHandleStateOf(row: DomainHandleState): DomainHandleState {
         domain_handle_status: row.domain_handle_status,
         domain_handle_reason: row.domain_handle_reason,
         domain_handle_claimed_at: row.domain_handle_claimed_at,
+        domain_handle_automatic: row.domain_handle_automatic,
     };
 }
 
@@ -115,6 +123,7 @@ export function toDomainHandle(row: {
     domain_handle: string | null;
     domain_handle_status: DomainHandleStatus | null;
     domain_handle_reason: DomainHandleReason | null;
+    domain_handle_automatic: boolean | number;
 }): DomainHandle | null {
     if (!row.domain_handle || !row.domain_handle_status) {
         return null;
@@ -124,6 +133,7 @@ export function toDomainHandle(row: {
         domain: row.domain_handle,
         status: row.domain_handle_status,
         reason: row.domain_handle_reason,
+        automatic: !!row.domain_handle_automatic,
     };
 }
 
@@ -192,12 +202,13 @@ export class BlueskyService {
 
         // Insert handle → account mapping into the database - handle is null
         // and confirmed is false until manual confirmation has occurred (see
-        // `confirmHandleForAccount`)
+        // `confirmHandleForAccount`), which also sets up the domain handle
         await this.db(TABLE)
             .insert({
                 account_id: account.id,
                 handle: null,
                 confirmed: false,
+                domain_handle_automatic: true,
             })
             .onConflict('account_id')
             .merge();
@@ -289,9 +300,8 @@ export class BlueskyService {
         const settled =
             existing.confirmed &&
             existing.did &&
-            (existing.domain_handle_status === 'active' ||
-                existing.domain_handle_status === 'unavailable' ||
-                existing.domain_handle_status === 'opted_out');
+            existing.domain_handle_status !== 'claiming' &&
+            !this.shouldSetUpDomainHandle(existing);
 
         if (settled) {
             this.logger.debug(
@@ -314,11 +324,14 @@ export class BlueskyService {
             return ok(toDetails(row));
         }
 
-        if (
-            row.domain_handle_status === null ||
-            row.domain_handle_status === 'released'
-        ) {
-            await this.claimDomainHandle(account, row.did, row.handle, row);
+        if (this.shouldSetUpDomainHandle(row)) {
+            await this.claimDomainHandle(
+                account,
+                row.did,
+                row.handle,
+                row,
+                true,
+            );
         } else if (row.domain_handle_status === 'claiming') {
             await this.checkDomainHandleClaim(account, row);
         }
@@ -327,10 +340,11 @@ export class BlueskyService {
     }
 
     /**
-     * Try the domain handle again, eg after fixing the proxy config or freeing
-     * up the domain, or to go back to it after opting out
+     * Use the domain as the handle when the publisher asks for it, eg for an
+     * account that enabled Bluesky sharing before domain handles existed, or
+     * to try again after freeing up the domain
      */
-    async retryDomainHandleForAccount(
+    async useDomainHandleForAccount(
         account: Account,
     ): Promise<
         Result<
@@ -358,50 +372,7 @@ export class BlueskyService {
             return error({ type: 'not-confirmed' });
         }
 
-        await this.claimDomainHandle(account, row.did, row.handle, row);
-
-        return ok(toDetails((await this.getRow(account))!));
-    }
-
-    /**
-     * Go back to the default Bridgy Fed handle, and stop using the domain
-     */
-    async useDefaultHandleForAccount(
-        account: Account,
-    ): Promise<
-        Result<
-            BlueskyIntegrationDetails,
-            IntegrationNotEnabledError | HandleNotConfirmedError
-        >
-    > {
-        const existing = await this.getRow(account);
-
-        if (!existing) {
-            return error({ type: 'not-enabled' });
-        }
-
-        if (!existing.confirmed) {
-            return error({ type: 'not-confirmed' });
-        }
-
-        const [domain] = getDomainHandleCandidates(account);
-
-        if (
-            existing.domain_handle_status === 'claiming' ||
-            existing.domain_handle_status === 'active'
-        ) {
-            await this.sendBridgyDm(
-                account,
-                await this.getBridgyAccount(),
-                `username ${getDefaultBridgyHandle(account)}`,
-            );
-        }
-
-        await this.updateDomainHandle(account, {
-            domain_handle: existing.domain_handle ?? domain,
-            domain_handle_status: 'opted_out',
-            domain_handle_reason: null,
-        });
+        await this.claimDomainHandle(account, row.did, row.handle, row, false);
 
         return ok(toDetails((await this.getRow(account))!));
     }
@@ -440,6 +411,16 @@ export class BlueskyService {
         }
 
         return row.did;
+    }
+
+    /**
+     * Whether confirming the handle should also set up the domain handle:
+     * only when enabling Bluesky sharing, and only once
+     */
+    private shouldSetUpDomainHandle(row: IntegrationRow) {
+        return (
+            row.domain_handle_status === null && !!row.domain_handle_automatic
+        );
     }
 
     /**
@@ -542,12 +523,15 @@ export class BlueskyService {
      * `expected` is the domain handle state the caller read. Nothing is
      * changed if it has changed since, eg because an overlapping confirmation
      * is claiming the domain, or the site moved to another domain
+     *
+     * `automatic` is whether this is part of enabling Bluesky sharing
      */
     private async claimDomainHandle(
         account: Account,
         did: string,
         currentHandle: string,
         expected: DomainHandleState,
+        automatic: boolean,
     ) {
         const candidates = getDomainHandleCandidates(account);
 
@@ -560,6 +544,7 @@ export class BlueskyService {
                 domain_handle: inUse,
                 domain_handle_status: 'active',
                 domain_handle_reason: null,
+                domain_handle_automatic: automatic,
             });
 
             return;
@@ -574,6 +559,7 @@ export class BlueskyService {
                 did,
                 domain,
                 expected,
+                automatic,
             );
 
             if (outcome === 'claimed' || outcome === 'superseded') {
@@ -594,6 +580,7 @@ export class BlueskyService {
                 domain_handle: failure.domain,
                 domain_handle_status: 'unavailable',
                 domain_handle_reason: failure.reason,
+                domain_handle_automatic: automatic,
             });
         }
     }
@@ -608,6 +595,7 @@ export class BlueskyService {
         did: string,
         domain: string,
         expected: DomainHandleState,
+        automatic: boolean,
     ): Promise<DomainHandleReason | 'claimed' | 'superseded'> {
         const dnsResult = await this.atprotoHandleResolver.resolveDns(domain);
 
@@ -638,6 +626,7 @@ export class BlueskyService {
             domain_handle_status: 'claiming',
             domain_handle_reason: null,
             domain_handle_claimed_at: new Date(),
+            domain_handle_automatic: automatic,
         };
 
         if (!(await this.updateDomainHandleIf(account, expected, claim))) {
@@ -753,21 +742,6 @@ export class BlueskyService {
             (await this.db(TABLE).where('account_id', account.id).first()) ??
             null
         );
-    }
-
-    private async updateDomainHandle(
-        account: Account,
-        values: Partial<
-            Pick<
-                IntegrationRow,
-                | 'domain_handle'
-                | 'domain_handle_status'
-                | 'domain_handle_reason'
-                | 'domain_handle_claimed_at'
-            >
-        >,
-    ) {
-        await this.db(TABLE).where('account_id', account.id).update(values);
     }
 
     /**
