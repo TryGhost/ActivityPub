@@ -81,7 +81,7 @@
     "@opentelemetry/core": "3.0.0",
     "@sentry/node": "11.9.0",
     "awilix": "13.0.5",
-    "es-toolkit": "1.52.0",
+    "es-toolkit": "1.53.0",
     "hono": "4.13.13",
     "html-to-text": "10.0.1",
     "ioredis": "5.11.1",
