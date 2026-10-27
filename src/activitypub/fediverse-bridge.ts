@@ -130,7 +130,7 @@ export class FediverseBridge {
             event.getAccountId(),
         );
 
-        if (!account?.isInternal) {
+        if (!account || !account.isInternal) {
             return;
         }
 
@@ -153,7 +153,7 @@ export class FediverseBridge {
 
     private async handlePostUpdated(event: PostUpdatedEvent) {
         const post = await this.postRepository.getById(event.getPostId());
-        if (!post?.author.isInternal) {
+        if (!post || !post.author.isInternal) {
             return;
         }
 
@@ -180,7 +180,7 @@ export class FediverseBridge {
             event.getAccountId(),
         );
 
-        if (!account?.isInternal) {
+        if (!account || !account.isInternal) {
             return;
         }
 
