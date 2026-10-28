@@ -40,6 +40,7 @@ describe('BlueskyController', () => {
             }),
             disableForAccount: vi.fn().mockResolvedValue(undefined),
             confirmHandleForAccount: vi.fn(),
+            useDomainHandleForAccount: vi.fn(),
         } as unknown as BlueskyService;
 
         controller = new BlueskyController(blueskyService);
@@ -116,7 +117,11 @@ describe('BlueskyController', () => {
             const mockHandle = '@test.example.com.ap.brid.gy';
 
             vi.mocked(blueskyService.confirmHandleForAccount).mockResolvedValue(
-                ok({ handleConfirmed: true, handle: mockHandle }),
+                ok({
+                    handleConfirmed: true,
+                    handle: mockHandle,
+                    domainHandle: null,
+                }),
             );
 
             const result = await controller.handleConfirmHandle(ctx);
@@ -127,12 +132,17 @@ describe('BlueskyController', () => {
                 enabled: true,
                 handleConfirmed: true,
                 handle: mockHandle,
+                domainHandle: null,
             });
         });
 
         it('should return unconfirmed status when handle not found', async () => {
             vi.mocked(blueskyService.confirmHandleForAccount).mockResolvedValue(
-                ok({ handleConfirmed: false, handle: null }),
+                ok({
+                    handleConfirmed: false,
+                    handle: null,
+                    domainHandle: null,
+                }),
             );
 
             const result = await controller.handleConfirmHandle(ctx);
@@ -143,6 +153,7 @@ describe('BlueskyController', () => {
                 enabled: true,
                 handleConfirmed: false,
                 handle: null,
+                domainHandle: null,
             });
         });
 
@@ -165,6 +176,104 @@ describe('BlueskyController', () => {
             );
 
             const result = await controller.handleConfirmHandle(ctx);
+
+            expect(result.status).toBe(500);
+        });
+
+        it('should include the domain handle', async () => {
+            vi.mocked(blueskyService.confirmHandleForAccount).mockResolvedValue(
+                ok({
+                    handleConfirmed: true,
+                    handle: 'index.example.com.ap.brid.gy',
+                    domainHandle: {
+                        domain: 'example.com',
+                        status: 'claiming',
+                        reason: null,
+                        automatic: false,
+                    },
+                }),
+            );
+
+            const result = await controller.handleConfirmHandle(ctx);
+            const body = await result.json();
+
+            expect(body.domainHandle).toEqual({
+                domain: 'example.com',
+                status: 'claiming',
+                reason: null,
+                automatic: false,
+            });
+        });
+
+        it('should return 500 when the claim throws', async () => {
+            vi.mocked(blueskyService.confirmHandleForAccount).mockRejectedValue(
+                new Error('Failed to send'),
+            );
+
+            const result = await controller.handleConfirmHandle(ctx);
+
+            expect(result.status).toBe(500);
+        });
+    });
+
+    describe('handleUseDomainHandle', () => {
+        it('should return the domain handle details', async () => {
+            vi.mocked(
+                blueskyService.useDomainHandleForAccount,
+            ).mockResolvedValue(
+                ok({
+                    handleConfirmed: true,
+                    handle: 'index.example.com.ap.brid.gy',
+                    domainHandle: {
+                        domain: 'example.com',
+                        status: 'unavailable',
+                        reason: 'taken',
+                        automatic: false,
+                    },
+                }),
+            );
+
+            const result = await controller.handleUseDomainHandle(ctx);
+
+            expect(
+                blueskyService.useDomainHandleForAccount,
+            ).toHaveBeenCalledWith(account);
+            expect(result.status).toBe(200);
+            expect(await result.json()).toEqual({
+                enabled: true,
+                handleConfirmed: true,
+                handle: 'index.example.com.ap.brid.gy',
+                domainHandle: {
+                    domain: 'example.com',
+                    status: 'unavailable',
+                    reason: 'taken',
+                    automatic: false,
+                },
+            });
+        });
+
+        it.each([
+            ['not-enabled', 'Bluesky integration not enabled'],
+            ['not-confirmed', 'Bluesky handle not confirmed'],
+        ] as const)('should return 400 when %s', async (type, message) => {
+            vi.mocked(
+                blueskyService.useDomainHandleForAccount,
+            ).mockResolvedValue(error({ type }));
+
+            const result = await controller.handleUseDomainHandle(ctx);
+
+            expect(result.status).toBe(400);
+            expect(await result.json()).toEqual({ error: message });
+        });
+
+        it('should return 500 on API errors', async () => {
+            vi.mocked(
+                blueskyService.useDomainHandleForAccount,
+            ).mockResolvedValue(
+                error({ type: 'network-error', message: 'timeout' }),
+            );
+
+            const result = await controller.handleUseDomainHandle(ctx);
 
             expect(result.status).toBe(500);
         });

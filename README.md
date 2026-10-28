@@ -15,7 +15,7 @@ A multi-tenant ActivityPub server for [Ghost](https://ghost.org/), built with [F
 
 # Running locally for development
 
-Ghost's host-based `pnpm dev` proxies `/.ghost/activitypub/*`, `/.well-known/webfinger`, and `/.well-known/nodeinfo` to this service (default target `127.0.0.1:8080`). This setup has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
+Ghost's host-based `pnpm dev` proxies `/.ghost/activitypub/*`, `/.well-known/webfinger`, `/.well-known/nodeinfo`, and `/.well-known/atproto-did` to this service (default target `127.0.0.1:8080`). This setup has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
 
 ## Setup
 

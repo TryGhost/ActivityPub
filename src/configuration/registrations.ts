@@ -52,6 +52,7 @@ import { GhostPostService } from '@/ghost/ghost-post.service';
 import { isLocalEnvironment } from '@/helpers/environment';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
+import { AtprotoDidController } from '@/http/api/atproto-did.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
 import { ClientConfigController } from '@/http/api/client-config.controller';
@@ -80,8 +81,10 @@ import { TopicView } from '@/http/api/views/topic.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
 import { HostDataContextLoader } from '@/http/host-data-context-loader';
+import { AtprotoHandleResolver } from '@/integration/atproto-handle.resolver';
 import { BlueskyService } from '@/integration/bluesky.service';
 import { BlueskyApiClient } from '@/integration/bluesky-api.client';
+import { BridgyFedClient } from '@/integration/bridgy-fed.client';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
@@ -424,6 +427,11 @@ export function registerDependencies(
         'blueskyApiClient',
         asClass(BlueskyApiClient).singleton(),
     );
+    container.register('bridgyFedClient', asClass(BridgyFedClient).singleton());
+    container.register(
+        'atprotoHandleResolver',
+        asClass(AtprotoHandleResolver).singleton(),
+    );
     container.register('blueskyService', asClass(BlueskyService).singleton());
 
     container.register('accountView', asClass(AccountView).singleton());
@@ -554,6 +562,11 @@ export function registerDependencies(
     container.register(
         'webFingerController',
         asClass(WebFingerController).singleton(),
+    );
+
+    container.register(
+        'atprotoDidController',
+        asClass(AtprotoDidController).singleton(),
     );
 
     container.register(

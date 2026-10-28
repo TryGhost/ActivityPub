@@ -224,6 +224,14 @@ export class FixtureManager {
         account: Account,
         confirmed: boolean = true,
         handle?: string | null,
+        extra: {
+            did?: string | null;
+            domain_handle?: string | null;
+            domain_handle_status?: string | null;
+            domain_handle_reason?: string | null;
+            domain_handle_claimed_at?: Date | null;
+            domain_handle_automatic?: boolean;
+        } = {},
     ) {
         const resolvedHandle =
             handle !== undefined
@@ -236,6 +244,7 @@ export class FixtureManager {
             account_id: account.id,
             handle: resolvedHandle,
             confirmed,
+            ...extra,
         });
     }
 
