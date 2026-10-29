@@ -110,7 +110,7 @@ services:
       retries: 120
 
   redis:
-    image: redis:7-alpine@sha256:6ba19c50b56777f5c11c58eff8ddb69d0d5f27ba131cffb63f180ccfd43c66af
+    image: redis:7-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -257,7 +257,7 @@ services:
   redis-testing:
     networks:
       - test_network
-    image: redis:7-alpine@sha256:6ba19c50b56777f5c11c58eff8ddb69d0d5f27ba131cffb63f180ccfd43c66af
+    image: redis:7-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
