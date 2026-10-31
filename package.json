@@ -79,7 +79,7 @@
     "@logtape/logtape": "2.4.2",
     "@opentelemetry/api": "1.10.0",
     "@opentelemetry/core": "3.0.0",
-    "@sentry/node": "11.9.0",
+    "@sentry/node": "11.10.0",
     "awilix": "13.0.5",
     "es-toolkit": "1.53.0",
     "hono": "4.13.14",
