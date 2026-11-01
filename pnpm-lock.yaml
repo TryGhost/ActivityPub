@@ -185,8 +185,8 @@ importers:
         specifier: 2.4.5
         version: 2.4.5
       '@google-cloud/pubsub':
-        specifier: 6.3.1
-        version: 6.3.1(supports-color@11.0.0)
+        specifier: 6.3.2
+        version: 6.3.2(supports-color@11.0.0)
       '@google-cloud/storage':
         specifier: 8.4.0
         version: 8.4.0(supports-color@11.0.0)
@@ -719,12 +719,12 @@ packages:
     resolution: {integrity: sha512-/+RvLJ5u+WhGay6Z3aY6OApDQmNqq1427Mmt7Eov9kYp69gdUiGSwFnygeTxfz69XBtYZLAnWikGMIoFXtKt+A==}
     engines: {node: '>=22'}
 
-  '@google-cloud/pubsub-api@0.3.0':
-    resolution: {integrity: sha512-x1L+lrIHgaMwN5fAhnNVS7rh0BZn9eKmqOBXnOUM3jkilF4GE4ooETS9SYnCtPCVHwQtByDTh5b7KIMUW7XAHQ==}
+  '@google-cloud/pubsub-api@0.7.0':
+    resolution: {integrity: sha512-HlBt8JEceIJX9pgikVavq+6umuiEqc1loRwPPJgE8WNiRx1IgAyk9ohhwXwskFbPdzScpb/NKnSQOPy6lJYLFA==}
     engines: {node: '>=22'}
 
-  '@google-cloud/pubsub@6.3.1':
-    resolution: {integrity: sha512-SLtbaURwlN611Ms/5ouSUis2SNrAO1QnPXBhGIE1Ob/l9frpI5VdHiXof9yQKegDoASWaeZkB83B9AzHMW4w+Q==}
+  '@google-cloud/pubsub@6.3.2':
+    resolution: {integrity: sha512-Ym0Qsu4dep1Pn/m14QHABE5gJ6PyysrpbMXGlgerFRKmxE5E9O0Drxi24qA+/vYqC5bNQUR9+ua0IyvT+CS4fA==}
     engines: {node: '>=22'}
 
   '@google-cloud/storage@8.4.0':
@@ -4228,19 +4228,19 @@ snapshots:
 
   '@google-cloud/promisify@6.2.1': {}
 
-  '@google-cloud/pubsub-api@0.3.0(supports-color@11.0.0)':
+  '@google-cloud/pubsub-api@0.7.0(supports-color@11.0.0)':
     dependencies:
       google-gax: 6.13.0(supports-color@11.0.0)
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/pubsub@6.3.1(supports-color@11.0.0)':
+  '@google-cloud/pubsub@6.3.2(supports-color@11.0.0)':
     dependencies:
       '@google-cloud/paginator': 7.2.0
       '@google-cloud/precise-date': 6.2.1
       '@google-cloud/projectify': 6.2.1
       '@google-cloud/promisify': 6.2.1
-      '@google-cloud/pubsub-api': 0.3.0(supports-color@11.0.0)
+      '@google-cloud/pubsub-api': 0.7.0(supports-color@11.0.0)
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.12.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.39.0
