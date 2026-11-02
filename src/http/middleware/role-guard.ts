@@ -1,4 +1,4 @@
-import { createPublicKey, type JsonWebKey } from 'node:crypto';
+import { createPublicKey, type webcrypto } from 'node:crypto';
 
 import type { KvKey, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
@@ -41,7 +41,7 @@ const DEFAULT_KEY_SET_TTL = Temporal.Duration.from({ hours: 1 });
  */
 const DEFAULT_REFETCH_COOLDOWN_MS = 30_000;
 
-type JWK = JsonWebKey & {
+export type JWK = webcrypto.JsonWebKey & {
     kid?: string;
     use?: string;
 };

@@ -5,7 +5,9 @@ ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /opt/activitypub
 
-RUN corepack enable
+# Node 25+ images no longer ship corepack, so install it before enabling the
+# pnpm version pinned by the packageManager field in package.json.
+RUN npm install -g corepack@0.36.0 && corepack enable
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
 # pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
