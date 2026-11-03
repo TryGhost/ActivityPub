@@ -9,7 +9,7 @@
   "engines": {
     "node": "26"
   },
-  "packageManager": "pnpm@12.15.0",
+  "packageManager": "pnpm@12.16.1",
   "scripts": {
     "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
     "build:dev": "pnpm build --sourcemap=inline",
@@ -48,7 +48,7 @@
     "src"
   ],
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
+    "@biomejs/biome": "2.6.4",
     "@cucumber/cucumber": "13.3.0",
     "@faker-js/faker": "10.6.0",
     "@fedify/cli": "2.4.5",
@@ -72,16 +72,16 @@
     "@fedify/vocab": "2.4.5",
     "@fedify/vocab-runtime": "2.4.5",
     "@fedify/webfinger": "2.4.5",
-    "@google-cloud/pubsub": "6.3.1",
+    "@google-cloud/pubsub": "6.3.2",
     "@google-cloud/storage": "8.4.0",
     "@hono/node-server": "2.1.5",
     "@js-temporal/polyfill": "0.5.1",
     "@logtape/logtape": "2.4.2",
     "@opentelemetry/api": "1.10.0",
     "@opentelemetry/core": "3.0.0",
-    "@sentry/node": "11.9.0",
+    "@sentry/node": "11.10.0",
     "awilix": "13.0.5",
-    "es-toolkit": "1.53.0",
+    "es-toolkit": "1.53.1",
     "hono": "4.13.14",
     "html-to-text": "10.0.1",
     "ioredis": "5.11.1",
@@ -91,7 +91,7 @@
     "linkify-html": "4.4.0",
     "linkifyjs": "4.4.0",
     "mysql2": "3.24.6",
-    "node-html-parser": "9.0.5",
+    "node-html-parser": "9.0.6",
     "reflect-metadata": "0.2.2",
     "sanitize-html": "2.18.1",
     "sharp": "0.35.5",
