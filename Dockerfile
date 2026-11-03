@@ -5,14 +5,20 @@ ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /opt/activitypub
 
-# Node 25+ images no longer ship corepack, so install it before enabling the
-# pnpm version pinned by the packageManager field in package.json.
-RUN npm install -g corepack@0.36.0 && corepack enable
+# Node 25+ images no longer ship corepack, so pnpm comes from its own image.
+# The tag must match the packageManager field in package.json — CI checks
+# the two agree. Kept out of `base` so the production image, which never
+# runs pnpm, doesn't carry the ~47 MB binary.
+FROM base AS pnpm
+
+COPY --from=ghcr.io/pnpm/pnpm:12.15.0-alpine@sha256:f164ca19f7736a0994dae195b81756cd969542a93ef692f5ab466759d06c1da9 /opt/pnpm /opt/pnpm
+
+RUN ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
 # pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
 # settings, so pnpm needs it present to resolve the lockfile.
-FROM base AS deps
+FROM pnpm AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
@@ -20,7 +26,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 # Production-only dependencies, for the runtime image.
-FROM base AS prod-deps
+FROM pnpm AS prod-deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
