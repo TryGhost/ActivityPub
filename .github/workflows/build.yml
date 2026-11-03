@@ -63,13 +63,12 @@ jobs:
   # image. Renovate sees the two at different times (nodejs.org vs Docker
   # Hub), so a Node bump can arrive touching only one of them.
   #
-  # pnpm has the same split: CI reads the packageManager field in
-  # package.json, the Dockerfile copies pnpm from the ghcr.io/pnpm/pnpm image.
-  # If they drift, pnpm silently downloads the packageManager version at build
-  # time, so the mismatch never fails on its own.
+  # pnpm has the same split between packageManager in package.json and the
+  # Dockerfile's pnpm image. A mismatch never fails on its own, because pnpm
+  # downloads the packageManager version instead.
   #
-  # The job name is a required status check in the main branch ruleset, so
-  # renaming it needs the ruleset updated in the same step.
+  # The job name is a required status check in the main ruleset, so rename
+  # it there too.
   check-node-version:
     name: Check .nvmrc matches Dockerfile
     runs-on: ubuntu-latest
@@ -86,7 +85,7 @@ jobs:
             exit 1
           fi
 
-      - name: Check package.json packageManager matches the Dockerfile pnpm image
+      - name: Check packageManager matches the Dockerfile pnpm image
         run: |
           packagejson=$(sed -nE 's/^ *"packageManager": *"pnpm@([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' package.json)
           dockerfile=$(sed -nE 's#^COPY --from=ghcr\.io/pnpm/pnpm:([0-9]+\.[0-9]+\.[0-9]+).*#\1#p' Dockerfile | head -n 1)

@@ -1,18 +1,16 @@
 FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS base
 
-ENV PNPM_HOME=/pnpm
-ENV PATH=$PNPM_HOME:$PATH
-
 WORKDIR /opt/activitypub
 
 # Node 25+ images no longer ship corepack, so pnpm comes from its own image.
-# The tag must match the packageManager field in package.json — CI checks
-# the two agree. Kept out of `base` so the production image, which never
-# runs pnpm, doesn't carry the ~47 MB binary.
+# Keep the tag in step with packageManager in package.json (CI checks this).
+# A separate stage keeps the binary out of the production image.
 FROM base AS pnpm
 
-COPY --from=ghcr.io/pnpm/pnpm:12.15.0-alpine@sha256:f164ca19f7736a0994dae195b81756cd969542a93ef692f5ab466759d06c1da9 /opt/pnpm /opt/pnpm
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
 
+COPY --from=ghcr.io/pnpm/pnpm:12.15.0-alpine@sha256:f164ca19f7736a0994dae195b81756cd969542a93ef692f5ab466759d06c1da9 /opt/pnpm /opt/pnpm
 RUN ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.

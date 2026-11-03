@@ -125,21 +125,15 @@
       automerge: false,
     },
 
-    // pnpm is pinned twice: the packageManager field in package.json (read by
-    // CI and by pnpm itself) and the ghcr.io/pnpm/pnpm image the Dockerfile
-    // copies the binary from. Renovate sees them through different
-    // datasources, so group them into one PR. CI fails if they disagree.
+    // pnpm is pinned in package.json (packageManager) and in the Dockerfile
+    // (the ghcr.io/pnpm/pnpm image). Different datasources, one PR.
     {
-      description: 'Move the pnpm packageManager pin and the pnpm Docker image together',
+      description: 'Move the packageManager pin and the pnpm image together',
       groupName: 'pnpm',
       groupSlug: 'pnpm',
       matchDepNames: [
         'pnpm',
         'ghcr.io/pnpm/pnpm',
-      ],
-      matchDatasources: [
-        'npm',
-        'docker',
       ],
     },
 
