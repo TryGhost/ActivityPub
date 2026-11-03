@@ -125,6 +125,18 @@
       automerge: false,
     },
 
+    // pnpm is pinned in package.json (packageManager) and in the Dockerfile
+    // (the ghcr.io/pnpm/pnpm image). Different datasources, one PR.
+    {
+      description: 'Move the packageManager pin and the pnpm image together',
+      groupName: 'pnpm',
+      groupSlug: 'pnpm',
+      matchDepNames: [
+        'pnpm',
+        'ghcr.io/pnpm/pnpm',
+      ],
+    },
+
     // Keep @types/node on the Node major we actually deploy (see Dockerfile
     // and .nvmrc). Typings ahead of the runtime let the compiler accept APIs
     // that production doesn't have. When the Node base image moves, bump

@@ -7,7 +7,7 @@
   "main": "src/app.ts",
   "type": "module",
   "engines": {
-    "node": "24"
+    "node": "26"
   },
   "packageManager": "pnpm@12.16.1",
   "scripts": {
@@ -54,7 +54,7 @@
     "@fedify/cli": "2.4.5",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.10",
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.6",
     "@types/sanitize-html": "2.16.2",
     "@vitest/coverage-v8": "5.0.5",
     "concurrently": "10.0.6",

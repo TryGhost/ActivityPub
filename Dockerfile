@@ -1,16 +1,22 @@
-FROM node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS base
+FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS base
+
+WORKDIR /opt/activitypub
+
+# Node 25+ images no longer ship corepack, so pnpm comes from its own image.
+# Keep the tag in step with packageManager in package.json (CI checks this).
+# A separate stage keeps the binary out of the production image.
+FROM base AS pnpm
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-WORKDIR /opt/activitypub
-
-RUN corepack enable
+COPY --from=ghcr.io/pnpm/pnpm:12.16.1-alpine@sha256:3b67e34454e18e4797a50ade3176dde31cec13ad6670f460a81bdf6e1d8b547b /opt/pnpm /opt/pnpm
+RUN ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
 # pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
 # settings, so pnpm needs it present to resolve the lockfile.
-FROM base AS deps
+FROM pnpm AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
@@ -18,7 +24,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 # Production-only dependencies, for the runtime image.
-FROM base AS prod-deps
+FROM pnpm AS prod-deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 

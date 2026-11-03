@@ -8,11 +8,7 @@ import {
     vi,
 } from 'vitest';
 
-import {
-    generateKeyPairSync,
-    type JsonWebKey,
-    type KeyObject,
-} from 'node:crypto';
+import { generateKeyPairSync, type KeyObject } from 'node:crypto';
 
 import type {
     KvKey,
@@ -25,13 +21,13 @@ import { Hono } from 'hono';
 import jwt from 'jsonwebtoken';
 
 import type { HonoContextVariables } from '@/app';
-import { createRoleMiddleware } from '@/http/middleware/role-guard';
+import { createRoleMiddleware, type JWK } from '@/http/middleware/role-guard';
 
 type TestKey = {
     kid: string;
     privateKey: KeyObject;
     publicKey: KeyObject;
-    jwk: JsonWebKey;
+    jwk: JWK;
 };
 
 function createTestKey(kid: string, modulusLength = 2048): TestKey {
@@ -122,7 +118,7 @@ const REFETCH_COOLDOWN_MS = 30_000;
 describe('createRoleMiddleware', () => {
     let clock: number;
     let kv: FakeKvStore;
-    let servedKeys: JsonWebKey[];
+    let servedKeys: JWK[];
     let fetchMock: MockInstance<typeof fetch>;
     let app: Hono<{ Variables: HonoContextVariables }>;
 
