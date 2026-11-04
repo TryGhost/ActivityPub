@@ -171,7 +171,7 @@ importers:
         version: 2.4.5
       '@fedify/hono':
         specifier: 2.4.5
-        version: 2.4.5(@fedify/fedify@2.4.5)(hono@4.13.14)
+        version: 2.4.5(@fedify/fedify@2.4.5)(hono@4.13.16)
       '@fedify/redis':
         specifier: 2.4.5
         version: 2.4.5(@fedify/fedify@2.4.5)(ioredis@5.11.1(supports-color@11.0.0))
@@ -192,7 +192,7 @@ importers:
         version: 8.4.0(supports-color@11.0.0)
       '@hono/node-server':
         specifier: 2.1.5
-        version: 2.1.5(hono@4.13.14)
+        version: 2.1.5(hono@4.13.16)
       '@js-temporal/polyfill':
         specifier: 0.5.1
         version: 0.5.1
@@ -215,8 +215,8 @@ importers:
         specifier: 1.53.1
         version: 1.53.1
       hono:
-        specifier: 4.13.14
-        version: 4.13.14
+        specifier: 4.13.16
+        version: 4.13.16
       html-to-text:
         specifier: 10.0.1
         version: 10.0.1
@@ -2436,8 +2436,8 @@ packages:
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
 
-  hono@4.13.14:
-    resolution: {integrity: sha512-yhRLQ21U6qa9Hsu2N7Qcbh8tE+WKEcoErjIo56LeSGiGXGp9sA7UpE86Ui9uexb61KakiGwuHMn2QdV7w6i6kQ==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@9.0.3:
@@ -4090,7 +4090,7 @@ snapshots:
       enquirer: 2.4.1
       es-toolkit: 1.46.1
       fetch-mock: 12.6.0
-      hono: 4.13.14
+      hono: 4.13.16
       icojs: 0.19.5(@jimp/custom@0.22.12)
       inquirer: 12.11.1(@types/node@26.6.6)
       inquirer-toggle: 1.0.1
@@ -4131,10 +4131,10 @@ snapshots:
       temporal-polyfill: 1.0.6
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.4.5(@fedify/fedify@2.4.5)(hono@4.13.14)':
+  '@fedify/hono@2.4.5(@fedify/fedify@2.4.5)(hono@4.13.16)':
     dependencies:
       '@fedify/fedify': 2.4.5
-      hono: 4.13.14
+      hono: 4.13.16
 
   '@fedify/init@2.4.5(@types/node@26.6.6)':
     dependencies:
@@ -4292,9 +4292,9 @@ snapshots:
     dependencies:
       '@logtape/logtape': 1.3.11
 
-  '@hono/node-server@2.1.5(hono@4.13.14)':
+  '@hono/node-server@2.1.5(hono@4.13.16)':
     dependencies:
-      hono: 4.13.14
+      hono: 4.13.16
 
   '@img/colour@1.1.0': {}
 
@@ -5896,7 +5896,7 @@ snapshots:
 
   highlight.js@10.7.3: {}
 
-  hono@4.13.14: {}
+  hono@4.13.16: {}
 
   hosted-git-info@9.0.3:
     dependencies:
