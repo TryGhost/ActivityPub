@@ -11,15 +11,15 @@ import {
 } from '@/core/result';
 import {
     BLUESKY_API_BASE_URL,
-    BLUESKY_API_SEARCH_ACTORS_ENDPOINT,
+    BLUESKY_API_GET_PROFILE_ENDPOINT,
     BlueskyApiClient,
 } from '@/integration/bluesky-api.client';
 
 function mockBlueskyFetch(
-    query: string,
+    did: string,
     response: () => Promise<Response>,
 ): void {
-    const expectedUrl = `${BLUESKY_API_BASE_URL}/${BLUESKY_API_SEARCH_ACTORS_ENDPOINT}?q=${encodeURIComponent(query)}`;
+    const expectedUrl = `${BLUESKY_API_BASE_URL}/${BLUESKY_API_GET_PROFILE_ENDPOINT}?actor=${encodeURIComponent(did)}`;
 
     vi.mocked(fetch).mockImplementation((url, options) => {
         const headers = options?.headers as Record<string, string> | undefined;
@@ -41,6 +41,8 @@ function mockBlueskyFetch(
 }
 
 describe('BlueskyApiClient', () => {
+    const did = 'did:plc:abc123';
+
     let client: BlueskyApiClient;
     let logger: Logger;
 
@@ -59,107 +61,68 @@ describe('BlueskyApiClient', () => {
         vi.unstubAllGlobals();
     });
 
-    it('should return an array of actors when actors are found', async () => {
-        const query = 'example.com';
-        const actors = [
-            {
-                handle: 'test.example.com.ap.brid.gy',
-                labels: [
-                    {
-                        val: 'bridged-from-bridgy-fed-activitypub',
-                    },
-                ],
-            },
-            {
-                handle: 'other.bsky.social',
-            },
-        ];
+    describe('getProfile', () => {
+        it('should return the DID and handle of the profile', async () => {
+            mockBlueskyFetch(did, () =>
+                Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        did,
+                        handle: 'example.com',
+                        displayName: 'Example',
+                    }),
+                } as Response),
+            );
 
-        mockBlueskyFetch(query, () =>
-            Promise.resolve({
-                ok: true,
-                json: async () => ({
-                    actors,
-                }),
-            } as Response),
+            const result = await client.getProfile(did);
+
+            expect(isError(result)).toBe(false);
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                did,
+                handle: 'example.com',
+            });
+        });
+
+        it.each([400, 404])(
+            'should return a not-found error when the response is %s',
+            async (status) => {
+                mockBlueskyFetch(did, () =>
+                    Promise.resolve({ ok: false, status } as Response),
+                );
+
+                const result = await client.getProfile(did);
+
+                expect(getError(result as ResultError<unknown>)).toEqual({
+                    type: 'not-found',
+                });
+            },
         );
 
-        const result = await client.searchActors(query);
+        it('should return an api-error when the response is not ok', async () => {
+            mockBlueskyFetch(did, () =>
+                Promise.resolve({ ok: false, status: 500 } as Response),
+            );
 
-        expect(isError(result)).toBe(false);
-        expect(getValue(result as Ok<unknown>)).toEqual(actors);
-    });
+            const result = await client.getProfile(did);
 
-    it('should return an empty array when no actors are found', async () => {
-        const query = 'example.com';
-
-        mockBlueskyFetch(query, () =>
-            Promise.resolve({
-                ok: true,
-                json: async () => ({
-                    actors: [],
-                }),
-            } as Response),
-        );
-
-        const result = await client.searchActors(query);
-
-        expect(isError(result)).toBe(false);
-        expect(getValue(result as Ok<unknown>)).toEqual([]);
-    });
-
-    it('should return an api-error when the response is not ok', async () => {
-        const query = 'example.com';
-
-        mockBlueskyFetch(query, () =>
-            Promise.resolve({
-                ok: false,
+            expect(getError(result as ResultError<unknown>)).toMatchObject({
+                type: 'api-error',
                 status: 500,
-            } as Response),
-        );
-
-        const result = await client.searchActors(query);
-
-        expect(isError(result)).toBe(true);
-
-        expect(getError(result as ResultError<unknown>)).toMatchObject({
-            type: 'api-error',
-            status: 500,
+            });
         });
-    });
 
-    it('should return a network-error when the fetch fails', async () => {
-        const query = 'example.com';
+        it('should return a network-error when the fetch fails', async () => {
+            mockBlueskyFetch(did, () =>
+                Promise.reject(new TypeError('Network request failed')),
+            );
 
-        mockBlueskyFetch(query, () =>
-            Promise.reject(new TypeError('Network request failed')),
-        );
+            const result = await client.getProfile(did);
 
-        const result = await client.searchActors(query);
-
-        expect(isError(result)).toBe(true);
-
-        expect(getError(result as ResultError<unknown>)).toMatchObject({
-            type: 'network-error',
-            message: 'Network request failed',
-        });
-    });
-
-    it('should return a network-error when the request times out', async () => {
-        const query = 'example.com';
-
-        const timeoutError = new globalThis.Error('Timeout');
-        timeoutError.name = 'TimeoutError';
-
-        mockBlueskyFetch(query, () => Promise.reject(timeoutError));
-
-        const result = await client.searchActors(query);
-
-        expect(isError(result)).toBe(true);
-
-        expect(getError(result as ResultError<unknown>)).toMatchObject({
-            type: 'network-error',
-            message: 'Timeout',
+            expect(getError(result as ResultError<unknown>)).toMatchObject({
+                type: 'network-error',
+                message: 'Network request failed',
+            });
         });
     });
 });

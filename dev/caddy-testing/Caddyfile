@@ -21,6 +21,10 @@ self.test {
         reverse_proxy activitypub-testing:8083
     }
 
+    handle /.well-known/atproto-did {
+        reverse_proxy activitypub-testing:8083
+    }
+
     handle {
         reverse_proxy ghost-wiremock:80
     }
@@ -37,6 +41,10 @@ alice.test {
     }
 
     handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/atproto-did {
         reverse_proxy activitypub-testing:8083
     }
 
@@ -60,6 +68,10 @@ bob.test {
         reverse_proxy activitypub-testing:8083
     }
 
+    handle /.well-known/atproto-did {
+        reverse_proxy activitypub-testing:8083
+    }
+
     handle {
         reverse_proxy ghost-wiremock:80
     }
@@ -77,6 +89,10 @@ charlie.test {
     }
 
     handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/atproto-did {
         reverse_proxy activitypub-testing:8083
     }
 
