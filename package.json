@@ -9,7 +9,7 @@
   "engines": {
     "node": "26"
   },
-  "packageManager": "pnpm@12.16.1",
+  "packageManager": "pnpm@12.17.0",
   "scripts": {
     "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
     "build:dev": "pnpm build --sourcemap=inline",
