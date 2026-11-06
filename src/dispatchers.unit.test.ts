@@ -735,6 +735,58 @@ describe('dispatchers', () => {
 
             expect(result).toBeNull();
         });
+
+        it('returns null when the path identifier does not match the actor ID', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForActor,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+                mockAccountMoveService,
+            );
+            const result = await dispatcher(actorCtx, 'wowsuchactor');
+
+            expect(result).toBeNull();
+            expect(mockAccountService.getAliases).not.toHaveBeenCalled();
+        });
+
+        it('returns a Person for the Ghost-shaped users/index path', async () => {
+            const ghostAccount = {
+                ...mockAccountForActor,
+                username: 'index',
+                apId: new URL(
+                    'https://example.com/.ghost/activitypub/users/index',
+                ),
+            } as Account;
+
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: ghostAccount,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+                mockAccountMoveService,
+            );
+            const result = await dispatcher(actorCtx, 'index');
+
+            expect(result).not.toBeNull();
+            expect(result?.id?.href).toBe(
+                'https://example.com/.ghost/activitypub/users/index',
+            );
+        });
     });
 
     describe('keypairDispatcher', () => {
@@ -905,6 +957,28 @@ describe('dispatchers', () => {
             expect(result).toHaveLength(1);
             expect(result[0].publicKey).toBeInstanceOf(CryptoKey);
             expect(result[0].privateKey).toBeInstanceOf(CryptoKey);
+        });
+
+        it('returns empty array when the path identifier does not match the actor ID', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForKeypair,
+                }),
+            );
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'wowsuchactor');
+
+            expect(result).toEqual([]);
+            expect(
+                mockAccountServiceForKeypair.getKeyPair,
+            ).not.toHaveBeenCalled();
         });
     });
 

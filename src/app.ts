@@ -66,6 +66,7 @@ import type { NodeInfoDispatcher } from '@/activitypub/nodeinfo.dispatcher';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
+import { getError, getValue, isError } from '@/core/result';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
@@ -101,6 +102,10 @@ import type { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 import type { FeedUpdateService } from '@/feed/feed-update.service';
 import type { FlagService } from '@/flag/flag.service';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
+import {
+    actorPathIdentifier,
+    matchesWebFingerUsername,
+} from '@/helpers/activitypub/actor';
 import { getTraceContext } from '@/helpers/context-header';
 import { isLocalEnvironment } from '@/helpers/environment';
 import { AccountController } from '@/http/api/account.controller';
@@ -337,8 +342,26 @@ globalFedify
             return dispatcher(ctx, identifier);
         }),
     )
-    .mapHandle(async () => {
-        return 'index'; // All identifiers are 'index'
+    .mapHandle(async (ctx, username) => {
+        // Accept preferredUsername or the actor path segment (same rules as
+        // WebFingerController); map to the canonical path identifier.
+        const hostDataContextLoader = container.resolve<HostDataContextLoader>(
+            'hostDataContextLoader',
+        );
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            (ctx.data?.logger ?? globalLogging).error(
+                'WebFinger mapHandle host data error for {host}: {error}',
+                { host: ctx.host, error },
+            );
+            return null;
+        }
+        const { account } = getValue(hostData);
+        if (!matchesWebFingerUsername(account, username)) {
+            return null;
+        }
+        return actorPathIdentifier(account.apId);
     })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
