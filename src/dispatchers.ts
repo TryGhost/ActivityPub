@@ -32,7 +32,10 @@ import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
-import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
+import {
+    isFollowedByDefaultSiteAccount,
+    matchesActorPathIdentifier,
+} from '@/helpers/activitypub/actor';
 import { isEqual } from '@/helpers/uri';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
@@ -78,11 +81,7 @@ export const actorDispatcher = (
         // Path identifier must match the account's canonical actor ID. Ghost
         // sites historically answered any `/.ghost/activitypub/users/{name}`
         // with the site actor (#1225).
-        const expectedIdentifier = account.apId.pathname
-            .replace(/\/+$/, '')
-            .split('/')
-            .pop();
-        if (identifier !== expectedIdentifier) {
+        if (!matchesActorPathIdentifier(account.apId, identifier)) {
             return null;
         }
 
@@ -168,6 +167,11 @@ export const keypairDispatcher = (
         }
 
         const { account } = getValue(hostData);
+        // Same path guard as actorDispatcher — Fedify signs / loads keys via
+        // this identifier (#1225).
+        if (!matchesActorPathIdentifier(account.apId, identifier)) {
+            return [];
+        }
 
         const keyPair = await accountService.getKeyPair(account.id);
 

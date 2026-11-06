@@ -70,3 +70,31 @@ export async function isFollowedByDefaultSiteAccount(
 export function isHandle(handle: string): boolean {
     return new RegExp(`^${HANDLE_REGEX.source}$`).test(handle);
 }
+
+/** Last non-empty path segment of an actor ID (`…/users/index` → `index`). */
+export function actorPathIdentifier(apId: URL): string | null {
+    return apId.pathname.split('/').filter(Boolean).at(-1) || null;
+}
+
+/** Whether `{identifier}` matches the account's canonical actor path. */
+export function matchesActorPathIdentifier(
+    apId: URL,
+    identifier: string,
+): boolean {
+    const expected = actorPathIdentifier(apId);
+    return expected !== null && identifier === expected;
+}
+
+/**
+ * WebFinger `acct:` local-part match: preferred username or the actor path
+ * segment (so `acct:index@…` still works after a display-username change).
+ */
+export function matchesWebFingerUsername(
+    account: { username: string; apId: URL },
+    username: string,
+): boolean {
+    return (
+        account.username === username ||
+        actorPathIdentifier(account.apId) === username
+    );
+}

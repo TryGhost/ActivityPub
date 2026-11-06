@@ -3,6 +3,7 @@ import type { Context as HonoContext, Next } from 'hono';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { getAccountHandleHost, normalizeWebfingerHost } from '@/account/utils';
+import { matchesWebFingerUsername } from '@/helpers/activitypub/actor';
 import { Route } from '@/http/decorators/route.decorator';
 import type { SiteService } from '@/site/site.service';
 
@@ -177,15 +178,6 @@ export class WebFingerController {
         resourceUsername: string,
         account: Account,
     ) {
-        if (account.username === resourceUsername) {
-            return true;
-        }
-
-        const actorUsername = account.apId.pathname
-            .split('/')
-            .filter(Boolean)
-            .at(-1);
-
-        return actorUsername === resourceUsername;
+        return matchesWebFingerUsername(account, resourceUsername);
     }
 }
