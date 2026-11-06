@@ -75,6 +75,17 @@ export const actorDispatcher = (
         }
 
         const { account } = getValue(hostData);
+        // Path identifier must match the account's canonical actor ID. Ghost
+        // sites historically answered any `/.ghost/activitypub/users/{name}`
+        // with the site actor (#1225).
+        const expectedIdentifier = account.apId.pathname
+            .replace(/\/+$/, '')
+            .split('/')
+            .pop();
+        if (identifier !== expectedIdentifier) {
+            return null;
+        }
+
         const aliases = await accountService.getAliases(account.id);
         const move = await accountMoveService.getMove(account.id);
 

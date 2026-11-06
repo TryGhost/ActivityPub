@@ -735,6 +735,27 @@ describe('dispatchers', () => {
 
             expect(result).toBeNull();
         });
+
+        it('returns null when the path identifier does not match the actor ID', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForActor,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+                mockAccountMoveService,
+            );
+            const result = await dispatcher(actorCtx, 'wowsuchactor');
+
+            expect(result).toBeNull();
+            expect(mockAccountService.getAliases).not.toHaveBeenCalled();
+        });
     });
 
     describe('keypairDispatcher', () => {

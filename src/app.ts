@@ -66,6 +66,7 @@ import type { NodeInfoDispatcher } from '@/activitypub/nodeinfo.dispatcher';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
+import { getValue, isError } from '@/core/result';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
@@ -337,8 +338,23 @@ globalFedify
             return dispatcher(ctx, identifier);
         }),
     )
-    .mapHandle(async () => {
-        return 'index'; // All identifiers are 'index'
+    .mapHandle(async (ctx, username) => {
+        // WebFinger handles must match the site account's username; map to the
+        // canonical path identifier from the actor ID (usually `index`).
+        const hostDataContextLoader = container.resolve<HostDataContextLoader>(
+            'hostDataContextLoader',
+        );
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+        if (isError(hostData)) {
+            return null;
+        }
+        const { account } = getValue(hostData);
+        if (username !== account.username) {
+            return null;
+        }
+        return (
+            account.apId.pathname.replace(/\/+$/, '').split('/').pop() ?? null
+        );
     })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
