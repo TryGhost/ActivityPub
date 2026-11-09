@@ -1,12 +1,14 @@
 import type { AccountService } from '@/account/account.service';
 import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import type { SiteService } from '@/site/site.service';
 
 export class SiteController {
     constructor(
         private readonly siteService: SiteService,
         private readonly accountService: AccountService,
+        private readonly blueskyService: BlueskyService,
         private readonly ghostProIpAddresses?: string[],
     ) {}
 
@@ -77,6 +79,24 @@ export class SiteController {
         }
 
         try {
+            const site = await this.siteService.getSiteByHost(host);
+
+            if (!site) {
+                return new Response(null, {
+                    status: 404,
+                });
+            }
+
+            try {
+                const account = await this.accountService.getAccountForSite(site);
+                await this.blueskyService.disableForAccount(account);
+            } catch (error) {
+                logger.warn(
+                    'Could not disable Bluesky before disabling site {host}',
+                    { host, error },
+                );
+            }
+
             const wasDisabled = await this.siteService.disableSiteForHost(host);
 
             if (wasDisabled) {

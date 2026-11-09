@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { SiteController } from '@/http/api/site.controller';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import type { Site, SiteService } from '@/site/site.service';
 
 describe('SiteController', () => {
     let siteService: SiteService;
     let accountService: AccountService;
+    let blueskyService: BlueskyService;
     let siteController: SiteController;
     let mockSite: Site;
+    let mockAccount: Account;
 
     beforeEach(() => {
         mockSite = {
@@ -19,14 +23,25 @@ describe('SiteController', () => {
             ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
 
+        mockAccount = {
+            id: 42,
+            username: 'index',
+        } as Account;
+
         siteService = {
             initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
+            getSiteByHost: vi.fn().mockResolvedValue(mockSite),
             disableSiteForHost: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
 
         accountService = {
+            // handleGetSiteData treats a missing account as "site only"
             getAccountForSite: vi.fn().mockResolvedValue(null),
         } as unknown as AccountService;
+
+        blueskyService = {
+            disableForAccount: vi.fn().mockResolvedValue(undefined),
+        } as unknown as BlueskyService;
     });
 
     function getMockAppContext(
@@ -49,6 +64,7 @@ describe('SiteController', () => {
                 if (key === 'logger') {
                     return {
                         info: vi.fn(),
+                        warn: vi.fn(),
                         error: vi.fn(),
                     };
                 }
@@ -57,9 +73,20 @@ describe('SiteController', () => {
         } as unknown as AppContext;
     }
 
+    function createController(
+        ghostProIpAddresses?: string[],
+    ): SiteController {
+        return new SiteController(
+            siteService,
+            accountService,
+            blueskyService,
+            ghostProIpAddresses,
+        );
+    }
+
     describe('handleGetSiteData', () => {
         it('returns 401 if no host header is provided', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
             const ctx = getMockAppContext(undefined);
             const response = await siteController.handleGetSiteData(ctx);
 
@@ -69,7 +96,7 @@ describe('SiteController', () => {
         });
 
         it('returns site data as JSON', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleGetSiteData(ctx);
 
@@ -83,7 +110,7 @@ describe('SiteController', () => {
         });
 
         it('returns site data when no account exists for the site', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleGetSiteData(ctx);
@@ -93,10 +120,7 @@ describe('SiteController', () => {
         });
 
         it('sets `ghost_pro` flag to false when none of the x-forwarded-for IP addresses matches any of the Ghost (Pro) IP addresses', async () => {
-            siteController = new SiteController(siteService, accountService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
+            siteController = createController(['10.0.0.1', '10.0.0.2']);
             const ctx = getMockAppContext('example.com', {
                 'x-forwarded-for': '192.168.1.1, 218.123.123.123',
             });
@@ -110,10 +134,7 @@ describe('SiteController', () => {
         });
 
         it('sets `ghost_pro` flag to true when one of the x-forwarded-for IP addresses matches a Ghost (Pro) IP address', async () => {
-            siteController = new SiteController(siteService, accountService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
+            siteController = createController(['10.0.0.1', '10.0.0.2']);
             const ctx = getMockAppContext('example.com', {
                 'x-forwarded-for': '192.168.1.1, 10.0.0.1, 218.123.123.123',
             });
@@ -127,10 +148,7 @@ describe('SiteController', () => {
         });
 
         it('sets `ghost_pro` flag to false when no IP headers are found', async () => {
-            siteController = new SiteController(siteService, accountService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
+            siteController = createController(['10.0.0.1', '10.0.0.2']);
             const ctx = getMockAppContext('example.com'); // no x-forwarded-for header
 
             await siteController.handleGetSiteData(ctx);
@@ -144,7 +162,7 @@ describe('SiteController', () => {
 
     describe('handleDisableSite', () => {
         it('returns 401 if no host header is provided', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
 
             const ctx = getMockAppContext(undefined);
             const response = await siteController.handleDisableSite(ctx);
@@ -157,27 +175,78 @@ describe('SiteController', () => {
         });
 
         it('returns 200 if the site is disabled', async () => {
-            siteController = new SiteController(siteService, accountService);
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                mockAccount,
+            );
+            siteController = createController();
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(200);
+            expect(siteService.getSiteByHost).toHaveBeenCalledWith(
+                'example.com',
+            );
+            expect(accountService.getAccountForSite).toHaveBeenCalledWith(
+                mockSite,
+            );
+            expect(blueskyService.disableForAccount).toHaveBeenCalledWith(
+                mockAccount,
+            );
+            expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
+                'example.com',
+            );
+        });
+
+        it('still disables the site when Bluesky cleanup fails', async () => {
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                mockAccount,
+            );
+            siteController = createController();
+            vi.mocked(blueskyService.disableForAccount).mockRejectedValue(
+                new Error('bridgy unavailable'),
+            );
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(200);
+            expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
+                'example.com',
+            );
+        });
+
+        it('still disables the site when no account exists', async () => {
+            siteController = createController();
+            vi.mocked(accountService.getAccountForSite).mockRejectedValue(
+                new Error('No user found for site: 1'),
+            );
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(200);
+            expect(blueskyService.disableForAccount).not.toHaveBeenCalled();
+            expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
+                'example.com',
+            );
         });
 
         it('returns 404 if the site is not found', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
 
-            vi.mocked(siteService.disableSiteForHost).mockResolvedValue(false);
+            vi.mocked(siteService.getSiteByHost).mockResolvedValue(null);
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(404);
+            expect(blueskyService.disableForAccount).not.toHaveBeenCalled();
+            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
         });
 
         it('returns 500 if an error occurs', async () => {
-            siteController = new SiteController(siteService, accountService);
+            siteController = createController();
 
             vi.mocked(siteService.disableSiteForHost).mockRejectedValue(
                 new Error('test'),
