@@ -212,8 +212,8 @@ importers:
         specifier: 13.0.5
         version: 13.0.5
       es-toolkit:
-        specifier: 1.53.1
-        version: 1.53.1
+        specifier: 1.53.2
+        version: 1.53.2
       hono:
         specifier: 4.13.16
         version: 4.13.16
@@ -2236,8 +2236,8 @@ packages:
   es-toolkit@1.46.1:
     resolution: {integrity: sha512-5eNtXOs3tbfxXOj04tjjseeWkRWaoCjdEI+96DgwzZoe6c9juL49pXlzAFTI72aWC9Y8p7168g6XIKjh7k6pyQ==}
 
-  es-toolkit@1.53.1:
-    resolution: {integrity: sha512-VhMc6IXmexu8iYFfL2aaAww6IvJTdHlqBLruLoEUs33YD4IcP5DdZcLOybMsMmmLsiy1c8PsiLsrM0DdIuuRUA==}
+  es-toolkit@1.53.2:
+    resolution: {integrity: sha512-iUqZ+NlwH4jUgRmXZUxFBsV/9762TQEa1O4IXLFBmDEjVHScBytKuseX23I0+v9ShZ5MYxEx6WKNzm6IPnex8g==}
 
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
@@ -4169,7 +4169,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.4.5
       '@logtape/logtape': 2.4.2
-      es-toolkit: 1.53.1
+      es-toolkit: 1.53.2
       temporal-polyfill: 1.0.6
 
   '@fedify/uri-template@2.4.5': {}
@@ -4190,7 +4190,7 @@ snapshots:
     dependencies:
       '@cfworker/json-schema': 4.1.4
       byte-encodings: 1.0.11
-      es-toolkit: 1.53.1
+      es-toolkit: 1.53.2
       yaml: 2.9.1
 
   '@fedify/vocab@2.4.5':
@@ -5637,7 +5637,7 @@ snapshots:
 
   es-toolkit@1.46.1: {}
 
-  es-toolkit@1.53.1: {}
+  es-toolkit@1.53.2: {}
 
   esbuild@0.28.2:
     optionalDependencies:
