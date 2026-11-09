@@ -88,7 +88,8 @@ export class SiteController {
             }
 
             try {
-                const account = await this.accountService.getAccountForSite(site);
+                const account =
+                    await this.accountService.getAccountForSite(site);
                 await this.blueskyService.disableForAccount(account);
             } catch (error) {
                 logger.warn(
