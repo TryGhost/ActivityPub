@@ -73,9 +73,7 @@ describe('SiteController', () => {
         } as unknown as AppContext;
     }
 
-    function createController(
-        ghostProIpAddresses?: string[],
-    ): SiteController {
+    function createController(ghostProIpAddresses?: string[]): SiteController {
         return new SiteController(
             siteService,
             accountService,
