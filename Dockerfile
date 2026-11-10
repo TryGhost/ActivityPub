@@ -10,7 +10,7 @@ FROM base AS pnpm
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-COPY --from=ghcr.io/pnpm/pnpm:12.18.0-alpine@sha256:937d5b248145cd59aaf3d78dd0fd45f95e65b942585c370a0a11d53ab937ed98 /opt/pnpm /opt/pnpm
+COPY --from=ghcr.io/pnpm/pnpm:12.19.0-alpine@sha256:e035a4358b5f2e3e4a83304b7bc7d48effc557eead59e1c9638fae0e78e77388 /opt/pnpm /opt/pnpm
 RUN ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
