@@ -57,7 +57,7 @@
     "@types/node": "26.6.6",
     "@types/sanitize-html": "2.16.2",
     "@vitest/coverage-v8": "5.1.0",
-    "concurrently": "10.0.6",
+    "concurrently": "10.0.7",
     "esbuild": "0.28.2",
     "nock": "15.0.6",
     "typescript": "7.0.2",
