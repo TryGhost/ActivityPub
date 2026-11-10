@@ -2,16 +2,18 @@ FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3
 
 WORKDIR /opt/activitypub
 
-# Node 25+ images no longer ship corepack, so pnpm comes from its own image.
-# Keep the tag in step with packageManager in package.json (CI checks this).
+# Node 25+ images no longer ship corepack, so npm installs pnpm at the version
+# packageManager names in package.json. That keeps a single pnpm pin for
+# Renovate to move.
 # A separate stage keeps the binary out of the production image.
 FROM base AS pnpm
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-COPY --from=ghcr.io/pnpm/pnpm:12.18.0-alpine@sha256:937d5b248145cd59aaf3d78dd0fd45f95e65b942585c370a0a11d53ab937ed98 /opt/pnpm /opt/pnpm
-RUN ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    npm install --global --ignore-scripts \
+    "$(node -p "require('/tmp/package.json').packageManager")"
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
 # pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
