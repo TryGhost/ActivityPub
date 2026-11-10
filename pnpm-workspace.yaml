@@ -14,3 +14,13 @@ allowBuilds:
 # 24h check. Fedify updates are reviewed by a human before merge.
 minimumReleaseAgeExclude:
   - '@fedify/*'
+
+# Fedify 2.4.5 pins versions that carry known vulnerabilities. Each selector
+# matches only the vulnerable range, so it stops applying once Fedify moves
+# past it and can then be removed.
+# - @opentelemetry/sdk-metrics 2.7.1 pins @opentelemetry/core 2.7.1
+#   (GHSA-8988-4f7v-96qf, fixed in core 2.8.0).
+# - @fedify/cli depends on srvx ^0.8.7 (GHSA-p36q-q72m-gchr, fixed in 0.11.13).
+overrides:
+  '@opentelemetry/sdk-metrics@<2.8.0': ^2.12.0
+  'srvx@<0.11.13': ^0.11.13
