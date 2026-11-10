@@ -21,6 +21,9 @@ minimumReleaseAgeExclude:
 # - @opentelemetry/sdk-metrics 2.7.1 pins @opentelemetry/core 2.7.1
 #   (GHSA-8988-4f7v-96qf, fixed in core 2.8.0).
 # - @fedify/cli depends on srvx ^0.8.7 (GHSA-p36q-q72m-gchr, fixed in 0.11.13).
+#   Capped below 0.11.22, which stops trusting X-Forwarded-Proto unless the
+#   server opts in with `trustProxy`. The CLI doesn't, so its tunnelled
+#   temporary server would advertise http:// actor URLs instead of https://.
 overrides:
   '@opentelemetry/sdk-metrics@<2.8.0': ^2.12.0
-  'srvx@<0.11.13': ^0.11.13
+  'srvx@<0.11.13': '>=0.11.13 <0.11.22'

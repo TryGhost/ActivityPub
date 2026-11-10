@@ -164,7 +164,7 @@ settings:
 
 overrides:
   '@opentelemetry/sdk-metrics@<2.8.0': ^2.12.0
-  srvx@<0.11.13: ^0.11.13
+  srvx@<0.11.13: '>=0.11.13 <0.11.22'
 
 importers:
 
@@ -3317,8 +3317,8 @@ packages:
     resolution: {integrity: sha512-6CKD38c31SENivxOADeMNLdukOnUxUcflKtzVWzace7Riv1v7cAEym5Cx9Q7gYZ3ezIJI7ZpqecQq8cqNeSSFg==}
     engines: {bun: '>=1.0.0', deno: '>=2.0.0', node: '>=12.0.0'}
 
-  srvx@0.11.22:
-    resolution: {integrity: sha512-LqZxxBDMKuMAZzFzJnDCkFOrs9MZQZr0LvHiO/SuSZVdQaXD7xQ5UWTUxheJrQPve1qk9MG2B/yttUvJxw8egQ==}
+  srvx@0.11.21:
+    resolution: {integrity: sha512-GWTHjKMeekX8CwJf4VU9Oo6mJpSGaflGMddbCvR+Cmmh9sslRMiGbAoqqZacE0r1ncARh6buCEETr2W52F8b1w==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -4114,7 +4114,7 @@ snapshots:
       pngjs: 7.0.0
       shiki: 1.29.2
       smol-toml: 1.9.1
-      srvx: 0.11.22
+      srvx: 0.11.21
       temporal-polyfill: 1.0.8
       valibot: 1.5.0(typescript@7.0.2)
       yaml: 2.9.1
@@ -6812,7 +6812,7 @@ snapshots:
 
   sql-escaper@1.5.2: {}
 
-  srvx@0.11.22: {}
+  srvx@0.11.21: {}
 
   stackframe@1.3.4: {}
 
