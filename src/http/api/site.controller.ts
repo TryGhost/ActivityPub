@@ -25,29 +25,25 @@ export class SiteController {
 
         try {
             const isGhostPro = this.isRequestViaGhostPro(ctx);
-            const existingSite = await this.siteService.getSiteByHost(host);
             const site = await this.siteService.initialiseSiteForHost(
                 host,
                 isGhostPro,
             );
-            const siteWasRecreated = existingSite === null;
 
             let responseBody: object = site;
 
             const account = await this.accountService.getAccountForSite(site);
 
             if (account) {
-                if (siteWasRecreated) {
-                    try {
-                        await this.blueskyService.reconnectBridgyForAccount(
-                            account,
-                        );
-                    } catch (error) {
-                        logger.warn(
-                            'Could not restore Bluesky after enabling site {host}',
-                            { host, error },
-                        );
-                    }
+                try {
+                    await this.blueskyService.reconnectBridgyForAccount(
+                        account,
+                    );
+                } catch (error) {
+                    logger.warn(
+                        'Could not restore Bluesky after enabling site {host}',
+                        { host, error },
+                    );
                 }
 
                 responseBody = {

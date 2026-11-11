@@ -122,8 +122,7 @@ describe('SiteController', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('restores Bridgy when the site was just recreated', async () => {
-            vi.mocked(siteService.getSiteByHost).mockResolvedValue(null);
+        it('restores Bridgy when an account exists for the site', async () => {
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
@@ -143,28 +142,7 @@ describe('SiteController', () => {
             });
         });
 
-        it('does not restore Bridgy when the site already existed', async () => {
-            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
-                mockAccount,
-            );
-            siteController = createController();
-
-            const ctx = getMockAppContext('example.com');
-            const response = await siteController.handleGetSiteData(ctx);
-
-            expect(response.status).toBe(200);
-            expect(
-                blueskyService.reconnectBridgyForAccount,
-            ).not.toHaveBeenCalled();
-            expect(await response.json()).toMatchObject({
-                ...mockSite,
-                handle: '@index@example.com',
-                actorUrl: mockAccount.apId.href,
-            });
-        });
-
         it('still returns site data when Bluesky restore fails', async () => {
-            vi.mocked(siteService.getSiteByHost).mockResolvedValue(null);
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
