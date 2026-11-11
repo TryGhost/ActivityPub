@@ -52,7 +52,8 @@ export class FixtureManager {
         let _account: Account;
 
         if (!site) {
-            _site = await this.siteService.initialiseSiteForHost(host);
+            ({ site: _site } =
+                await this.siteService.initialiseSiteForHost(host));
             _account = await this.accountService.getAccountForSite(_site);
         } else {
             _site = site;
