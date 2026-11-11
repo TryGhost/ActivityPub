@@ -9,15 +9,3 @@ allowBuilds:
 # 24h check. Fedify updates are reviewed by a human before merge.
 minimumReleaseAgeExclude:
   - '@fedify/*'
-
-# Fedify 2.4.5 pins transitive dependencies to outdated versions. Each selector
-# matches only the outdated range, so it stops applying once Fedify moves past
-# it and can then be removed.
-# - @opentelemetry/sdk-metrics 2.7.1 pins @opentelemetry/core 2.7.1.
-# - @fedify/cli depends on srvx ^0.8.7, which can't reach 0.11.x.
-#   Capped below 0.11.22, which stops trusting X-Forwarded-Proto unless the
-#   server opts in with `trustProxy`. The CLI doesn't, so its tunnelled
-#   temporary server would advertise http:// actor URLs instead of https://.
-overrides:
-  '@opentelemetry/sdk-metrics@<2.8.0': ^2.12.0
-  'srvx@<0.11.13': '>=0.11.13 <0.12.9'
