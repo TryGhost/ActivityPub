@@ -1100,6 +1100,7 @@ export class KnexPostRepository {
                 'sites.id as site_id',
                 'sites.host as site_host',
                 'outboxes.outbox_type',
+                'outboxes.published_at as outbox_published_at',
             )
             .join('posts', 'outboxes.post_id', 'posts.id')
             .join('accounts', 'accounts.id', 'posts.author_id')
@@ -1121,7 +1122,7 @@ export class KnexPostRepository {
         const lastResult = paginatedResults[paginatedResults.length - 1];
         const nextCursor =
             hasMore && lastResult
-                ? lastResult.published_at.toISOString()
+                ? lastResult.outbox_published_at.toISOString()
                 : null;
 
         const outboxItems: {
