@@ -19,5 +19,5 @@ minimumReleaseAgeExclude:
 #   server opts in with `trustProxy`. The CLI doesn't, so its tunnelled
 #   temporary server would advertise http:// actor URLs instead of https://.
 overrides:
-  '@opentelemetry/sdk-metrics@<2.8.0': ^2.12.0
+  '@opentelemetry/sdk-metrics@<2.8.0': ^3.0.0
   'srvx@<0.11.13': '>=0.11.13 <0.12.9'
