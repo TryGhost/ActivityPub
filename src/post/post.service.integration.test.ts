@@ -1066,6 +1066,66 @@ describe('PostService', () => {
             expect(secondPage.nextCursor).toBeNull();
         });
 
+        it('should continue from the repost date when a page ends with a repost of an older post', async () => {
+            const [authorAccount2] =
+                await fixtureManager.createInternalAccount();
+            const oldPost = await fixtureManager.createPost(authorAccount2);
+
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account);
+
+            oldPost.addRepost(account);
+            await postRepository.save(oldPost);
+
+            const post3 = await fixtureManager.createPost(account);
+
+            const setPublishedAt = async (postId: number, date: string) => {
+                await db('posts')
+                    .where({ id: postId })
+                    .update({ published_at: new Date(date) });
+                await db('outboxes')
+                    .where({
+                        post_id: postId,
+                        outbox_type: OutboxType.Original,
+                    })
+                    .update({ published_at: new Date(date) });
+            };
+            await setPublishedAt(oldPost.id!, '2020-01-01T00:00:00.000Z');
+            await setPublishedAt(post1.id!, '2025-01-01T00:00:00.000Z');
+            await setPublishedAt(post2.id!, '2025-01-02T00:00:00.000Z');
+            await db('outboxes')
+                .where({
+                    account_id: account.id,
+                    outbox_type: OutboxType.Repost,
+                })
+                .update({ published_at: new Date('2025-01-03T00:00:00.000Z') });
+            await setPublishedAt(post3.id!, '2025-01-04T00:00:00.000Z');
+
+            const firstPage = await postService.getOutboxForAccount(
+                account.id,
+                new Date().toISOString(),
+                2,
+            );
+
+            expect(firstPage.items.map((item) => item.post.id)).toEqual([
+                post3.id,
+                oldPost.id,
+            ]);
+            expect(firstPage.nextCursor).toBe('2025-01-03T00:00:00.000Z');
+
+            const secondPage = await postService.getOutboxForAccount(
+                account.id,
+                firstPage.nextCursor,
+                2,
+            );
+
+            expect(secondPage.items.map((item) => item.post.id)).toEqual([
+                post2.id,
+                post1.id,
+            ]);
+            expect(secondPage.nextCursor).toBeNull();
+        });
+
         it('should return the most recently added item first when items share a published date', async () => {
             const post1 = await fixtureManager.createPost(account);
 
