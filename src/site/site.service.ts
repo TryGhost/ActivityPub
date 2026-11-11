@@ -117,12 +117,13 @@ export class SiteService {
         isGhostPro = false,
     ): Promise<InitialiseSiteResult> {
         const existingSite = await this.getSiteByHost(host);
-        const created = existingSite === null;
 
         let site: Site;
         let settings: SiteSettings | undefined;
+        let created: boolean;
 
-        if (created) {
+        if (existingSite === null) {
+            created = true;
             settings = await this.getSiteSettings(host);
 
             site = await this.createSite(
@@ -131,6 +132,7 @@ export class SiteService {
                 isGhostPro,
             );
         } else {
+            created = false;
             site = existingSite;
         }
 
