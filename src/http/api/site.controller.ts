@@ -25,25 +25,32 @@ export class SiteController {
 
         try {
             const isGhostPro = this.isRequestViaGhostPro(ctx);
+            // Only restore Bridgy when this request recreates the site
+            // (Network on / Get Started after soft disconnect). Steady-state
+            // GETs keep an existing site and must not re-Follow Bridgy.
+            const existingSite = await this.siteService.getSiteByHost(host);
             const site = await this.siteService.initialiseSiteForHost(
                 host,
                 isGhostPro,
             );
+            const siteWasRecreated = existingSite === null;
 
             let responseBody: object = site;
 
             const account = await this.accountService.getAccountForSite(site);
 
             if (account) {
-                try {
-                    await this.blueskyService.reconnectBridgyForAccount(
-                        account,
-                    );
-                } catch (error) {
-                    logger.warn(
-                        'Could not restore Bluesky after enabling site {host}',
-                        { host, error },
-                    );
+                if (siteWasRecreated) {
+                    try {
+                        await this.blueskyService.reconnectBridgyForAccount(
+                            account,
+                        );
+                    } catch (error) {
+                        logger.warn(
+                            'Could not restore Bluesky after enabling site {host}',
+                            { host, error },
+                        );
+                    }
                 }
 
                 responseBody = {
