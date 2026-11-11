@@ -35,6 +35,17 @@ export class SiteController {
             const account = await this.accountService.getAccountForSite(site);
 
             if (account) {
+                try {
+                    await this.blueskyService.reconnectBridgyForAccount(
+                        account,
+                    );
+                } catch (error) {
+                    logger.warn(
+                        'Could not restore Bluesky after enabling site {host}',
+                        { host, error },
+                    );
+                }
+
                 responseBody = {
                     ...site,
                     domain: getAccountHandleHost(account),
@@ -90,10 +101,12 @@ export class SiteController {
             try {
                 const account =
                     await this.accountService.getAccountForSite(site);
-                await this.blueskyService.disableForAccount(account);
+                // Soft-disconnect BridgyFed but keep local Bluesky intent so
+                // site re-enable can restore the bridge automatically.
+                await this.blueskyService.disconnectBridgyForAccount(account);
             } catch (error) {
                 logger.warn(
-                    'Could not disable Bluesky before disabling site {host}',
+                    'Could not disconnect Bluesky before disabling site {host}',
                     { host, error },
                 );
             }

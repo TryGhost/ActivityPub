@@ -59,29 +59,7 @@ export class BlueskyService {
             };
         }
 
-        const bridgyAccount = await this.getBridgyAccount();
-
-        // Send follow request to brid.gy account
-        const ctx = this.fedifyContextFactory.getFedifyContext();
-
-        const followId = ctx.getObjectUri(Follow, { id: uuidv4() });
-
-        const follow = new Follow({
-            id: followId,
-            actor: account.apId,
-            object: bridgyAccount.apId,
-        });
-
-        await ctx.data.globaldb.set([follow.id!.href], await follow.toJsonLd());
-
-        await ctx.sendActivity(
-            { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
-            follow,
-        );
+        await this.followBridgy(account);
 
         // Insert handle → account mapping into the database - handle is null
         // and confirmed is false until manual confirmation has occurred (see
@@ -102,7 +80,29 @@ export class BlueskyService {
         };
     }
 
+    /**
+     * Hard-disable Bluesky for Preferences: tear down BridgyFed and delete local
+     * intent so site reconnect will not restore it.
+     */
     async disableForAccount(account: Account) {
+        const disconnected = await this.disconnectBridgyForAccount(account);
+
+        if (!disconnected) {
+            return;
+        }
+
+        await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .delete();
+    }
+
+    /**
+     * Soft-disable BridgyFed for site disconnect. Keeps the
+     * `bluesky_integration_account_handles` row so site re-enable can restore.
+     *
+     * @returns true when Bluesky was enabled locally and Bridgy was torn down
+     */
+    async disconnectBridgyForAccount(account: Account): Promise<boolean> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();
@@ -113,73 +113,34 @@ export class BlueskyService {
                 { id: account.id },
             );
 
+            return false;
+        }
+
+        await this.unfollowBridgy(account);
+
+        return true;
+    }
+
+    /**
+     * Restore BridgyFed when a site comes back online and Bluesky is still
+     * enabled locally (row present). No-op when Bluesky was never enabled or
+     * was hard-disabled from Preferences.
+     */
+    async reconnectBridgyForAccount(account: Account): Promise<void> {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
+
+        if (!existing) {
+            this.logger.info(
+                `Bluesky integration not enabled for account {id} - skipping Bridgy reconnect`,
+                { id: account.id },
+            );
+
             return;
         }
 
-        const bridgyAccount = await this.getBridgyAccount();
-
-        const ctx = this.fedifyContextFactory.getFedifyContext();
-
-        // Send "stop" dm to brid.gy account
-        const note = new Note({
-            id: ctx.getObjectUri(Note, { id: uuidv4() }),
-            attribution: account.apId,
-            content: 'stop',
-            published: Temporal.Now.instant(),
-            to: bridgyAccount.apId,
-        });
-
-        const create = new Create({
-            id: ctx.getObjectUri(Create, { id: uuidv4() }),
-            actor: account.apId,
-            object: note,
-            to: bridgyAccount.apId,
-        });
-
-        await ctx.data.globaldb.set([note.id!.href], await note.toJsonLd());
-        await ctx.data.globaldb.set([create.id!.href], await create.toJsonLd());
-
-        await ctx.sendActivity(
-            { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
-            create,
-        );
-
-        // Unfollow brid.gy account
-        await this.accountRepository.save(account.unfollow(bridgyAccount));
-
-        const follow = new Follow({
-            id: null,
-            actor: account.apId,
-            object: bridgyAccount.apId,
-        });
-
-        const undoId = ctx.getObjectUri(Undo, { id: uuidv4() });
-
-        const undo = new Undo({
-            id: undoId,
-            actor: account.apId,
-            object: follow,
-        });
-
-        await ctx.data.globaldb.set([undo.id!.href], await undo.toJsonLd());
-
-        await ctx.sendActivity(
-            { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
-            undo,
-        );
-
-        // Delete handle → account mapping from the database
-        await this.db('bluesky_integration_account_handles')
-            .where('account_id', account.id)
-            .delete();
+        await this.followBridgy(account);
     }
 
     async confirmHandleForAccount(
@@ -261,6 +222,91 @@ export class BlueskyService {
             handleConfirmed: true,
             handle,
         });
+    }
+
+    private async followBridgy(account: Account) {
+        const bridgyAccount = await this.getBridgyAccount();
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const followId = ctx.getObjectUri(Follow, { id: uuidv4() });
+
+        const follow = new Follow({
+            id: followId,
+            actor: account.apId,
+            object: bridgyAccount.apId,
+        });
+
+        await ctx.data.globaldb.set([follow.id!.href], await follow.toJsonLd());
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: bridgyAccount.apId,
+                inboxId: bridgyAccount.apInbox,
+            },
+            follow,
+        );
+    }
+
+    private async unfollowBridgy(account: Account) {
+        const bridgyAccount = await this.getBridgyAccount();
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        // Send "stop" dm to brid.gy account
+        const note = new Note({
+            id: ctx.getObjectUri(Note, { id: uuidv4() }),
+            attribution: account.apId,
+            content: 'stop',
+            published: Temporal.Now.instant(),
+            to: bridgyAccount.apId,
+        });
+
+        const create = new Create({
+            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            actor: account.apId,
+            object: note,
+            to: bridgyAccount.apId,
+        });
+
+        await ctx.data.globaldb.set([note.id!.href], await note.toJsonLd());
+        await ctx.data.globaldb.set([create.id!.href], await create.toJsonLd());
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: bridgyAccount.apId,
+                inboxId: bridgyAccount.apInbox,
+            },
+            create,
+        );
+
+        // Unfollow brid.gy account
+        await this.accountRepository.save(account.unfollow(bridgyAccount));
+
+        const follow = new Follow({
+            id: null,
+            actor: account.apId,
+            object: bridgyAccount.apId,
+        });
+
+        const undoId = ctx.getObjectUri(Undo, { id: uuidv4() });
+
+        const undo = new Undo({
+            id: undoId,
+            actor: account.apId,
+            object: follow,
+        });
+
+        await ctx.data.globaldb.set([undo.id!.href], await undo.toJsonLd());
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: bridgyAccount.apId,
+                inboxId: bridgyAccount.apInbox,
+            },
+            undo,
+        );
     }
 
     private async getBridgyAccount() {

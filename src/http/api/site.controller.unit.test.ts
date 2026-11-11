@@ -26,6 +26,7 @@ describe('SiteController', () => {
         mockAccount = {
             id: 42,
             username: 'index',
+            apId: new URL('https://example.com/.ghost/activitypub/users/index'),
         } as Account;
 
         siteService = {
@@ -40,7 +41,8 @@ describe('SiteController', () => {
         } as unknown as AccountService;
 
         blueskyService = {
-            disableForAccount: vi.fn().mockResolvedValue(undefined),
+            disconnectBridgyForAccount: vi.fn().mockResolvedValue(true),
+            reconnectBridgyForAccount: vi.fn().mockResolvedValue(undefined),
         } as unknown as BlueskyService;
     });
 
@@ -115,6 +117,48 @@ describe('SiteController', () => {
 
             expect(response.status).toBe(200);
             expect(await response.json()).toEqual(mockSite);
+            expect(
+                blueskyService.reconnectBridgyForAccount,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('restores Bridgy when an account exists for the site', async () => {
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                mockAccount,
+            );
+            siteController = createController();
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleGetSiteData(ctx);
+
+            expect(response.status).toBe(200);
+            expect(
+                blueskyService.reconnectBridgyForAccount,
+            ).toHaveBeenCalledWith(mockAccount);
+            expect(await response.json()).toMatchObject({
+                ...mockSite,
+                handle: '@index@example.com',
+                actorUrl: mockAccount.apId.href,
+            });
+        });
+
+        it('still returns site data when Bluesky restore fails', async () => {
+            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+                mockAccount,
+            );
+            vi.mocked(
+                blueskyService.reconnectBridgyForAccount,
+            ).mockRejectedValue(new Error('bridgy unavailable'));
+            siteController = createController();
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleGetSiteData(ctx);
+
+            expect(response.status).toBe(200);
+            expect(await response.json()).toMatchObject({
+                ...mockSite,
+                actorUrl: mockAccount.apId.href,
+            });
         });
 
         it('sets `ghost_pro` flag to false when none of the x-forwarded-for IP addresses matches any of the Ghost (Pro) IP addresses', async () => {
@@ -188,9 +232,9 @@ describe('SiteController', () => {
             expect(accountService.getAccountForSite).toHaveBeenCalledWith(
                 mockSite,
             );
-            expect(blueskyService.disableForAccount).toHaveBeenCalledWith(
-                mockAccount,
-            );
+            expect(
+                blueskyService.disconnectBridgyForAccount,
+            ).toHaveBeenCalledWith(mockAccount);
             expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
                 'example.com',
             );
@@ -201,9 +245,9 @@ describe('SiteController', () => {
                 mockAccount,
             );
             siteController = createController();
-            vi.mocked(blueskyService.disableForAccount).mockRejectedValue(
-                new Error('bridgy unavailable'),
-            );
+            vi.mocked(
+                blueskyService.disconnectBridgyForAccount,
+            ).mockRejectedValue(new Error('bridgy unavailable'));
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
@@ -224,7 +268,9 @@ describe('SiteController', () => {
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(200);
-            expect(blueskyService.disableForAccount).not.toHaveBeenCalled();
+            expect(
+                blueskyService.disconnectBridgyForAccount,
+            ).not.toHaveBeenCalled();
             expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
                 'example.com',
             );
@@ -239,7 +285,9 @@ describe('SiteController', () => {
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(404);
-            expect(blueskyService.disableForAccount).not.toHaveBeenCalled();
+            expect(
+                blueskyService.disconnectBridgyForAccount,
+            ).not.toHaveBeenCalled();
             expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
         });
 

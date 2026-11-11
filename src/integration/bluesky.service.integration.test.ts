@@ -184,6 +184,99 @@ describe('BlueskyService', () => {
         });
     });
 
+    describe('disconnectBridgyForAccount', () => {
+        it('should send a stop message and unfollow brid.gy without deleting the handle mapping', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const handle = '@test.example.com.ap.brid.gy';
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                handle,
+            );
+
+            const disconnected =
+                await blueskyService.disconnectBridgyForAccount(account);
+
+            expect(disconnected).toBe(true);
+            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
+            expect(fedifyContext.sendActivity).toHaveBeenNthCalledWith(
+                1,
+                { username: account.username },
+                {
+                    id: bridgyAccount.apId,
+                    inboxId: bridgyAccount.apInbox,
+                },
+                expect.any(Create),
+            );
+            expect(fedifyContext.sendActivity).toHaveBeenNthCalledWith(
+                2,
+                { username: account.username },
+                {
+                    id: bridgyAccount.apId,
+                    inboxId: bridgyAccount.apInbox,
+                },
+                expect.any(Undo),
+            );
+
+            const handleMapping = await client(
+                'bluesky_integration_account_handles',
+            )
+                .where('account_id', account.id)
+                .first();
+
+            expect(handleMapping).toBeDefined();
+            expect(handleMapping.handle).toBe(handle);
+            expect(handleMapping.confirmed).toBe(1);
+        });
+
+        it('should do nothing if the Bluesky integration is not enabled', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const disconnected =
+                await blueskyService.disconnectBridgyForAccount(account);
+
+            expect(disconnected).toBe(false);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('reconnectBridgyForAccount', () => {
+        it('should send a follow request when Bluesky is still enabled locally', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+
+            await blueskyService.reconnectBridgyForAccount(account);
+
+            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
+            expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+                { username: account.username },
+                {
+                    id: bridgyAccount.apId,
+                    inboxId: bridgyAccount.apInbox,
+                },
+                expect.any(Follow),
+            );
+
+            const handleMapping = await client(
+                'bluesky_integration_account_handles',
+            )
+                .where('account_id', account.id)
+                .first();
+
+            expect(handleMapping).toBeDefined();
+        });
+
+        it('should do nothing if the Bluesky integration is not enabled', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await blueskyService.reconnectBridgyForAccount(account);
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+    });
+
     describe('disableForAccount', () => {
         it('should send a stop message, unfollow brid.gy, and delete the handle mapping', async () => {
             const [account] = await fixtureManager.createInternalAccount();
