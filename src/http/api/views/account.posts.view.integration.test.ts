@@ -204,6 +204,33 @@ describe('AccountPostsView', () => {
             }
         });
 
+        it('returns the most recently added post first when posts share a published date', async () => {
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account);
+            const post3 = await fixtureManager.createPost(account);
+
+            await db('outboxes')
+                .where({ account_id: account.id })
+                .update({ published_at: new Date() });
+
+            const result = await viewer.getPostsFromOutbox(
+                account,
+                contextAccount.id,
+                10,
+                null,
+            );
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const posts = getValue(result);
+                expect(posts.results.map((post) => post.id)).toEqual([
+                    post3.apId.href,
+                    post2.apId.href,
+                    post1.apId.href,
+                ]);
+            }
+        });
+
         it('populates reposter fields only for reposts', async () => {
             const post = await fixtureManager.createPost(account);
             const [reposter] = await fixtureManager.createInternalAccount();

@@ -1066,6 +1066,35 @@ describe('PostService', () => {
             expect(secondPage.nextCursor).toBeNull();
         });
 
+        it('should return the most recently added item first when items share a published date', async () => {
+            const post1 = await fixtureManager.createPost(account);
+
+            const [authorAccount2] =
+                await fixtureManager.createInternalAccount();
+            const post2 = await fixtureManager.createPost(authorAccount2);
+            post2.addRepost(account);
+            await postRepository.save(post2);
+
+            const post3 = await fixtureManager.createPost(account);
+
+            const sharedPublishedAt = new Date(Date.now() - 1000);
+            await db('outboxes')
+                .where({ account_id: account.id })
+                .update({ published_at: sharedPublishedAt });
+
+            const outbox = await postService.getOutboxForAccount(
+                account.id,
+                new Date().toISOString(),
+                10,
+            );
+
+            expect(outbox.items.map((item) => item.post.id)).toEqual([
+                post3.id,
+                post2.id,
+                post1.id,
+            ]);
+        });
+
         it('should return empty array for account with no posts', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 

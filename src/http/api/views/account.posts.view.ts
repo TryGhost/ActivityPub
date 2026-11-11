@@ -260,6 +260,7 @@ export class AccountPostsView {
                 }
             })
             .orderBy('outboxes.published_at', 'desc')
+            .orderBy('outboxes.id', 'desc')
             .limit(limit + 1);
 
         const results = await query;

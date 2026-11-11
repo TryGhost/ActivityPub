@@ -1113,6 +1113,7 @@ export class KnexPostRepository {
                 }
             })
             .orderBy('outboxes.published_at', 'desc')
+            .orderBy('outboxes.id', 'desc')
             .limit(pageSize + 1);
 
         const hasMore = rows.length > pageSize;
