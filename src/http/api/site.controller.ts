@@ -25,9 +25,6 @@ export class SiteController {
 
         try {
             const isGhostPro = this.isRequestViaGhostPro(ctx);
-            // Only restore Bridgy when this request recreates the site
-            // (Network on / Get Started after soft disconnect). Steady-state
-            // GETs keep an existing site and must not re-Follow Bridgy.
             const existingSite = await this.siteService.getSiteByHost(host);
             const site = await this.siteService.initialiseSiteForHost(
                 host,
@@ -108,8 +105,6 @@ export class SiteController {
             try {
                 const account =
                     await this.accountService.getAccountForSite(site);
-                // Soft-disconnect BridgyFed but keep local Bluesky intent so
-                // site re-enable can restore the bridge automatically.
                 await this.blueskyService.disconnectBridgyForAccount(account);
             } catch (error) {
                 logger.warn(
