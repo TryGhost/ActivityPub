@@ -25,15 +25,19 @@ export class SiteController {
 
         try {
             const isGhostPro = this.isRequestViaGhostPro(ctx);
-            const { site, created: siteRowWasMissing } =
-                await this.siteService.initialiseSiteForHost(host, isGhostPro);
+            const existingSite = await this.siteService.getSiteByHost(host);
+            const site = await this.siteService.initialiseSiteForHost(
+                host,
+                isGhostPro,
+            );
+            const siteWasRecreated = existingSite === null;
 
             let responseBody: object = site;
 
             const account = await this.accountService.getAccountForSite(site);
 
             if (account) {
-                if (siteRowWasMissing) {
+                if (siteWasRecreated) {
                     try {
                         await this.blueskyService.reconnectBridgyForAccount(
                             account,

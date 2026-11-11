@@ -30,10 +30,7 @@ describe('SiteController', () => {
         } as Account;
 
         siteService = {
-            initialiseSiteForHost: vi.fn().mockResolvedValue({
-                site: mockSite,
-                created: false,
-            }),
+            initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
             getSiteByHost: vi.fn().mockResolvedValue(mockSite),
             disableSiteForHost: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
@@ -125,11 +122,8 @@ describe('SiteController', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('restores Bridgy when the site row was missing', async () => {
-            vi.mocked(siteService.initialiseSiteForHost).mockResolvedValue({
-                site: mockSite,
-                created: true,
-            });
+        it('restores Bridgy when the site was just recreated', async () => {
+            vi.mocked(siteService.getSiteByHost).mockResolvedValue(null);
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
@@ -149,7 +143,7 @@ describe('SiteController', () => {
             });
         });
 
-        it('does not restore Bridgy when the site row already existed', async () => {
+        it('does not restore Bridgy when the site already existed', async () => {
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
@@ -170,10 +164,7 @@ describe('SiteController', () => {
         });
 
         it('still returns site data when Bluesky restore fails', async () => {
-            vi.mocked(siteService.initialiseSiteForHost).mockResolvedValue({
-                site: mockSite,
-                created: true,
-            });
+            vi.mocked(siteService.getSiteByHost).mockResolvedValue(null);
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );

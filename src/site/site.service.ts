@@ -15,11 +15,6 @@ export type Site = {
     ghost_uuid: string | null;
 };
 
-export type InitialiseSiteResult = {
-    site: Site;
-    created: boolean;
-};
-
 export interface IGhostService {
     getSiteSettings: typeof getSiteSettings;
 }
@@ -115,14 +110,13 @@ export class SiteService {
     public async initialiseSiteForHost(
         host: string,
         isGhostPro = false,
-    ): Promise<InitialiseSiteResult> {
+    ): Promise<Site> {
         const existingSite = await this.getSiteByHost(host);
-        const created = existingSite === null;
 
         let site: Site;
         let settings: SiteSettings | undefined;
 
-        if (created) {
+        if (existingSite === null) {
             settings = await this.getSiteSettings(host);
 
             site = await this.createSite(
@@ -159,7 +153,7 @@ export class SiteService {
             );
         }
 
-        return { site, created };
+        return site;
     }
 
     public async disableSiteForHost(host: string): Promise<boolean> {

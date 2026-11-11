@@ -42,7 +42,7 @@ describe('FeedService', () => {
 
     const accountSitesMap: Map<number, Site> = new Map();
     const createInternalAccount = async (host: string) => {
-        const { site } = await siteService.initialiseSiteForHost(host);
+        const site = await siteService.initialiseSiteForHost(host);
         const account = await accountRepository.getBySite(site);
 
         if (!account) {

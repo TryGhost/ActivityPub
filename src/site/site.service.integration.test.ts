@@ -87,10 +87,8 @@ describe('SiteService', () => {
             'createInternalAccount',
         );
 
-        const { site, created } =
-            await service.initialiseSiteForHost('hostname.tld');
+        const site = await service.initialiseSiteForHost('hostname.tld');
 
-        expect(created).toBe(true);
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
@@ -109,10 +107,8 @@ describe('SiteService', () => {
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
 
-        const { site: siteTwo, created: createdAgain } =
-            await service.initialiseSiteForHost('hostname.tld');
+        const siteTwo = await service.initialiseSiteForHost('hostname.tld');
 
-        expect(createdAgain).toBe(false);
         expect(siteTwo).toMatchObject(site);
 
         const siteRowsAfterSecondInit = await db('sites').select('*');
@@ -125,10 +121,7 @@ describe('SiteService', () => {
     });
 
     it('Can initialise a site with the `ghost_pro` flag', async () => {
-        const { site } = await service.initialiseSiteForHost(
-            'hostname.tld',
-            true,
-        );
+        const site = await service.initialiseSiteForHost('hostname.tld', true);
 
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
@@ -195,7 +188,7 @@ describe('SiteService', () => {
             ghost_uuid: 'some-uuid',
         });
 
-        const { site } = await service.initialiseSiteForHost('hostname.tld');
+        const site = await service.initialiseSiteForHost('hostname.tld');
 
         // Verify account was created with settings from Ghost
         const account = await db('accounts')
@@ -220,8 +213,7 @@ describe('SiteService', () => {
             },
         });
 
-        const { site: siteA } =
-            await service.initialiseSiteForHost('domain-a.tld');
+        const siteA = await service.initialiseSiteForHost('domain-a.tld');
 
         expect(siteA.host).toBe('domain-a.tld');
         expect(siteA.ghost_uuid).toBe(ghostUUID);
@@ -253,8 +245,7 @@ describe('SiteService', () => {
                 });
             });
 
-        const { site: siteB } =
-            await service.initialiseSiteForHost('domain-b.tld');
+        const siteB = await service.initialiseSiteForHost('domain-b.tld');
 
         expect(siteB.host).toBe('domain-b.tld');
         expect(siteB.ghost_uuid).toBe(ghostUUID);
@@ -287,8 +278,7 @@ describe('SiteService', () => {
             },
         });
 
-        const { site: siteA } =
-            await service.initialiseSiteForHost('site-a.tld');
+        const siteA = await service.initialiseSiteForHost('site-a.tld');
 
         expect(siteA.ghost_uuid).toBe(ghostUUID);
 
@@ -375,8 +365,7 @@ describe('SiteService', () => {
                 });
             });
 
-        const { site: newSite } =
-            await service.initialiseSiteForHost('new-domain.tld');
+        const newSite = await service.initialiseSiteForHost('new-domain.tld');
 
         expect(newSite.ghost_uuid).toBe(ghostUUID);
 
@@ -429,8 +418,7 @@ describe('SiteService', () => {
                 });
             });
 
-        const { site: siteB } =
-            await service.initialiseSiteForHost('site-b.tld');
+        const siteB = await service.initialiseSiteForHost('site-b.tld');
 
         expect(siteB.ghost_uuid).toBe(ghostUUID);
 
@@ -476,8 +464,7 @@ describe('SiteService', () => {
             },
         });
 
-        const { site: customSite } =
-            await service.initialiseSiteForHost(customDomain);
+        const customSite = await service.initialiseSiteForHost(customDomain);
 
         expect(customSite.ghost_uuid).toBe(ghostUUID);
 
