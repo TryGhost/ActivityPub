@@ -203,6 +203,8 @@ describe('SiteService', () => {
             ghost_uuid: 'some-uuid',
         });
 
+        const emitSpy = vi.spyOn(events, 'emit');
+
         const site = await service.initialiseSiteForHost('hostname.tld');
 
         // Verify account was created with settings from Ghost
@@ -213,6 +215,13 @@ describe('SiteService', () => {
 
         expect(account).toBeDefined();
         expect(account.name).toBe('Default Title');
+        expect(emitSpy).toHaveBeenCalledWith(
+            SiteCreatedEvent.getName(),
+            expect.any(SiteCreatedEvent),
+        );
+        expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
+            site.id,
+        );
     });
 
     it('Handles duplicate ghost_uuid when a site changes domains', async () => {

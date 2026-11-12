@@ -154,11 +154,7 @@ export class SiteService {
                 site,
                 internalAccountData,
             );
-        }
 
-        if (existingSite === null) {
-            // Non-blocking: Bridgy restore listens for this and must not delay
-            // site creation / the GET response.
             this.events.emit(
                 SiteCreatedEvent.getName(),
                 new SiteCreatedEvent(site.id),

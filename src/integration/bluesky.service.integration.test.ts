@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
@@ -25,6 +26,10 @@ import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
+
+vi.mock('@sentry/node', () => ({
+    captureException: vi.fn(),
+}));
 
 describe('BlueskyService', () => {
     let client: Knex;
@@ -287,21 +292,19 @@ describe('BlueskyService', () => {
             await fixtureManager.enableBlueskyIntegration(account);
             await blueskyService.init();
 
-            events.emit(
+            await events.emitAsync(
                 SiteCreatedEvent.getName(),
                 new SiteCreatedEvent(site.id),
             );
 
-            await vi.waitFor(() => {
-                expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
-                    { username: account.username },
-                    {
-                        id: bridgyAccount.apId,
-                        inboxId: bridgyAccount.apInbox,
-                    },
-                    expect.any(Follow),
-                );
-            });
+            expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+                { username: account.username },
+                {
+                    id: bridgyAccount.apId,
+                    inboxId: bridgyAccount.apInbox,
+                },
+                expect.any(Follow),
+            );
         });
 
         it('should not restore Bridgy when the Bluesky row is missing', async () => {
@@ -309,14 +312,65 @@ describe('BlueskyService', () => {
 
             await blueskyService.init();
 
-            events.emit(
+            await events.emitAsync(
                 SiteCreatedEvent.getName(),
                 new SiteCreatedEvent(site.id),
             );
 
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should ignore a missing site', async () => {
+            await blueskyService.init();
+
+            await events.emitAsync(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(Number.MAX_SAFE_INTEGER),
+            );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(logger.warn).toHaveBeenCalled();
+        });
+
+        it('should ignore a site with no account', async () => {
+            const [siteId] = await client('sites').insert({
+                host: 'no-account.tld',
+                webhook_secret: 'secret',
+                ghost_uuid: 'no-account-uuid',
+            });
+
+            await blueskyService.init();
+
+            await events.emitAsync(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(siteId),
+            );
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(logger.warn).toHaveBeenCalled();
+        });
+
+        it('should swallow reconnect errors without rejecting', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            await blueskyService.init();
+
+            vi.spyOn(
+                blueskyService,
+                'reconnectBridgyForAccount',
+            ).mockRejectedValue(new Error('bridgy unavailable'));
+
+            await expect(
+                events.emitAsync(
+                    SiteCreatedEvent.getName(),
+                    new SiteCreatedEvent(site.id),
+                ),
+            ).resolves.toBe(true);
+
+            expect(logger.error).toHaveBeenCalled();
+            expect(Sentry.captureException).toHaveBeenCalled();
         });
     });
 

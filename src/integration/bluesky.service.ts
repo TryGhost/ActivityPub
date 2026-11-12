@@ -2,6 +2,7 @@ import type EventEmitter from 'node:events';
 
 import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -75,7 +76,8 @@ export class BlueskyService {
 
             await this.reconnectBridgyForAccount(account);
         } catch (error) {
-            this.logger.warn(
+            Sentry.captureException(error);
+            this.logger.error(
                 'Best-effort Bridgy restore failed for site {siteId}',
                 { siteId: event.getSiteId(), error },
             );

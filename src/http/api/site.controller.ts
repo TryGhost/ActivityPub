@@ -90,6 +90,9 @@ export class SiteController {
             try {
                 const account =
                     await this.accountService.getAccountForSite(site);
+                // Must run before disableSiteForHost: keypairDispatcher looks
+                // the site up by host, so stop/Undo cannot be signed once the
+                // row is gone.
                 await this.blueskyService.disconnectBridgyForAccount(account);
             } catch (error) {
                 logger.warn(
