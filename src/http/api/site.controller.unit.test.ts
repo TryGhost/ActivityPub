@@ -95,7 +95,7 @@ describe('SiteController', () => {
             expect(body).toEqual({ error: 'No Host header' });
         });
 
-        it('returns site data as JSON', async () => {
+        it('returns site data as JSON when no account exists', async () => {
             siteController = createController();
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleGetSiteData(ctx);
@@ -104,22 +104,10 @@ describe('SiteController', () => {
             expect(response.headers.get('Content-Type')).toBe(
                 'application/json',
             );
-
-            const body = await response.json();
-            expect(body).toEqual(mockSite);
-        });
-
-        it('returns site data when no account exists for the site', async () => {
-            siteController = createController();
-
-            const ctx = getMockAppContext('example.com');
-            const response = await siteController.handleGetSiteData(ctx);
-
-            expect(response.status).toBe(200);
             expect(await response.json()).toEqual(mockSite);
         });
 
-        it('returns account metadata without restoring Bridgy on GET', async () => {
+        it('returns account metadata with the site payload', async () => {
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
