@@ -183,29 +183,17 @@ export class SiteService {
         account: Account | null,
         site: Site,
     ): Promise<boolean> {
-        if (!account) {
-            const deleted = await this.client('sites')
-                .where('id', site.id)
-                .delete();
+        const existing =
+            account &&
+            (await this.client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first());
 
-            return deleted === 1;
+        if (!account || !existing) {
+            return this.deleteSiteById(site.id);
         }
 
-        const existing = await this.client(
-            'bluesky_integration_account_handles',
-        )
-            .where('account_id', account.id)
-            .first();
-
-        if (!existing) {
-            const deleted = await this.client('sites')
-                .where('id', site.id)
-                .delete();
-
-            return deleted === 1;
-        }
-
-        const bridgyAccount = await this.blueskyService.ensureBridgyAccount();
+        const bridgyAccount = await this.blueskyService.getBridgyAccount();
 
         return this.client.transaction(async (trx) => {
             const row = await trx('bluesky_integration_account_handles')
@@ -228,10 +216,17 @@ export class SiteService {
                 );
             }
 
-            const deleted = await trx('sites').where('id', site.id).delete();
-
-            return deleted === 1;
+            return this.deleteSiteById(site.id, trx);
         });
+    }
+
+    private async deleteSiteById(
+        siteId: number,
+        trx: Knex | Knex.Transaction = this.client,
+    ): Promise<boolean> {
+        const deleted = await trx('sites').where('id', siteId).delete();
+
+        return deleted === 1;
     }
 
     private async verifyUUIDReleased(

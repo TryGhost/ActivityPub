@@ -87,19 +87,7 @@ export class SiteController {
                 });
             }
 
-            let account = null;
-
-            try {
-                account = await this.accountService.getAccountForSite(site);
-            } catch (error) {
-                const isExpectedMissingUser =
-                    error instanceof Error &&
-                    error.message.startsWith('No user found for site:');
-
-                if (!isExpectedMissingUser) {
-                    throw error;
-                }
-            }
+            const account = await this.accountService.findAccountForSite(site);
 
             try {
                 const wasDisabled = await this.siteService.softDisconnectSite(

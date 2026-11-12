@@ -166,14 +166,6 @@ export class BlueskyService {
     }
 
     /**
-     * Resolve the BridgyFed actor. Call before taking the handles-row lock so
-     * network work does not run under the lock.
-     */
-    async ensureBridgyAccount(): Promise<Account> {
-        return this.getBridgyAccount();
-    }
-
-    /**
      * Soft-disable BridgyFed for site disconnect. Keeps the handles row.
      * Caller must hold `FOR UPDATE` on the handles row and delete the site in
      * the same transaction after this returns.
@@ -404,7 +396,11 @@ export class BlueskyService {
         );
     }
 
-    private async getBridgyAccount() {
+    /**
+     * Resolve the BridgyFed actor. Call before taking the handles-row lock so
+     * network work does not run under the lock.
+     */
+    async getBridgyAccount() {
         const ensureBridgyAccountResult =
             await this.accountService.ensureByApId(BRIDGY_AP_ID);
 

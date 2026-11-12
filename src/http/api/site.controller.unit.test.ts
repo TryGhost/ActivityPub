@@ -43,6 +43,7 @@ describe('SiteController', () => {
         accountService = {
             // handleGetSiteData treats a missing account as "site only"
             getAccountForSite: vi.fn().mockResolvedValue(null),
+            findAccountForSite: vi.fn().mockResolvedValue(null),
         } as unknown as AccountService;
     });
 
@@ -191,7 +192,7 @@ describe('SiteController', () => {
         });
 
         it('returns 200 if the site is disabled', async () => {
-            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+            vi.mocked(accountService.findAccountForSite).mockResolvedValue(
                 mockAccount,
             );
             siteController = createController();
@@ -203,7 +204,7 @@ describe('SiteController', () => {
             expect(siteService.getSiteByHost).toHaveBeenCalledWith(
                 'example.com',
             );
-            expect(accountService.getAccountForSite).toHaveBeenCalledWith(
+            expect(accountService.findAccountForSite).toHaveBeenCalledWith(
                 mockSite,
             );
             expect(siteService.softDisconnectSite).toHaveBeenCalledWith(
@@ -214,7 +215,7 @@ describe('SiteController', () => {
         });
 
         it('falls back to deleting the site when soft disconnect fails', async () => {
-            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
+            vi.mocked(accountService.findAccountForSite).mockResolvedValue(
                 mockAccount,
             );
             siteController = createController();
@@ -233,8 +234,8 @@ describe('SiteController', () => {
 
         it('still soft-disconnects when no account exists', async () => {
             siteController = createController();
-            vi.mocked(accountService.getAccountForSite).mockRejectedValue(
-                new Error('No user found for site: 1'),
+            vi.mocked(accountService.findAccountForSite).mockResolvedValue(
+                null,
             );
 
             const ctx = getMockAppContext('example.com');
@@ -251,7 +252,7 @@ describe('SiteController', () => {
 
         it('returns 500 when account lookup fails unexpectedly', async () => {
             siteController = createController();
-            vi.mocked(accountService.getAccountForSite).mockRejectedValue(
+            vi.mocked(accountService.findAccountForSite).mockRejectedValue(
                 new Error('db unavailable'),
             );
 

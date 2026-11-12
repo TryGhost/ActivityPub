@@ -105,7 +105,7 @@ describe('KnexPostRepository', () => {
             logger,
             events,
             {
-                ensureBridgyAccount: async () => {
+                getBridgyAccount: async () => {
                     throw new Error('BlueskyService stub');
                 },
                 softDisableBridgy: async () => {},
