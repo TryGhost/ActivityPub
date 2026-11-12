@@ -74,7 +74,7 @@ export class BlueskyService {
                 return;
             }
 
-            await this.reconnectBridgyForAccount(account);
+            await this.reconnectBridgyForAccount(account, event.getSiteId());
         } catch (error) {
             Sentry.captureException(error);
             this.logger.error(
@@ -166,23 +166,31 @@ export class BlueskyService {
     }
 
     /**
-     * Soft-disable BridgyFed for site disconnect. Keeps the
-     * `bluesky_integration_account_handles` row so site re-enable can restore.
+     * Soft-disable BridgyFed for site disconnect and delete the site under the
+     * same handles-row lock. Keeps the handles row so a later site recreate can
+     * restore. Holding the lock through site deletion stops a stale reconnect
+     * from Following after Undo.
      *
-     * @returns true when Bluesky was enabled locally and Bridgy was torn down
+     * @returns true when the site row was deleted
      */
-    async disconnectBridgyForAccount(account: Account): Promise<boolean> {
+    async softDisconnectSite(
+        account: Account | null,
+        site: Site,
+    ): Promise<boolean> {
+        if (!account) {
+            const deleted = await this.db('sites').where('id', site.id).delete();
+
+            return deleted === 1;
+        }
+
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();
 
         if (!existing) {
-            this.logger.info(
-                `Bluesky integration already disabled for account {id}`,
-                { id: account.id },
-            );
+            const deleted = await this.db('sites').where('id', site.id).delete();
 
-            return false;
+            return deleted === 1;
         }
 
         const bridgyAccount = await this.getBridgyAccount();
@@ -193,27 +201,26 @@ export class BlueskyService {
                 .forUpdate()
                 .first();
 
-            if (!row) {
-                this.logger.info(
-                    `Bluesky integration already disabled for account {id}`,
-                    { id: account.id },
-                );
-
-                return false;
+            if (row) {
+                await this.unfollowBridgy(account, bridgyAccount);
             }
 
-            await this.unfollowBridgy(account, bridgyAccount);
+            const deleted = await trx('sites').where('id', site.id).delete();
 
-            return true;
+            return deleted === 1;
         });
     }
 
     /**
      * Restore BridgyFed when a site comes back online and Bluesky is still
-     * enabled locally (row present). No-op when Bluesky was never enabled or
-     * was hard-disabled from Preferences.
+     * enabled locally (row present). No-op when Bluesky was never enabled,
+     * was hard-disabled from Preferences, or the site from `site.created` was
+     * deleted before Follow (stale reconnect after soft disconnect).
      */
-    async reconnectBridgyForAccount(account: Account): Promise<void> {
+    async reconnectBridgyForAccount(
+        account: Account,
+        siteId: number,
+    ): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();
@@ -239,6 +246,17 @@ export class BlueskyService {
                 this.logger.info(
                     `Bluesky integration not enabled for account {id} - skipping Bridgy reconnect`,
                     { id: account.id },
+                );
+
+                return;
+            }
+
+            const site = await trx('sites').where('id', siteId).first();
+
+            if (!site) {
+                this.logger.info(
+                    'Skipping Bridgy reconnect for deleted site {siteId}',
+                    { siteId },
                 );
 
                 return;

@@ -89,29 +89,47 @@ export class SiteController {
                 });
             }
 
+            let account = null;
+
             try {
-                const account =
-                    await this.accountService.getAccountForSite(site);
-                await this.blueskyService.disconnectBridgyForAccount(account);
+                account = await this.accountService.getAccountForSite(site);
+            } catch {
+                account = null;
+            }
+
+            try {
+                const wasDisabled =
+                    await this.blueskyService.softDisconnectSite(account, site);
+
+                if (wasDisabled) {
+                    return new Response(null, {
+                        status: 200,
+                    });
+                }
+
+                return new Response(null, {
+                    status: 404,
+                });
             } catch (error) {
                 Sentry.captureException(error);
                 logger.error(
-                    'Could not disconnect Bluesky before disabling site {host}',
+                    'Could not soft-disconnect Bluesky before disabling site {host}',
                     { host, error },
                 );
-            }
 
-            const wasDisabled = await this.siteService.disableSiteForHost(host);
+                const wasDisabled =
+                    await this.siteService.disableSiteForHost(host);
 
-            if (wasDisabled) {
+                if (wasDisabled) {
+                    return new Response(null, {
+                        status: 200,
+                    });
+                }
+
                 return new Response(null, {
-                    status: 200,
+                    status: 404,
                 });
             }
-
-            return new Response(null, {
-                status: 404,
-            });
         } catch (error) {
             logger.error('Site could not be disabled', { error });
 

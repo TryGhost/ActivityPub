@@ -191,9 +191,10 @@ describe('BlueskyService', () => {
         });
     });
 
-    describe('disconnectBridgyForAccount', () => {
-        it('should send a stop message and unfollow brid.gy without deleting the handle mapping', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+    describe('softDisconnectSite', () => {
+        it('should send a stop message, unfollow brid.gy, delete the site, and keep the handle mapping', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
             const handle = '@test.example.com.ap.brid.gy';
 
             await fixtureManager.enableBlueskyIntegration(
@@ -202,10 +203,12 @@ describe('BlueskyService', () => {
                 handle,
             );
 
-            const disconnected =
-                await blueskyService.disconnectBridgyForAccount(account);
+            const deleted = await blueskyService.softDisconnectSite(
+                account,
+                site,
+            );
 
-            expect(disconnected).toBe(true);
+            expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
             expect(fedifyContext.sendActivity).toHaveBeenNthCalledWith(
                 1,
@@ -235,26 +238,48 @@ describe('BlueskyService', () => {
             expect(handleMapping).toBeDefined();
             expect(handleMapping.handle).toBe(handle);
             expect(handleMapping.confirmed).toBe(1);
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
         });
 
-        it('should do nothing if the Bluesky integration is not enabled', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+        it('should delete the site when Bluesky is not enabled', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
-            const disconnected =
-                await blueskyService.disconnectBridgyForAccount(account);
+            const deleted = await blueskyService.softDisconnectSite(
+                account,
+                site,
+            );
 
-            expect(disconnected).toBe(false);
+            expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+        });
+
+        it('should delete the site when there is no account', async () => {
+            const [, site] = await fixtureManager.createInternalAccount();
+
+            const deleted = await blueskyService.softDisconnectSite(null, site);
+
+            expect(deleted).toBe(true);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
         });
     });
 
     describe('reconnectBridgyForAccount', () => {
         it('should send a follow request when Bluesky is still enabled locally', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
 
-            await blueskyService.reconnectBridgyForAccount(account);
+            await blueskyService.reconnectBridgyForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
             expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
@@ -276,15 +301,29 @@ describe('BlueskyService', () => {
         });
 
         it('should do nothing if the Bluesky integration is not enabled', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
-            await blueskyService.reconnectBridgyForAccount(account);
+            await blueskyService.reconnectBridgyForAccount(account, site.id);
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should skip Follow when the site from site.created was deleted', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            await client('sites').where('id', site.id).delete();
+
+            await blueskyService.reconnectBridgyForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
 
         it('should not Follow after Preferences disable wins the handles row lock', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
 
@@ -309,8 +348,10 @@ describe('BlueskyService', () => {
                 expect(disableStarted).toBe(true);
             });
 
-            const reconnectPromise =
-                blueskyService.reconnectBridgyForAccount(account);
+            const reconnectPromise = blueskyService.reconnectBridgyForAccount(
+                account,
+                site.id,
+            );
 
             releaseDisable();
             await Promise.all([disablePromise, reconnectPromise]);
@@ -330,7 +371,8 @@ describe('BlueskyService', () => {
         });
 
         it('should let Preferences disable tear down after reconnect wins the handles row lock', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
 
@@ -349,8 +391,10 @@ describe('BlueskyService', () => {
                 },
             );
 
-            const reconnectPromise =
-                blueskyService.reconnectBridgyForAccount(account);
+            const reconnectPromise = blueskyService.reconnectBridgyForAccount(
+                account,
+                site.id,
+            );
 
             await vi.waitFor(() => {
                 expect(followStarted).toBe(true);
@@ -377,6 +421,120 @@ describe('BlueskyService', () => {
                     .where('account_id', account.id)
                     .first(),
             ).toBeUndefined();
+        });
+
+        it('should not Follow after soft disconnect wins the handles row lock', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+
+            let releaseDisconnect!: () => void;
+            const disconnectGate = new Promise<void>((resolve) => {
+                releaseDisconnect = resolve;
+            });
+            let disconnectStarted = false;
+
+            vi.mocked(fedifyContext.sendActivity).mockImplementation(
+                async (_sender, _recipient, activity) => {
+                    if (activity instanceof Create) {
+                        disconnectStarted = true;
+                        await disconnectGate;
+                    }
+                },
+            );
+
+            const disconnectPromise = blueskyService.softDisconnectSite(
+                account,
+                site,
+            );
+
+            await vi.waitFor(() => {
+                expect(disconnectStarted).toBe(true);
+            });
+
+            const reconnectPromise = blueskyService.reconnectBridgyForAccount(
+                account,
+                site.id,
+            );
+
+            releaseDisconnect();
+            await Promise.all([disconnectPromise, reconnectPromise]);
+
+            const activities = vi
+                .mocked(fedifyContext.sendActivity)
+                .mock.calls.map((call) => call[2]);
+
+            expect(
+                activities.some((activity) => activity instanceof Follow),
+            ).toBe(false);
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeDefined();
+        });
+
+        it('should let soft disconnect tear down after reconnect wins the handles row lock', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+
+            let releaseFollow!: () => void;
+            const followGate = new Promise<void>((resolve) => {
+                releaseFollow = resolve;
+            });
+            let followStarted = false;
+
+            vi.mocked(fedifyContext.sendActivity).mockImplementation(
+                async (_sender, _recipient, activity) => {
+                    if (activity instanceof Follow) {
+                        followStarted = true;
+                        await followGate;
+                    }
+                },
+            );
+
+            const reconnectPromise = blueskyService.reconnectBridgyForAccount(
+                account,
+                site.id,
+            );
+
+            await vi.waitFor(() => {
+                expect(followStarted).toBe(true);
+            });
+
+            const disconnectPromise = blueskyService.softDisconnectSite(
+                account,
+                site,
+            );
+
+            releaseFollow();
+            await Promise.all([reconnectPromise, disconnectPromise]);
+
+            const activities = vi
+                .mocked(fedifyContext.sendActivity)
+                .mock.calls.map((call) => call[2]);
+
+            expect(activities[0]).toBeInstanceOf(Follow);
+            expect(
+                activities.some((activity) => activity instanceof Create),
+            ).toBe(true);
+            expect(
+                activities.some((activity) => activity instanceof Undo),
+            ).toBe(true);
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeDefined();
         });
     });
 
