@@ -178,7 +178,9 @@ export class BlueskyService {
         site: Site,
     ): Promise<boolean> {
         if (!account) {
-            const deleted = await this.db('sites').where('id', site.id).delete();
+            const deleted = await this.db('sites')
+                .where('id', site.id)
+                .delete();
 
             return deleted === 1;
         }
@@ -188,7 +190,9 @@ export class BlueskyService {
             .first();
 
         if (!existing) {
-            const deleted = await this.db('sites').where('id', site.id).delete();
+            const deleted = await this.db('sites')
+                .where('id', site.id)
+                .delete();
 
             return deleted === 1;
         }
