@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as Sentry from '@sentry/node';
+
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { SiteController } from '@/http/api/site.controller';
 import type { BlueskyService } from '@/integration/bluesky.service';
 import type { Site, SiteService } from '@/site/site.service';
+
+vi.mock('@sentry/node', () => ({
+    captureException: vi.fn(),
+}));
 
 describe('SiteController', () => {
     let siteService: SiteService;
@@ -226,9 +232,10 @@ describe('SiteController', () => {
                 mockAccount,
             );
             siteController = createController();
+            const error = new Error('bridgy unavailable');
             vi.mocked(
                 blueskyService.disconnectBridgyForAccount,
-            ).mockRejectedValue(new Error('bridgy unavailable'));
+            ).mockRejectedValue(error);
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
@@ -237,6 +244,7 @@ describe('SiteController', () => {
             expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
                 'example.com',
             );
+            expect(Sentry.captureException).toHaveBeenCalledWith(error);
         });
 
         it('still disables the site when no account exists', async () => {

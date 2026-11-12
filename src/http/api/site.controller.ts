@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import type { AccountService } from '@/account/account.service';
 import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
@@ -90,12 +92,10 @@ export class SiteController {
             try {
                 const account =
                     await this.accountService.getAccountForSite(site);
-                // Must run before disableSiteForHost: keypairDispatcher looks
-                // the site up by host, so stop/Undo cannot be signed once the
-                // row is gone.
                 await this.blueskyService.disconnectBridgyForAccount(account);
             } catch (error) {
-                logger.warn(
+                Sentry.captureException(error);
+                logger.error(
                     'Could not disconnect Bluesky before disabling site {host}',
                     { host, error },
                 );
