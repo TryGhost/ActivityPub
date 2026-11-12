@@ -527,11 +527,7 @@ export function registerDependencies(
     container.register(
         'siteController',
         asFunction(
-            (
-                siteService: SiteService,
-                accountService: AccountService,
-                blueskyService: BlueskyService,
-            ) => {
+            (siteService: SiteService, accountService: AccountService) => {
                 let ghostProIpAddresses: string[] | undefined;
 
                 if (process.env.GHOST_PRO_IP_ADDRESSES) {
@@ -544,7 +540,6 @@ export function registerDependencies(
                 return new SiteController(
                     siteService,
                     accountService,
-                    blueskyService,
                     ghostProIpAddresses,
                 );
             },

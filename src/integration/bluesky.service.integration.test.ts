@@ -23,6 +23,7 @@ import {
 import { BlueskyService, BRIDGY_AP_ID } from '@/integration/bluesky.service';
 import type { BlueskyApiClient } from '@/integration/bluesky-api.client';
 import { SiteCreatedEvent } from '@/site/site-created.event';
+import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -41,6 +42,7 @@ describe('BlueskyService', () => {
     let accountService: AccountService;
     let blueskyApiClient: BlueskyApiClient;
     let blueskyService: BlueskyService;
+    let siteService: SiteService;
 
     const bridgyAccount = {
         id: 123,
@@ -119,6 +121,28 @@ describe('BlueskyService', () => {
             events,
         );
 
+        siteService = new SiteService(
+            client,
+            accountService,
+            {
+                async getSiteSettings(host: string) {
+                    return {
+                        site: {
+                            title: `Site ${host} title`,
+                            description: `Site ${host} description`,
+                            icon: `https://${host}/favicon.ico`,
+                            cover_image: `https://${host}/cover.png`,
+                            site_uuid: crypto.randomUUID(),
+                            url: `https://${host}/`,
+                        },
+                    };
+                },
+            },
+            logger,
+            events,
+            blueskyService,
+        );
+
         vi.clearAllMocks();
     });
 
@@ -191,7 +215,7 @@ describe('BlueskyService', () => {
         });
     });
 
-    describe('softDisconnectSite', () => {
+    describe('SiteService.softDisconnectSite', () => {
         it('should send a stop message, unfollow brid.gy, delete the site, and keep the handle mapping', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
@@ -203,10 +227,7 @@ describe('BlueskyService', () => {
                 handle,
             );
 
-            const deleted = await blueskyService.softDisconnectSite(
-                account,
-                site,
-            );
+            const deleted = await siteService.softDisconnectSite(account, site);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
@@ -247,10 +268,7 @@ describe('BlueskyService', () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
 
-            const deleted = await blueskyService.softDisconnectSite(
-                account,
-                site,
-            );
+            const deleted = await siteService.softDisconnectSite(account, site);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -262,7 +280,7 @@ describe('BlueskyService', () => {
         it('should delete the site when there is no account', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
 
-            const deleted = await blueskyService.softDisconnectSite(null, site);
+            const deleted = await siteService.softDisconnectSite(null, site);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -444,7 +462,7 @@ describe('BlueskyService', () => {
                 },
             );
 
-            const disconnectPromise = blueskyService.softDisconnectSite(
+            const disconnectPromise = siteService.softDisconnectSite(
                 account,
                 site,
             );
@@ -508,7 +526,7 @@ describe('BlueskyService', () => {
                 expect(followStarted).toBe(true);
             });
 
-            const disconnectPromise = blueskyService.softDisconnectSite(
+            const disconnectPromise = siteService.softDisconnectSite(
                 account,
                 site,
             );

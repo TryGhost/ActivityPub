@@ -4,9 +4,11 @@ import type EventEmitter from 'node:events';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
 import { SiteCreatedEvent } from '@/site/site-created.event';
 
@@ -28,6 +30,7 @@ export class SiteService {
         private ghostService: IGhostService,
         private logger: Logger,
         private events: EventEmitter,
+        private blueskyService: BlueskyService,
     ) {}
 
     private async createSite(
@@ -168,6 +171,59 @@ export class SiteService {
         const result = await this.client.delete().from('sites').where({ host });
 
         return result === 1;
+    }
+
+    /**
+     * Soft-disconnect Bridgy (if enabled) and delete the site under one
+     * handles-row lock. Keeps the handles row so a later recreate can restore.
+     *
+     * @returns true when the site row was deleted
+     */
+    public async softDisconnectSite(
+        account: Account | null,
+        site: Site,
+    ): Promise<boolean> {
+        if (!account) {
+            const deleted = await this.client('sites')
+                .where('id', site.id)
+                .delete();
+
+            return deleted === 1;
+        }
+
+        const existing = await this.client(
+            'bluesky_integration_account_handles',
+        )
+            .where('account_id', account.id)
+            .first();
+
+        if (!existing) {
+            const deleted = await this.client('sites')
+                .where('id', site.id)
+                .delete();
+
+            return deleted === 1;
+        }
+
+        const bridgyAccount = await this.blueskyService.ensureBridgyAccount();
+
+        return this.client.transaction(async (trx) => {
+            const row = await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .forUpdate()
+                .first();
+
+            if (row) {
+                await this.blueskyService.softDisableBridgy(
+                    account,
+                    bridgyAccount,
+                );
+            }
+
+            const deleted = await trx('sites').where('id', site.id).delete();
+
+            return deleted === 1;
+        });
     }
 
     private async verifyUUIDReleased(

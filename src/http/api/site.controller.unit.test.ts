@@ -6,7 +6,6 @@ import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { SiteController } from '@/http/api/site.controller';
-import type { BlueskyService } from '@/integration/bluesky.service';
 import type { Site, SiteService } from '@/site/site.service';
 
 vi.mock('@sentry/node', () => ({
@@ -16,7 +15,6 @@ vi.mock('@sentry/node', () => ({
 describe('SiteController', () => {
     let siteService: SiteService;
     let accountService: AccountService;
-    let blueskyService: BlueskyService;
     let siteController: SiteController;
     let mockSite: Site;
     let mockAccount: Account;
@@ -39,17 +37,13 @@ describe('SiteController', () => {
             initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
             getSiteByHost: vi.fn().mockResolvedValue(mockSite),
             disableSiteForHost: vi.fn().mockResolvedValue(true),
+            softDisconnectSite: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
 
         accountService = {
             // handleGetSiteData treats a missing account as "site only"
             getAccountForSite: vi.fn().mockResolvedValue(null),
         } as unknown as AccountService;
-
-        blueskyService = {
-            softDisconnectSite: vi.fn().mockResolvedValue(true),
-            reconnectBridgyForAccount: vi.fn().mockResolvedValue(undefined),
-        } as unknown as BlueskyService;
     });
 
     function getMockAppContext(
@@ -85,7 +79,6 @@ describe('SiteController', () => {
         return new SiteController(
             siteService,
             accountService,
-            blueskyService,
             ghostProIpAddresses,
         );
     }
@@ -123,9 +116,6 @@ describe('SiteController', () => {
 
             expect(response.status).toBe(200);
             expect(await response.json()).toEqual(mockSite);
-            expect(
-                blueskyService.reconnectBridgyForAccount,
-            ).not.toHaveBeenCalled();
         });
 
         it('returns account metadata without restoring Bridgy on GET', async () => {
@@ -138,9 +128,6 @@ describe('SiteController', () => {
             const response = await siteController.handleGetSiteData(ctx);
 
             expect(response.status).toBe(200);
-            expect(
-                blueskyService.reconnectBridgyForAccount,
-            ).not.toHaveBeenCalled();
             expect(await response.json()).toMatchObject({
                 ...mockSite,
                 handle: '@index@example.com',
@@ -219,7 +206,7 @@ describe('SiteController', () => {
             expect(accountService.getAccountForSite).toHaveBeenCalledWith(
                 mockSite,
             );
-            expect(blueskyService.softDisconnectSite).toHaveBeenCalledWith(
+            expect(siteService.softDisconnectSite).toHaveBeenCalledWith(
                 mockAccount,
                 mockSite,
             );
@@ -232,9 +219,7 @@ describe('SiteController', () => {
             );
             siteController = createController();
             const error = new Error('bridgy unavailable');
-            vi.mocked(blueskyService.softDisconnectSite).mockRejectedValue(
-                error,
-            );
+            vi.mocked(siteService.softDisconnectSite).mockRejectedValue(error);
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
@@ -256,7 +241,7 @@ describe('SiteController', () => {
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(200);
-            expect(blueskyService.softDisconnectSite).toHaveBeenCalledWith(
+            expect(siteService.softDisconnectSite).toHaveBeenCalledWith(
                 null,
                 mockSite,
             );
@@ -272,14 +257,14 @@ describe('SiteController', () => {
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(404);
-            expect(blueskyService.softDisconnectSite).not.toHaveBeenCalled();
+            expect(siteService.softDisconnectSite).not.toHaveBeenCalled();
             expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
         });
 
         it('returns 500 if soft disconnect and fallback delete both fail', async () => {
             siteController = createController();
 
-            vi.mocked(blueskyService.softDisconnectSite).mockRejectedValue(
+            vi.mocked(siteService.softDisconnectSite).mockRejectedValue(
                 new Error('bridgy unavailable'),
             );
             vi.mocked(siteService.disableSiteForHost).mockRejectedValue(

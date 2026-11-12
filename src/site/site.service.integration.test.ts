@@ -77,6 +77,10 @@ describe('SiteService', () => {
             ghostService,
             getLogger(['test', 'site-service']),
             events,
+            {
+                ensureBridgyAccount: vi.fn(),
+                softDisableBridgy: vi.fn(),
+            } as never,
         );
     });
 

@@ -166,53 +166,23 @@ export class BlueskyService {
     }
 
     /**
-     * Soft-disable BridgyFed for site disconnect and delete the site under the
-     * same handles-row lock. Keeps the handles row so a later site recreate can
-     * restore. Holding the lock through site deletion stops a stale reconnect
-     * from Following after Undo.
-     *
-     * @returns true when the site row was deleted
+     * Resolve the BridgyFed actor. Call before taking the handles-row lock so
+     * network work does not run under the lock.
      */
-    async softDisconnectSite(
-        account: Account | null,
-        site: Site,
-    ): Promise<boolean> {
-        if (!account) {
-            const deleted = await this.db('sites')
-                .where('id', site.id)
-                .delete();
+    async ensureBridgyAccount(): Promise<Account> {
+        return this.getBridgyAccount();
+    }
 
-            return deleted === 1;
-        }
-
-        const existing = await this.db('bluesky_integration_account_handles')
-            .where('account_id', account.id)
-            .first();
-
-        if (!existing) {
-            const deleted = await this.db('sites')
-                .where('id', site.id)
-                .delete();
-
-            return deleted === 1;
-        }
-
-        const bridgyAccount = await this.getBridgyAccount();
-
-        return this.db.transaction(async (trx) => {
-            const row = await trx('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .forUpdate()
-                .first();
-
-            if (row) {
-                await this.unfollowBridgy(account, bridgyAccount);
-            }
-
-            const deleted = await trx('sites').where('id', site.id).delete();
-
-            return deleted === 1;
-        });
+    /**
+     * Soft-disable BridgyFed for site disconnect. Keeps the handles row.
+     * Caller must hold `FOR UPDATE` on the handles row and delete the site in
+     * the same transaction after this returns.
+     */
+    async softDisableBridgy(
+        account: Account,
+        bridgyAccount: Account,
+    ): Promise<void> {
+        await this.unfollowBridgy(account, bridgyAccount);
     }
 
     /**

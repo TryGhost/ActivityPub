@@ -3,14 +3,12 @@ import * as Sentry from '@sentry/node';
 import type { AccountService } from '@/account/account.service';
 import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
-import type { BlueskyService } from '@/integration/bluesky.service';
 import type { SiteService } from '@/site/site.service';
 
 export class SiteController {
     constructor(
         private readonly siteService: SiteService,
         private readonly accountService: AccountService,
-        private readonly blueskyService: BlueskyService,
         private readonly ghostProIpAddresses?: string[],
     ) {}
 
@@ -98,8 +96,10 @@ export class SiteController {
             }
 
             try {
-                const wasDisabled =
-                    await this.blueskyService.softDisconnectSite(account, site);
+                const wasDisabled = await this.siteService.softDisconnectSite(
+                    account,
+                    site,
+                );
 
                 if (wasDisabled) {
                     return new Response(null, {
@@ -112,10 +112,10 @@ export class SiteController {
                 });
             } catch (error) {
                 Sentry.captureException(error);
-                logger.error(
-                    'Could not soft-disconnect Bluesky before disabling site {host}',
-                    { host, error },
-                );
+                logger.error('Could not soft-disconnect site {host}', {
+                    host,
+                    error,
+                });
 
                 const wasDisabled =
                     await this.siteService.disableSiteForHost(host);
