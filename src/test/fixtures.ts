@@ -318,6 +318,13 @@ export function createFixtureManager(
             }),
         },
         logger,
+        events,
+        {
+            getBridgyAccount: async () => {
+                throw new Error('BlueskyService stub');
+            },
+            softDisableBridgy: async () => {},
+        } as never,
     );
     const postRepository = new KnexPostRepository(db, events, logger);
 

@@ -103,6 +103,13 @@ describe('KnexPostRepository', () => {
                 },
             },
             logger,
+            events,
+            {
+                getBridgyAccount: async () => {
+                    throw new Error('BlueskyService stub');
+                },
+                softDisableBridgy: async () => {},
+            } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);

@@ -1,12 +1,16 @@
 import crypto from 'node:crypto';
+import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 
 export type Site = {
     id: number;
@@ -25,6 +29,8 @@ export class SiteService {
         private accountService: AccountService,
         private ghostService: IGhostService,
         private logger: Logger,
+        private events: EventEmitter,
+        private blueskyService: BlueskyService,
     ) {}
 
     private async createSite(
@@ -151,6 +157,11 @@ export class SiteService {
                 site,
                 internalAccountData,
             );
+
+            this.events.emit(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id),
+            );
         }
 
         return site;
@@ -160,6 +171,62 @@ export class SiteService {
         const result = await this.client.delete().from('sites').where({ host });
 
         return result === 1;
+    }
+
+    /**
+     * Soft-disconnect Bridgy (if enabled) and delete the site under one
+     * handles-row lock. Keeps the handles row so a later recreate can restore.
+     *
+     * @returns true when the site row was deleted
+     */
+    public async softDisconnectSite(
+        account: Account | null,
+        site: Site,
+    ): Promise<boolean> {
+        const existing =
+            account &&
+            (await this.client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first());
+
+        if (!account || !existing) {
+            return this.deleteSiteById(site.id);
+        }
+
+        const bridgyAccount = await this.blueskyService.getBridgyAccount();
+
+        return this.client.transaction(async (trx) => {
+            const row = await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .forUpdate()
+                .first();
+
+            const existingSite = await trx('sites')
+                .where('id', site.id)
+                .first();
+
+            if (!existingSite) {
+                return false;
+            }
+
+            if (row) {
+                await this.blueskyService.softDisableBridgy(
+                    account,
+                    bridgyAccount,
+                );
+            }
+
+            return this.deleteSiteById(site.id, trx);
+        });
+    }
+
+    private async deleteSiteById(
+        siteId: number,
+        trx: Knex | Knex.Transaction = this.client,
+    ): Promise<boolean> {
+        const deleted = await trx('sites').where('id', siteId).delete();
+
+        return deleted === 1;
     }
 
     private async verifyUUIDReleased(

@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import type { AccountService } from '@/account/account.service';
 import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
@@ -77,17 +79,51 @@ export class SiteController {
         }
 
         try {
-            const wasDisabled = await this.siteService.disableSiteForHost(host);
+            const site = await this.siteService.getSiteByHost(host);
 
-            if (wasDisabled) {
+            if (!site) {
                 return new Response(null, {
-                    status: 200,
+                    status: 404,
                 });
             }
 
-            return new Response(null, {
-                status: 404,
-            });
+            const account = await this.accountService.findAccountForSite(site);
+
+            try {
+                const wasDisabled = await this.siteService.softDisconnectSite(
+                    account,
+                    site,
+                );
+
+                if (wasDisabled) {
+                    return new Response(null, {
+                        status: 200,
+                    });
+                }
+
+                return new Response(null, {
+                    status: 404,
+                });
+            } catch (error) {
+                Sentry.captureException(error);
+                logger.error('Could not soft-disconnect site {host}', {
+                    host,
+                    error,
+                });
+
+                const wasDisabled =
+                    await this.siteService.disableSiteForHost(host);
+
+                if (wasDisabled) {
+                    return new Response(null, {
+                        status: 200,
+                    });
+                }
+
+                return new Response(null, {
+                    status: 404,
+                });
+            }
         } catch (error) {
             logger.error('Site could not be disabled', { error });
 
