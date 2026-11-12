@@ -106,7 +106,8 @@ export class BlueskyService {
             };
         }
 
-        await this.followBridgy(account);
+        const bridgyAccount = await this.getBridgyAccount();
+        await this.followBridgy(account, bridgyAccount);
 
         // Insert handle → account mapping into the database - handle is null
         // and confirmed is false until manual confirmation has occurred (see
@@ -132,15 +133,36 @@ export class BlueskyService {
      * intent so site reconnect will not restore it.
      */
     async disableForAccount(account: Account) {
-        const disconnected = await this.disconnectBridgyForAccount(account);
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
 
-        if (!disconnected) {
+        if (!existing) {
+            this.logger.info(
+                `Bluesky integration already disabled for account {id}`,
+                { id: account.id },
+            );
+
             return;
         }
 
-        await this.db('bluesky_integration_account_handles')
-            .where('account_id', account.id)
-            .delete();
+        const bridgyAccount = await this.getBridgyAccount();
+
+        await this.db.transaction(async (trx) => {
+            const row = await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .forUpdate()
+                .first();
+
+            if (!row) {
+                return;
+            }
+
+            await this.unfollowBridgy(account, bridgyAccount);
+            await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .delete();
+        });
     }
 
     /**
@@ -163,9 +185,27 @@ export class BlueskyService {
             return false;
         }
 
-        await this.unfollowBridgy(account);
+        const bridgyAccount = await this.getBridgyAccount();
 
-        return true;
+        return this.db.transaction(async (trx) => {
+            const row = await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .forUpdate()
+                .first();
+
+            if (!row) {
+                this.logger.info(
+                    `Bluesky integration already disabled for account {id}`,
+                    { id: account.id },
+                );
+
+                return false;
+            }
+
+            await this.unfollowBridgy(account, bridgyAccount);
+
+            return true;
+        });
     }
 
     /**
@@ -187,7 +227,25 @@ export class BlueskyService {
             return;
         }
 
-        await this.followBridgy(account);
+        const bridgyAccount = await this.getBridgyAccount();
+
+        await this.db.transaction(async (trx) => {
+            const row = await trx('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .forUpdate()
+                .first();
+
+            if (!row) {
+                this.logger.info(
+                    `Bluesky integration not enabled for account {id} - skipping Bridgy reconnect`,
+                    { id: account.id },
+                );
+
+                return;
+            }
+
+            await this.followBridgy(account, bridgyAccount);
+        });
     }
 
     async confirmHandleForAccount(
@@ -271,8 +329,7 @@ export class BlueskyService {
         });
     }
 
-    private async followBridgy(account: Account) {
-        const bridgyAccount = await this.getBridgyAccount();
+    private async followBridgy(account: Account, bridgyAccount: Account) {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         const followId = ctx.getObjectUri(Follow, { id: uuidv4() });
@@ -295,8 +352,7 @@ export class BlueskyService {
         );
     }
 
-    private async unfollowBridgy(account: Account) {
-        const bridgyAccount = await this.getBridgyAccount();
+    private async unfollowBridgy(account: Account, bridgyAccount: Account) {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         // Send "stop" dm to brid.gy account

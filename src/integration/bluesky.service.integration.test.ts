@@ -282,6 +282,102 @@ describe('BlueskyService', () => {
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
+
+        it('should not Follow after Preferences disable wins the handles row lock', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+
+            let releaseDisable!: () => void;
+            const disableGate = new Promise<void>((resolve) => {
+                releaseDisable = resolve;
+            });
+            let disableStarted = false;
+
+            vi.mocked(fedifyContext.sendActivity).mockImplementation(
+                async (_sender, _recipient, activity) => {
+                    if (activity instanceof Create) {
+                        disableStarted = true;
+                        await disableGate;
+                    }
+                },
+            );
+
+            const disablePromise = blueskyService.disableForAccount(account);
+
+            await vi.waitFor(() => {
+                expect(disableStarted).toBe(true);
+            });
+
+            const reconnectPromise =
+                blueskyService.reconnectBridgyForAccount(account);
+
+            releaseDisable();
+            await Promise.all([disablePromise, reconnectPromise]);
+
+            const activities = vi
+                .mocked(fedifyContext.sendActivity)
+                .mock.calls.map((call) => call[2]);
+
+            expect(
+                activities.some((activity) => activity instanceof Follow),
+            ).toBe(false);
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeUndefined();
+        });
+
+        it('should let Preferences disable tear down after reconnect wins the handles row lock', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+
+            let releaseFollow!: () => void;
+            const followGate = new Promise<void>((resolve) => {
+                releaseFollow = resolve;
+            });
+            let followStarted = false;
+
+            vi.mocked(fedifyContext.sendActivity).mockImplementation(
+                async (_sender, _recipient, activity) => {
+                    if (activity instanceof Follow) {
+                        followStarted = true;
+                        await followGate;
+                    }
+                },
+            );
+
+            const reconnectPromise =
+                blueskyService.reconnectBridgyForAccount(account);
+
+            await vi.waitFor(() => {
+                expect(followStarted).toBe(true);
+            });
+
+            const disablePromise = blueskyService.disableForAccount(account);
+
+            releaseFollow();
+            await Promise.all([reconnectPromise, disablePromise]);
+
+            const activities = vi
+                .mocked(fedifyContext.sendActivity)
+                .mock.calls.map((call) => call[2]);
+
+            expect(activities[0]).toBeInstanceOf(Follow);
+            expect(
+                activities.some((activity) => activity instanceof Create),
+            ).toBe(true);
+            expect(
+                activities.some((activity) => activity instanceof Undo),
+            ).toBe(true);
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeUndefined();
+        });
     });
 
     describe('site.created listener', () => {
