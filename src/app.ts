@@ -135,6 +135,7 @@ import {
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import {
     createPushMessageHandler,
     type GCloudPubSubPushMessageQueue,
@@ -149,6 +150,7 @@ import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 import type { Site } from '@/site/site.service';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 
 function toLogLevel(level: unknown): LogLevel | null {
     if (typeof level !== 'string') {
@@ -269,6 +271,7 @@ container.resolve<GhostPostService>('ghostPostService').init();
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
+container.resolve<BlueskyService>('blueskyService').init();
 
 // Register all events with the event serializer
 const globalEventSerializer =
@@ -290,6 +293,7 @@ for (const event of [
     PostLikedEvent,
     PostRepostedEvent,
     PostUpdatedEvent,
+    SiteCreatedEvent,
 ]) {
     globalEventSerializer.register(event.getName(), event);
 }

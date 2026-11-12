@@ -122,7 +122,7 @@ describe('SiteController', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('restores Bridgy when an account exists for the site', async () => {
+        it('returns account metadata without restoring Bridgy on GET', async () => {
             vi.mocked(accountService.getAccountForSite).mockResolvedValue(
                 mockAccount,
             );
@@ -134,29 +134,10 @@ describe('SiteController', () => {
             expect(response.status).toBe(200);
             expect(
                 blueskyService.reconnectBridgyForAccount,
-            ).toHaveBeenCalledWith(mockAccount);
+            ).not.toHaveBeenCalled();
             expect(await response.json()).toMatchObject({
                 ...mockSite,
                 handle: '@index@example.com',
-                actorUrl: mockAccount.apId.href,
-            });
-        });
-
-        it('still returns site data when Bluesky restore fails', async () => {
-            vi.mocked(accountService.getAccountForSite).mockResolvedValue(
-                mockAccount,
-            );
-            vi.mocked(
-                blueskyService.reconnectBridgyForAccount,
-            ).mockRejectedValue(new Error('bridgy unavailable'));
-            siteController = createController();
-
-            const ctx = getMockAppContext('example.com');
-            const response = await siteController.handleGetSiteData(ctx);
-
-            expect(response.status).toBe(200);
-            expect(await response.json()).toMatchObject({
-                ...mockSite,
                 actorUrl: mockAccount.apId.href,
             });
         });

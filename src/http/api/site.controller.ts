@@ -35,17 +35,6 @@ export class SiteController {
             const account = await this.accountService.getAccountForSite(site);
 
             if (account) {
-                try {
-                    await this.blueskyService.reconnectBridgyForAccount(
-                        account,
-                    );
-                } catch (error) {
-                    logger.warn(
-                        'Could not restore Bluesky after enabling site {host}',
-                        { host, error },
-                    );
-                }
-
                 responseBody = {
                     ...site,
                     domain: getAccountHandleHost(account),

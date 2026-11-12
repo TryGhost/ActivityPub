@@ -21,6 +21,7 @@ import {
 } from '@/core/result';
 import { BlueskyService, BRIDGY_AP_ID } from '@/integration/bluesky.service';
 import type { BlueskyApiClient } from '@/integration/bluesky-api.client';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -110,6 +111,7 @@ describe('BlueskyService', () => {
             fedifyContextFactory,
             logger,
             blueskyApiClient,
+            events,
         );
 
         vi.clearAllMocks();
@@ -272,6 +274,47 @@ describe('BlueskyService', () => {
             const [account] = await fixtureManager.createInternalAccount();
 
             await blueskyService.reconnectBridgyForAccount(account);
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('site.created listener', () => {
+        it('should restore Bridgy when the Bluesky row exists', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            await blueskyService.init();
+
+            events.emit(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id),
+            );
+
+            await vi.waitFor(() => {
+                expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+                    { username: account.username },
+                    {
+                        id: bridgyAccount.apId,
+                        inboxId: bridgyAccount.apInbox,
+                    },
+                    expect.any(Follow),
+                );
+            });
+        });
+
+        it('should not restore Bridgy when the Bluesky row is missing', async () => {
+            const [, site] = await fixtureManager.createInternalAccount();
+
+            await blueskyService.init();
+
+            events.emit(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id),
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });

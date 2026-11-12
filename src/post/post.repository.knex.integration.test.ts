@@ -103,6 +103,7 @@ describe('KnexPostRepository', () => {
                 },
             },
             logger,
+            events,
         );
         postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);

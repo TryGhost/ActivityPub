@@ -1,3 +1,5 @@
+import type EventEmitter from 'node:events';
+
 import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
@@ -20,6 +22,8 @@ import type {
     BlueskyApiClient,
     BlueskyApiError,
 } from '@/integration/bluesky-api.client';
+import type { Site } from '@/site/site.service';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 
 /**
  * @see https://fed.brid.gy/docs
@@ -35,7 +39,48 @@ export class BlueskyService {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly logger: Logger,
         private readonly blueskyApiClient: BlueskyApiClient,
+        private readonly events: EventEmitter,
     ) {}
+
+    async init() {
+        this.events.on(
+            SiteCreatedEvent.getName(),
+            this.handleSiteCreated.bind(this),
+        );
+    }
+
+    private async handleSiteCreated(event: SiteCreatedEvent) {
+        try {
+            const site = await this.db('sites')
+                .where('id', event.getSiteId())
+                .first<Site>();
+
+            if (!site) {
+                this.logger.warn(
+                    'Ignoring site.created for missing site {siteId}',
+                    { siteId: event.getSiteId() },
+                );
+                return;
+            }
+
+            const account = await this.accountRepository.getBySite(site);
+
+            if (!account) {
+                this.logger.warn(
+                    'Ignoring site.created for site {siteId} with no account',
+                    { siteId: event.getSiteId() },
+                );
+                return;
+            }
+
+            await this.reconnectBridgyForAccount(account);
+        } catch (error) {
+            this.logger.warn(
+                'Best-effort Bridgy restore failed for site {siteId}',
+                { siteId: event.getSiteId(), error },
+            );
+        }
+    }
 
     async enableForAccount(account: Account): Promise<{
         enabled: boolean;

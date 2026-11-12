@@ -9,6 +9,7 @@ import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
 import { type IGhostService, SiteService } from '@/site/site.service';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 
@@ -31,6 +32,7 @@ describe('SiteService', () => {
     let accountService: AccountService;
     let ghostService: IGhostService;
     let db: Knex;
+    let events: AsyncEvents;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -44,7 +46,7 @@ describe('SiteService', () => {
         await db('accounts').truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-        const events = new AsyncEvents();
+        events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
         const fedifyContextFactory = new FedifyContextFactory();
         accountService = new AccountService(
@@ -74,6 +76,7 @@ describe('SiteService', () => {
             accountService,
             ghostService,
             getLogger(['test', 'site-service']),
+            events,
         );
     });
 
@@ -87,6 +90,8 @@ describe('SiteService', () => {
             'createInternalAccount',
         );
 
+        const emitSpy = vi.spyOn(events, 'emit');
+
         const site = await service.initialiseSiteForHost('hostname.tld');
 
         expect(site.host).toBe('hostname.tld');
@@ -95,6 +100,13 @@ describe('SiteService', () => {
         expect(site.ghost_uuid).toBeDefined();
 
         expect(createInternalAccount.mock.calls).toHaveLength(1);
+        expect(emitSpy).toHaveBeenCalledWith(
+            SiteCreatedEvent.getName(),
+            expect.any(SiteCreatedEvent),
+        );
+        expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
+            site.id,
+        );
 
         const siteRows = await db('sites').select('*');
 
@@ -107,9 +119,12 @@ describe('SiteService', () => {
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
 
+        emitSpy.mockClear();
+
         const siteTwo = await service.initialiseSiteForHost('hostname.tld');
 
         expect(siteTwo).toMatchObject(site);
+        expect(emitSpy).not.toHaveBeenCalled();
 
         const siteRowsAfterSecondInit = await db('sites').select('*');
 

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
@@ -7,6 +8,7 @@ import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 
 export type Site = {
     id: number;
@@ -25,6 +27,7 @@ export class SiteService {
         private accountService: AccountService,
         private ghostService: IGhostService,
         private logger: Logger,
+        private events: EventEmitter,
     ) {}
 
     private async createSite(
@@ -150,6 +153,15 @@ export class SiteService {
             await this.accountService.createInternalAccount(
                 site,
                 internalAccountData,
+            );
+        }
+
+        if (existingSite === null) {
+            // Non-blocking: Bridgy restore listens for this and must not delay
+            // site creation / the GET response.
+            this.events.emit(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id),
             );
         }
 
