@@ -246,6 +246,25 @@ describe('SiteController', () => {
                 mockSite,
             );
             expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
+            expect(Sentry.captureException).not.toHaveBeenCalled();
+        });
+
+        it('reports unexpected account lookup failures to Sentry', async () => {
+            siteController = createController();
+            const error = new Error('db unavailable');
+            vi.mocked(accountService.getAccountForSite).mockRejectedValue(
+                error,
+            );
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(200);
+            expect(siteService.softDisconnectSite).toHaveBeenCalledWith(
+                null,
+                mockSite,
+            );
+            expect(Sentry.captureException).toHaveBeenCalledWith(error);
         });
 
         it('returns 404 if the site is not found', async () => {

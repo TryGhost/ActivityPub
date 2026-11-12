@@ -22,8 +22,8 @@ import {
 } from '@/core/result';
 import { BlueskyService, BRIDGY_AP_ID } from '@/integration/bluesky.service';
 import type { BlueskyApiClient } from '@/integration/bluesky-api.client';
-import { SiteCreatedEvent } from '@/site/site-created.event';
 import { SiteService } from '@/site/site.service';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -287,6 +287,24 @@ describe('BlueskyService', () => {
             expect(
                 await client('sites').where('id', site.id).first(),
             ).toBeUndefined();
+        });
+
+        it('should skip Bridgy teardown when the site is already gone', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            await client('sites').where('id', site.id).delete();
+
+            const deleted = await siteService.softDisconnectSite(account, site);
+
+            expect(deleted).toBe(false);
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeDefined();
         });
     });
 

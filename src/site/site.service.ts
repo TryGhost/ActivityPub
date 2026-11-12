@@ -213,6 +213,14 @@ export class SiteService {
                 .forUpdate()
                 .first();
 
+            const existingSite = await trx('sites')
+                .where('id', site.id)
+                .first();
+
+            if (!existingSite) {
+                return false;
+            }
+
             if (row) {
                 await this.blueskyService.softDisableBridgy(
                     account,

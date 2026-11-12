@@ -91,7 +91,19 @@ export class SiteController {
 
             try {
                 account = await this.accountService.getAccountForSite(site);
-            } catch {
+            } catch (error) {
+                const isExpectedMissingUser =
+                    error instanceof Error &&
+                    error.message.startsWith('No user found for site:');
+
+                if (!isExpectedMissingUser) {
+                    Sentry.captureException(error);
+                    logger.error('Could not look up account for site {host}', {
+                        host,
+                        error,
+                    });
+                }
+
                 account = null;
             }
 
