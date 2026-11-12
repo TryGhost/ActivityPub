@@ -97,14 +97,8 @@ export class SiteController {
                     error.message.startsWith('No user found for site:');
 
                 if (!isExpectedMissingUser) {
-                    Sentry.captureException(error);
-                    logger.error('Could not look up account for site {host}', {
-                        host,
-                        error,
-                    });
+                    throw error;
                 }
-
-                account = null;
             }
 
             try {

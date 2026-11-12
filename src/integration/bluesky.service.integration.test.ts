@@ -662,6 +662,69 @@ describe('BlueskyService', () => {
             expect(logger.error).toHaveBeenCalled();
             expect(Sentry.captureException).toHaveBeenCalled();
         });
+
+        it('should restore Bridgy after soft disconnect and site recreate', async () => {
+            const host = 'restore-cycle.example';
+            const [account, site] = await fixtureManager.createInternalAccount(
+                null,
+                host,
+            );
+            const handle = '@restore-cycle.example.com.ap.brid.gy';
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                handle,
+            );
+            await blueskyService.init();
+
+            const deleted = await siteService.softDisconnectSite(account, site);
+
+            expect(deleted).toBe(true);
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+
+            // Test DBs clone table DDL without FK constraints. Production deletes
+            // users via ON DELETE CASCADE when the site row goes away.
+            await client('users').where('account_id', account.id).delete();
+
+            expect(
+                await client('users').where('account_id', account.id).first(),
+            ).toBeUndefined();
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toMatchObject({
+                handle,
+                confirmed: 1,
+            });
+
+            vi.mocked(fedifyContext.sendActivity).mockClear();
+
+            const recreatedSite = await siteService.initialiseSiteForHost(host);
+
+            expect(recreatedSite.host).toBe(host);
+            expect(recreatedSite.id).not.toBe(site.id);
+
+            const reattachedUser = await client('users')
+                .where('site_id', recreatedSite.id)
+                .first();
+
+            expect(reattachedUser?.account_id).toBe(account.id);
+
+            await vi.waitFor(() => {
+                expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+                    { username: account.username },
+                    {
+                        id: bridgyAccount.apId,
+                        inboxId: bridgyAccount.apInbox,
+                    },
+                    expect.any(Follow),
+                );
+            });
+        });
     });
 
     describe('disableForAccount', () => {

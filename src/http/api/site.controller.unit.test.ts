@@ -249,22 +249,18 @@ describe('SiteController', () => {
             expect(Sentry.captureException).not.toHaveBeenCalled();
         });
 
-        it('reports unexpected account lookup failures to Sentry', async () => {
+        it('returns 500 when account lookup fails unexpectedly', async () => {
             siteController = createController();
-            const error = new Error('db unavailable');
             vi.mocked(accountService.getAccountForSite).mockRejectedValue(
-                error,
+                new Error('db unavailable'),
             );
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
 
-            expect(response.status).toBe(200);
-            expect(siteService.softDisconnectSite).toHaveBeenCalledWith(
-                null,
-                mockSite,
-            );
-            expect(Sentry.captureException).toHaveBeenCalledWith(error);
+            expect(response.status).toBe(500);
+            expect(siteService.softDisconnectSite).not.toHaveBeenCalled();
+            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
         });
 
         it('returns 404 if the site is not found', async () => {
