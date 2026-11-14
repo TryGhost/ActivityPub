@@ -74,7 +74,7 @@
     "@fedify/webfinger": "2.4.5",
     "@google-cloud/pubsub": "6.3.2",
     "@google-cloud/storage": "8.4.0",
-    "@hono/node-server": "2.1.6",
+    "@hono/node-server": "2.1.7",
     "@js-temporal/polyfill": "0.5.1",
     "@logtape/logtape": "2.4.2",
     "@opentelemetry/api": "1.10.0",
