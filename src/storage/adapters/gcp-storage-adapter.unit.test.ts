@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
+import { PassThroughClient } from 'google-auth-library';
 
 import { error, getValue, isError, ok } from '@/core/result';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
@@ -49,6 +50,25 @@ describe('GCPStorageAdapter', () => {
         });
 
         adapter = new GCPStorageAdapter('test-bucket', mockLogger);
+    });
+
+    describe('constructor', () => {
+        it('uses default credentials outside emulator mode', () => {
+            expect(Storage).toHaveBeenLastCalledWith();
+        });
+
+        it('sends unauthenticated requests to the emulator', () => {
+            new GCPStorageAdapter(
+                'test-bucket',
+                mockLogger,
+                'http://fake-gcs:4443',
+            );
+
+            const options = (Storage as unknown as Mock).mock.lastCall?.[0];
+            expect(options.apiEndpoint).toBe('http://fake-gcs:4443');
+            expect(options.authClient).toBeInstanceOf(PassThroughClient);
+            expect(options.credentials).toBeUndefined();
+        });
     });
 
     describe('.save()', () => {
