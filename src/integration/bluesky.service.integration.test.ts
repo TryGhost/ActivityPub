@@ -334,7 +334,7 @@ describe('BlueskyService', () => {
             ).toBeDefined();
         });
 
-        it('should keep the site when account lookup fails', async () => {
+        it('should delete the site when account lookup fails', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
             const lookupError = new Error('db unavailable');
             vi.spyOn(
@@ -344,11 +344,41 @@ describe('BlueskyService', () => {
 
             await expect(
                 siteService.disableSiteForHost(site.host),
-            ).rejects.toThrow(lookupError);
+            ).resolves.toBe(true);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(Sentry.captureException).toHaveBeenCalledWith(lookupError);
             expect(
                 await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+        });
+
+        it('should delete the site and retain the handles row when it has multiple users', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+            await fixtureManager.enableBlueskyIntegration(account);
+            await client('users').insert({
+                account_id: account.id,
+                site_id: site.id,
+            });
+
+            await expect(
+                siteService.disableSiteForHost(site.host),
+            ).resolves.toBe(true);
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(Sentry.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: `Multiple users found for site: ${site.id}`,
+                }),
+            );
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
             ).toBeDefined();
         });
 

@@ -180,18 +180,18 @@ export class SiteService {
             return false;
         }
 
-        const account = await this.accountService.findAccountForSite(site);
+        try {
+            const account = await this.accountService.findAccountForSite(site);
 
-        if (account) {
-            try {
+            if (account) {
                 await this.blueskyService.softDisconnectForAccount(account);
-            } catch (error) {
-                Sentry.captureException(error);
-                this.logger.error('Could not soft-disconnect site {host}', {
-                    host,
-                    error,
-                });
             }
+        } catch (error) {
+            Sentry.captureException(error);
+            this.logger.error('Could not soft-disconnect site {host}', {
+                host,
+                error,
+            });
         }
 
         const deleted = await this.client('sites')
