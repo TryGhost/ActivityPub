@@ -1150,6 +1150,284 @@ describe('BlueskyService', () => {
         });
     });
 
+    describe('checkDomainHandleForAccount', () => {
+        const did = 'did:plc:bridged';
+
+        let account: Account;
+        let domain: string;
+        let defaultHandle: string;
+
+        beforeEach(async () => {
+            [account] = await fixtureManager.createInternalAccount();
+            domain = account.apId.hostname;
+            defaultHandle = `${account.username}.${domain}.ap.brid.gy`;
+
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                ok([]),
+            );
+        });
+
+        async function getRow() {
+            return client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first();
+        }
+
+        it('should report a domain that serves the DID to a check as reachable', async () => {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+                { did },
+            );
+
+            vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                did,
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                domain,
+                reachable: true,
+            });
+            expect(atprotoHandleResolver.resolveHttps).toHaveBeenCalledWith(
+                domain,
+                { check: true },
+            );
+        });
+
+        it.each([
+            ['nothing', null],
+            ['another DID', 'did:plc:someoneelse'],
+        ])(
+            'should report a domain that serves %s as not reachable',
+            async (_served, servedDid) => {
+                await fixtureManager.enableBlueskyIntegration(
+                    account,
+                    true,
+                    defaultHandle,
+                    { did },
+                );
+
+                vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                    servedDid,
+                );
+
+                const result =
+                    await blueskyService.checkDomainHandleForAccount(account);
+
+                expect(getValue(result as Ok<unknown>)).toEqual({
+                    domain,
+                    reachable: false,
+                });
+            },
+        );
+
+        it('should report a domain whose DNS points at the account as reachable', async () => {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+                { did },
+            );
+
+            vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                null,
+            );
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                ok([did]),
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                domain,
+                reachable: true,
+            });
+        });
+
+        it('should report a domain whose DNS cannot be checked as not reachable', async () => {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+                { did },
+            );
+
+            vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                null,
+            );
+            vi.mocked(atprotoHandleResolver.resolveDns).mockResolvedValue(
+                error({ type: 'dns-error', code: 'ESERVFAIL' }),
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                domain,
+                reachable: false,
+            });
+        });
+
+        it('should check again whatever an earlier claim found, without changing it', async () => {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+                {
+                    did,
+                    domain_handle: domain,
+                    domain_handle_status: 'unavailable',
+                    domain_handle_reason: 'not_reachable',
+                },
+            );
+
+            vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                did,
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                domain,
+                reachable: true,
+            });
+            expect(await getRow()).toMatchObject({
+                domain_handle: domain,
+                domain_handle_status: 'unavailable',
+                domain_handle_reason: 'not_reachable',
+            });
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should find the DID of an account that enabled Bluesky sharing before domain handles existed', async () => {
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                defaultHandle,
+            );
+
+            vi.mocked(bridgyFedClient.getBridgedDid).mockResolvedValue(ok(did));
+            vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
+                ok({ did, handle: defaultHandle }),
+            );
+            vi.mocked(atprotoHandleResolver.resolveHttps).mockResolvedValue(
+                did,
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                domain,
+                reachable: true,
+            });
+            expect(await getRow()).toMatchObject({
+                did,
+                domain_handle_status: null,
+            });
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it('should return an error if the Bluesky integration is not enabled', async () => {
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getError(result as ResultError<unknown>)).toEqual({
+                type: 'not-enabled',
+            });
+        });
+
+        it('should return an error if the handle is not confirmed yet', async () => {
+            await fixtureManager.enableBlueskyIntegration(account, false);
+
+            vi.mocked(bridgyFedClient.getBridgedDid).mockResolvedValue(
+                error({ type: 'not-found' }),
+            );
+
+            const result =
+                await blueskyService.checkDomainHandleForAccount(account);
+
+            expect(getError(result as ResultError<unknown>)).toEqual({
+                type: 'not-confirmed',
+            });
+            expect(atprotoHandleResolver.resolveHttps).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getDomainHandleDidForCheck', () => {
+        const did = 'did:plc:bridged';
+
+        it.each(['claiming', 'active', 'unavailable', 'released', null])(
+            'should serve the DID whatever the domain handle status: %s',
+            async (status) => {
+                const [account] = await fixtureManager.createInternalAccount();
+
+                await fixtureManager.enableBlueskyIntegration(
+                    account,
+                    true,
+                    'index.example.com.ap.brid.gy',
+                    {
+                        did,
+                        domain_handle: status ? account.apId.hostname : null,
+                        domain_handle_status: status,
+                    },
+                );
+
+                expect(
+                    await blueskyService.getDomainHandleDidForCheck(account),
+                ).toBe(did);
+            },
+        );
+
+        it('should only serve the DID for a domain the account would claim when asked for a domain', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                'index.example.com.ap.brid.gy',
+                { did },
+            );
+
+            expect(
+                await blueskyService.getDomainHandleDidForCheck(
+                    account,
+                    account.apId.hostname.toUpperCase(),
+                ),
+            ).toBe(did);
+            expect(
+                await blueskyService.getDomainHandleDidForCheck(
+                    account,
+                    'someone-else.example',
+                ),
+            ).toBeNull();
+        });
+
+        it('should not serve a DID that is not known yet', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account, false);
+
+            expect(
+                await blueskyService.getDomainHandleDidForCheck(account),
+            ).toBeNull();
+        });
+
+        it('should not serve a DID when the Bluesky integration is not enabled', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            expect(
+                await blueskyService.getDomainHandleDidForCheck(account),
+            ).toBeNull();
+        });
+    });
+
     describe('getDomainHandleDid', () => {
         const did = 'did:plc:bridged';
 

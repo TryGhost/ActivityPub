@@ -12,6 +12,15 @@ const DID_PATTERN = /^did:[a-z]+:[a-zA-Z0-9._:%-]+$/;
 
 export const MAX_WELL_KNOWN_REDIRECTS = 5;
 
+/**
+ * Query parameter that asks this service for the DID it would serve for a
+ * domain once the domain is claimed, to find out whether the domain routes
+ * `/.well-known/atproto-did` here without claiming it
+ *
+ * atproto resolvers never send it, so nothing changes for them
+ */
+export const ATPROTO_DID_CHECK_PARAM = 'check';
+
 // "No such record" answers - anything else (SERVFAIL, timeout, refused...)
 // means we could not find out, which must not be treated as "no record"
 const DNS_NO_RECORD_CODES = new Set(['ENOTFOUND', 'ENODATA']);
@@ -74,8 +83,14 @@ export class AtprotoHandleResolver {
      * Redirects are followed, as atproto resolvers do, but only to HTTPS URLs
      * on public addresses: the domain is set by whoever runs the site, so it
      * must not be able to point this service at internal addresses
+     *
+     * With `check`, every request asks for the DID this service would serve
+     * once the domain is claimed (see `ATPROTO_DID_CHECK_PARAM`)
      */
-    async resolveHttps(domain: string): Promise<string | null> {
+    async resolveHttps(
+        domain: string,
+        { check = false }: { check?: boolean } = {},
+    ): Promise<string | null> {
         const signal = AbortSignal.timeout(3000);
         let url = new URL(`https://${domain}/.well-known/atproto-did`);
 
@@ -87,6 +102,11 @@ export class AtprotoHandleResolver {
 
                 if (!allowPrivateAddress()) {
                     await validatePublicUrl(url.href);
+                }
+
+                // Redirects don't have to keep the query string
+                if (check) {
+                    url.searchParams.set(ATPROTO_DID_CHECK_PARAM, '1');
                 }
 
                 const response = await fetch(url, {

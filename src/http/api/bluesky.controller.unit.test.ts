@@ -41,6 +41,7 @@ describe('BlueskyController', () => {
             disableForAccount: vi.fn().mockResolvedValue(undefined),
             confirmHandleForAccount: vi.fn(),
             useDomainHandleForAccount: vi.fn(),
+            checkDomainHandleForAccount: vi.fn(),
         } as unknown as BlueskyService;
 
         controller = new BlueskyController(blueskyService);
@@ -274,6 +275,64 @@ describe('BlueskyController', () => {
             );
 
             const result = await controller.handleUseDomainHandle(ctx);
+
+            expect(result.status).toBe(500);
+        });
+    });
+
+    describe('handleCheckDomainHandle', () => {
+        it.each([true, false])(
+            'should return whether the domain is reachable: %s',
+            async (reachable) => {
+                vi.mocked(
+                    blueskyService.checkDomainHandleForAccount,
+                ).mockResolvedValue(ok({ domain: 'example.com', reachable }));
+
+                const result = await controller.handleCheckDomainHandle(ctx);
+
+                expect(
+                    blueskyService.checkDomainHandleForAccount,
+                ).toHaveBeenCalledWith(account);
+                expect(result.status).toBe(200);
+                expect(await result.json()).toEqual({
+                    domain: 'example.com',
+                    reachable,
+                });
+            },
+        );
+
+        it.each([
+            ['not-enabled', 'Bluesky integration not enabled'],
+            ['not-confirmed', 'Bluesky handle not confirmed'],
+        ] as const)('should return 400 when %s', async (type, message) => {
+            vi.mocked(
+                blueskyService.checkDomainHandleForAccount,
+            ).mockResolvedValue(error({ type }));
+
+            const result = await controller.handleCheckDomainHandle(ctx);
+
+            expect(result.status).toBe(400);
+            expect(await result.json()).toEqual({ error: message });
+        });
+
+        it('should return 500 on API errors', async () => {
+            vi.mocked(
+                blueskyService.checkDomainHandleForAccount,
+            ).mockResolvedValue(
+                error({ type: 'network-error', message: 'timeout' }),
+            );
+
+            const result = await controller.handleCheckDomainHandle(ctx);
+
+            expect(result.status).toBe(500);
+        });
+
+        it('should return 500 when the check throws', async () => {
+            vi.mocked(
+                blueskyService.checkDomainHandleForAccount,
+            ).mockRejectedValue(new Error('Something went wrong'));
+
+            const result = await controller.handleCheckDomainHandle(ctx);
 
             expect(result.status).toBe(500);
         });

@@ -41,10 +41,18 @@ describe('AtprotoDidController', () => {
         66: 'news.test',
     };
 
-    function ctxForHost(host?: string) {
+    // The domains each account would claim, for accounts with a DID
+    const claimable: Record<number, string[]> = {
+        22: ['blog.example.org'],
+        44: ['www.other.net'],
+        66: ['news.test', 'www.news.test'],
+    };
+
+    function ctxForHost(host?: string, query: Record<string, string> = {}) {
         return {
             req: {
                 header: (name: string) => (name === 'host' ? host : undefined),
+                query: (name: string) => query[name],
             },
         } as unknown as HonoContext;
     }
@@ -64,6 +72,20 @@ describe('AtprotoDidController', () => {
                     const claim = claims[account.id];
 
                     if (!claim || (domain !== undefined && domain !== claim)) {
+                        return null;
+                    }
+
+                    return did;
+                },
+            ),
+            getDomainHandleDidForCheck: vi.fn(
+                async (account: Account, domain?: string) => {
+                    const domains = claimable[account.id];
+
+                    if (
+                        !domains ||
+                        (domain !== undefined && !domains.includes(domain))
+                    ) {
                         return null;
                     }
 
@@ -157,5 +179,48 @@ describe('AtprotoDidController', () => {
         const response = await controller.handleGetAtprotoDid(ctxForHost());
 
         expect(response.status).toBe(404);
+    });
+
+    describe('checking a domain before it is claimed', () => {
+        it('serves the DID the site would serve once it claims its domain', async () => {
+            // blog.example.org has not claimed a domain handle
+            const response = await controller.handleGetAtprotoDid(
+                ctxForHost('blog.example.org', { check: '1' }),
+            );
+
+            expect(
+                blueskyService.getDomainHandleDidForCheck,
+            ).toHaveBeenCalledWith(accounts[2], undefined);
+            expect(blueskyService.getDomainHandleDid).not.toHaveBeenCalled();
+            expect(response.status).toBe(200);
+            expect(await response.text()).toBe(did);
+        });
+
+        it('serves the DID of the counterpart site that would claim the requested domain', async () => {
+            const response = await controller.handleGetAtprotoDid(
+                ctxForHost('news.test', { check: '1' }),
+            );
+
+            expect(
+                blueskyService.getDomainHandleDidForCheck,
+            ).toHaveBeenCalledWith(accounts[6], 'news.test');
+            expect(await response.text()).toBe(did);
+        });
+
+        it('does not serve the DID of a counterpart site that would not claim the requested domain', async () => {
+            const response = await controller.handleGetAtprotoDid(
+                ctxForHost('other.net', { check: '1' }),
+            );
+
+            expect(response.status).toBe(404);
+        });
+
+        it('returns 404 for a site without a DID', async () => {
+            const response = await controller.handleGetAtprotoDid(
+                ctxForHost('www.example.com', { check: '1' }),
+            );
+
+            expect(response.status).toBe(404);
+        });
     });
 });

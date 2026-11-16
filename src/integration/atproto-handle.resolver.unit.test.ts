@@ -161,6 +161,26 @@ describe('AtprotoHandleResolver', () => {
             );
         });
 
+        it('asks for the DID that would be served, on every hop, when checking', async () => {
+            vi.mocked(fetch)
+                .mockResolvedValueOnce(
+                    redirect('https://www.example.com/.well-known/atproto-did'),
+                )
+                .mockResolvedValueOnce(
+                    new Response('did:plc:abc123', { status: 200 }),
+                );
+
+            const did = await resolver.resolveHttps('example.com', {
+                check: true,
+            });
+
+            expect(did).toBe('did:plc:abc123');
+            expect(fetchedUrls()).toEqual([
+                'https://example.com/.well-known/atproto-did?check=1',
+                'https://www.example.com/.well-known/atproto-did?check=1',
+            ]);
+        });
+
         it('follows relative redirects', async () => {
             vi.mocked(fetch)
                 .mockResolvedValueOnce(redirect('/.well-known/atproto-did/'))

@@ -1,6 +1,7 @@
 import type { Context as HonoContext } from 'hono';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import { ATPROTO_DID_CHECK_PARAM } from '@/integration/atproto-handle.resolver';
 import type { BlueskyService } from '@/integration/bluesky.service';
 import type { SiteService } from '@/site/site.service';
 
@@ -9,6 +10,10 @@ export const ATPROTO_DID_PATH = '/.well-known/atproto-did';
 /**
  * Serves the DID of a site's bridged Bluesky account, so the site's domain
  * can be its Bluesky handle
+ *
+ * A request with the check parameter gets the DID that would be served once
+ * the site's domain is claimed, so the service can find out whether the domain
+ * routes this path here before offering the domain as a handle
  *
  * @see https://atproto.com/specs/handle#https-well-known-method
  */
@@ -25,6 +30,8 @@ export class AtprotoDidController {
         if (!host) {
             return this.notFound();
         }
+
+        const isCheck = ctx.req.query(ATPROTO_DID_CHECK_PARAM) !== undefined;
 
         // Root domain handle lookups can reach us on the root domain when the
         // proxy serves both it and `www.` for a site on `www.`, or the other
@@ -48,10 +55,13 @@ export class AtprotoDidController {
                 continue;
             }
 
-            const did = await this.blueskyService.getDomainHandleDid(
-                account,
-                candidate === host ? undefined : host,
-            );
+            const domain = candidate === host ? undefined : host;
+            const did = isCheck
+                ? await this.blueskyService.getDomainHandleDidForCheck(
+                      account,
+                      domain,
+                  )
+                : await this.blueskyService.getDomainHandleDid(account, domain);
 
             if (did) {
                 return new Response(did, {

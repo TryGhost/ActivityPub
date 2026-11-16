@@ -160,4 +160,44 @@ export class BlueskyController {
 
         return integrationResponse(getValue(result));
     }
+
+    @APIRoute('POST', 'actions/bluesky/domain-handle/check', 'v2')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleCheckDomainHandle(ctx: AppContext) {
+        const account = ctx.get('account');
+        const logger = ctx.get('logger');
+
+        let result: Awaited<
+            ReturnType<BlueskyService['checkDomainHandleForAccount']>
+        >;
+
+        try {
+            result =
+                await this.blueskyService.checkDomainHandleForAccount(account);
+        } catch (error) {
+            logger.error('Failed to check Bluesky domain handle', { error });
+
+            return InternalServerError('Failed to check Bluesky domain handle');
+        }
+
+        if (isError(result)) {
+            const err = getError(result);
+
+            if (err.type === 'not-enabled') {
+                return jsonResponse(NOT_ENABLED_RESPONSE_BODY, 400);
+            }
+
+            if (err.type === 'not-confirmed') {
+                return jsonResponse(NOT_CONFIRMED_RESPONSE_BODY, 400);
+            }
+
+            logger.error('Failed to check Bluesky domain handle', {
+                error: err,
+            });
+
+            return InternalServerError('Failed to check Bluesky domain handle');
+        }
+
+        return jsonResponse(getValue(result));
+    }
 }

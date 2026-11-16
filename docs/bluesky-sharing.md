@@ -166,6 +166,45 @@ default handle keeps working as before. A site on `www.` can only use its root
 domain if the root domain redirects to `www.` keeping the path, or is routed to
 this service as well
 
+`not_reachable` isn't final: the proxy can start routing the path, and a
+request that failed can work the next time. Clients find out by
+[checking the domain](#checking-the-domain-first) rather than relying on what
+an earlier claim found
+
+### Checking the domain first
+
+Before offering the domain to the publisher, the client can find out whether
+it could work, without changing anything, by making an empty POST request to:
+
+```
+/.ghost/activitypub/v2/actions/bluesky/domain-handle/check
+```
+
+This will return a `200 OK` response with the following body:
+
+```json
+{
+    "domain": "example.com",
+    "reachable": true
+}
+```
+
+`reachable` is whether the domain routes `/.well-known/atproto-did` to this
+service (or points at the bridged account in DNS). `domain` is the first of the
+domains to try that does, or the preferred one if none does. It returns a
+`400 Bad Request` if the integration is not enabled or the handle is not
+confirmed yet.
+
+The service requests `https://<domain>/.well-known/atproto-did?check=1`. With
+the `check` parameter, the path answers with the DID it would serve once the
+site's domain is claimed, so the route can be tested while nothing is served to
+atproto resolvers, which never send the parameter. This matters because serving
+the DID for real before a claim could break the handle of another account that
+uses the domain through DNS, with resolvers that prefer HTTPS.
+
+The check doesn't say the domain is free: whether another account uses it is
+only found out when the domain is claimed
+
 ### Using the domain later
 
 To use the domain as the handle for an account that enabled Bluesky sharing

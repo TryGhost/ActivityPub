@@ -74,6 +74,17 @@ export interface DomainHandle {
     automatic: boolean;
 }
 
+/**
+ * Whether a domain the account could use as its handle routes
+ * `/.well-known/atproto-did` to this service (or points at the account in
+ * DNS), so it's worth offering. It doesn't say the domain is free: that is
+ * only checked when the domain is claimed
+ */
+export interface DomainHandleCheck {
+    domain: string;
+    reachable: boolean;
+}
+
 export interface BlueskyIntegrationDetails {
     handleConfirmed: boolean;
     handle: string | null;
@@ -378,6 +389,60 @@ export class BlueskyService {
     }
 
     /**
+     * Find out whether the account could use its domain as its handle, without
+     * changing anything: the first domain that reaches this service, or the
+     * preferred one if none does
+     *
+     * Checked whenever the client is about to offer the domain, as the
+     * outcome of an earlier claim says little about now - a proxy can start
+     * routing the path, and a failed request can work the next time
+     */
+    async checkDomainHandleForAccount(
+        account: Account,
+    ): Promise<
+        Result<
+            DomainHandleCheck,
+            | BlueskyApiError
+            | IntegrationNotEnabledError
+            | HandleNotConfirmedError
+        >
+    > {
+        const existing = await this.getRow(account);
+
+        if (!existing) {
+            return error({ type: 'not-enabled' });
+        }
+
+        let row = existing;
+
+        // Accounts that enabled Bluesky sharing before domain handles existed
+        // don't have their DID recorded yet
+        if (!row.did) {
+            const refreshResult = await this.refreshHandle(account, row);
+
+            if (isError(refreshResult)) {
+                return refreshResult;
+            }
+
+            row = getValue(refreshResult);
+        }
+
+        if (!row.confirmed || !row.did) {
+            return error({ type: 'not-confirmed' });
+        }
+
+        const candidates = getDomainHandleCandidates(account);
+
+        for (const domain of candidates) {
+            if (await this.isDomainHandleReachable(domain, row.did)) {
+                return ok({ domain, reachable: true });
+            }
+        }
+
+        return ok({ domain: candidates[0], reachable: false });
+    }
+
+    /**
      * Get the DID to serve at /.well-known/atproto-did for the account, if it
      * claimed a domain handle
      *
@@ -411,6 +476,53 @@ export class BlueskyService {
         }
 
         return row.did;
+    }
+
+    /**
+     * Get the DID that would be served at /.well-known/atproto-did for the
+     * account if it claimed a domain handle
+     *
+     * Mirrors `getDomainHandleDid`: without `domain`, any domain would do.
+     * With `domain`, only a domain the account would claim counts
+     */
+    async getDomainHandleDidForCheck(
+        account: Account,
+        domain?: string,
+    ): Promise<string | null> {
+        const row = await this.getRow(account);
+
+        if (!row?.did) {
+            return null;
+        }
+
+        if (
+            domain !== undefined &&
+            !getDomainHandleCandidates(account).includes(domain.toLowerCase())
+        ) {
+            return null;
+        }
+
+        return row.did;
+    }
+
+    /**
+     * Whether `domain` would resolve to the account once claimed: it routes
+     * /.well-known/atproto-did to this service, or already points at the
+     * account in DNS, which is enough on its own
+     */
+    private async isDomainHandleReachable(domain: string, did: string) {
+        const servedDid = await this.atprotoHandleResolver.resolveHttps(
+            domain,
+            { check: true },
+        );
+
+        if (servedDid === did) {
+            return true;
+        }
+
+        const dnsResult = await this.atprotoHandleResolver.resolveDns(domain);
+
+        return !isError(dnsResult) && getValue(dnsResult).includes(did);
     }
 
     /**
