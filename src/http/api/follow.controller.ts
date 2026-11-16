@@ -127,7 +127,7 @@ export class FollowController {
 
             const followJson = await follow.toJsonLd();
 
-            ctx.get('globaldb').set([follow.id!.href], followJson);
+            await ctx.get('globaldb').set([follow.id!.href], followJson);
 
             await apCtx.sendActivity(
                 { username: followerAccount.username },

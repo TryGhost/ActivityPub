@@ -8,7 +8,7 @@ import {
     waitForFollowerToBeRemoved,
 } from '../support/followers.js';
 import { waitForFollowingToBeAdded } from '../support/following.js';
-import { fetchActivityPub } from '../support/request.js';
+import { fetchActivityPub, waitForRequest } from '../support/request.js';
 import { parseActorString } from '../support/steps.js';
 import { isInternalAccount } from '../support/utils.js';
 
@@ -64,7 +64,17 @@ Given('we are following {string}', async function (input) {
     }
 
     if (!isInternalAccount(input)) {
-        const follow = await createActivity('Follow', actor, this.actors.Us);
+        // Accept the Follow we actually sent, as an Accept of any other Follow
+        // is ignored
+        const sentFollow = await waitForRequest(
+            'POST',
+            new URL(actor.inbox).pathname,
+            (call) => {
+                const body = JSON.parse(call.request.body);
+                return body.type === 'Follow' && body.object === actor.id;
+            },
+        );
+        const follow = JSON.parse(sentFollow.request.body);
         const accept = await createActivity('Accept', follow, actor);
         const acceptResponse = await fetchActivityPub(
             'https://self.test/.ghost/activitypub/inbox/index',
