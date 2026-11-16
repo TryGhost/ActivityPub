@@ -130,7 +130,8 @@ export class BlueskyService {
 
     /**
      * Hard-disable Bluesky for Preferences: tear down BridgyFed and delete local
-     * intent so site reconnect will not restore it.
+     * intent so site reconnect will not restore it. Bridgy network work runs
+     * before the handles delete.
      */
     async disableForAccount(account: Account) {
         const existing = await this.db('bluesky_integration_account_handles')
@@ -147,34 +148,11 @@ export class BlueskyService {
         }
 
         const bridgyAccount = await this.getBridgyAccount();
-
-        await this.db.transaction(async (trx) => {
-            const row = await trx('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .forUpdate()
-                .first();
-
-            if (!row) {
-                return;
-            }
-
-            await this.unfollowBridgy(account, bridgyAccount);
-            await trx('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .delete();
-        });
-    }
-
-    /**
-     * Soft-disable BridgyFed for site disconnect. Keeps the handles row.
-     * Caller must hold `FOR UPDATE` on the handles row and delete the site in
-     * the same transaction after this returns.
-     */
-    async softDisableBridgy(
-        account: Account,
-        bridgyAccount: Account,
-    ): Promise<void> {
         await this.unfollowBridgy(account, bridgyAccount);
+
+        await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .delete();
     }
 
     /**
@@ -200,36 +178,19 @@ export class BlueskyService {
             return;
         }
 
+        const site = await this.db('sites').where('id', siteId).first();
+
+        if (!site) {
+            this.logger.info(
+                'Skipping Bridgy reconnect for deleted site {siteId}',
+                { siteId },
+            );
+
+            return;
+        }
+
         const bridgyAccount = await this.getBridgyAccount();
-
-        await this.db.transaction(async (trx) => {
-            const row = await trx('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .forUpdate()
-                .first();
-
-            if (!row) {
-                this.logger.info(
-                    `Bluesky integration not enabled for account {id} - skipping Bridgy reconnect`,
-                    { id: account.id },
-                );
-
-                return;
-            }
-
-            const site = await trx('sites').where('id', siteId).first();
-
-            if (!site) {
-                this.logger.info(
-                    'Skipping Bridgy reconnect for deleted site {siteId}',
-                    { siteId },
-                );
-
-                return;
-            }
-
-            await this.followBridgy(account, bridgyAccount);
-        });
+        await this.followBridgy(account, bridgyAccount);
     }
 
     async confirmHandleForAccount(
@@ -336,7 +297,7 @@ export class BlueskyService {
         );
     }
 
-    private async unfollowBridgy(account: Account, bridgyAccount: Account) {
+    async unfollowBridgy(account: Account, bridgyAccount: Account) {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         // Send "stop" dm to brid.gy account
@@ -397,8 +358,7 @@ export class BlueskyService {
     }
 
     /**
-     * Resolve the BridgyFed actor. Call before taking the handles-row lock so
-     * network work does not run under the lock.
+     * Resolve the BridgyFed actor.
      */
     async getBridgyAccount() {
         const ensureBridgyAccountResult =

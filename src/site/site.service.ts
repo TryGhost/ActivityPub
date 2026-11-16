@@ -167,15 +167,10 @@ export class SiteService {
         return site;
     }
 
-    public async disableSiteForHost(host: string): Promise<boolean> {
-        const result = await this.client.delete().from('sites').where({ host });
-
-        return result === 1;
-    }
-
     /**
-     * Soft-disconnect Bridgy (if enabled) and delete the site under one
-     * handles-row lock. Keeps the handles row so a later recreate can restore.
+     * Soft-disconnect Bridgy (if enabled) and delete the site. Keeps the
+     * handles row so a later recreate can restore. Bridgy network work runs
+     * before the site delete (signing needs the site).
      *
      * @returns true when the site row was deleted
      */
@@ -193,38 +188,22 @@ export class SiteService {
             return this.deleteSiteById(site.id);
         }
 
+        const existingSite = await this.client('sites')
+            .where('id', site.id)
+            .first();
+
+        if (!existingSite) {
+            return false;
+        }
+
         const bridgyAccount = await this.blueskyService.getBridgyAccount();
+        await this.blueskyService.unfollowBridgy(account, bridgyAccount);
 
-        return this.client.transaction(async (trx) => {
-            const row = await trx('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .forUpdate()
-                .first();
-
-            const existingSite = await trx('sites')
-                .where('id', site.id)
-                .first();
-
-            if (!existingSite) {
-                return false;
-            }
-
-            if (row) {
-                await this.blueskyService.softDisableBridgy(
-                    account,
-                    bridgyAccount,
-                );
-            }
-
-            return this.deleteSiteById(site.id, trx);
-        });
+        return this.deleteSiteById(site.id);
     }
 
-    private async deleteSiteById(
-        siteId: number,
-        trx: Knex | Knex.Transaction = this.client,
-    ): Promise<boolean> {
-        const deleted = await trx('sites').where('id', siteId).delete();
+    public async deleteSiteById(siteId: number): Promise<boolean> {
+        const deleted = await this.client('sites').where('id', siteId).delete();
 
         return deleted === 1;
     }

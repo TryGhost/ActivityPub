@@ -111,8 +111,9 @@ export class SiteController {
                     error,
                 });
 
-                const wasDisabled =
-                    await this.siteService.disableSiteForHost(host);
+                const wasDisabled = await this.siteService.deleteSiteById(
+                    site.id,
+                );
 
                 if (wasDisabled) {
                     return new Response(null, {

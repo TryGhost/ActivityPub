@@ -108,7 +108,7 @@ describe('KnexPostRepository', () => {
                 getBridgyAccount: async () => {
                     throw new Error('BlueskyService stub');
                 },
-                softDisableBridgy: async () => {},
+                unfollowBridgy: async () => {},
             } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);

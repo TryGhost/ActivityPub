@@ -306,6 +306,29 @@ describe('BlueskyService', () => {
                     .first(),
             ).toBeDefined();
         });
+
+        it('should leave the site when Bridgy teardown fails', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
+                new Error('bridgy unavailable'),
+            );
+
+            await expect(
+                siteService.softDisconnectSite(account, site),
+            ).rejects.toThrow('bridgy unavailable');
+
+            expect(await client('sites').where('id', site.id).first()).toEqual(
+                expect.objectContaining({ id: site.id }),
+            );
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeDefined();
+        });
     });
 
     describe('reconnectBridgyForAccount', () => {
@@ -355,148 +378,6 @@ describe('BlueskyService', () => {
             await blueskyService.reconnectBridgyForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-        });
-
-        async function raceAgainstGatedActivity(
-            gateOn: typeof Create | typeof Follow,
-            first: () => Promise<unknown>,
-            second: () => Promise<unknown>,
-        ) {
-            let release!: () => void;
-            const gate = new Promise<void>((resolve) => {
-                release = resolve;
-            });
-            let started = false;
-
-            vi.mocked(fedifyContext.sendActivity).mockImplementation(
-                async (_sender, _recipient, activity) => {
-                    if (activity instanceof gateOn) {
-                        started = true;
-                        await gate;
-                    }
-                },
-            );
-
-            const firstPromise = first();
-
-            await vi.waitFor(() => {
-                expect(started).toBe(true);
-            });
-
-            const secondPromise = second();
-
-            release();
-            await Promise.all([firstPromise, secondPromise]);
-
-            return vi
-                .mocked(fedifyContext.sendActivity)
-                .mock.calls.map((call) => call[2]);
-        }
-
-        it('should not Follow after Preferences disable wins the handles row lock', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
-
-            await fixtureManager.enableBlueskyIntegration(account);
-
-            const activities = await raceAgainstGatedActivity(
-                Create,
-                () => blueskyService.disableForAccount(account),
-                () =>
-                    blueskyService.reconnectBridgyForAccount(account, site.id),
-            );
-
-            expect(
-                activities.some((activity) => activity instanceof Follow),
-            ).toBe(false);
-            expect(
-                await client('bluesky_integration_account_handles')
-                    .where('account_id', account.id)
-                    .first(),
-            ).toBeUndefined();
-        });
-
-        it('should let Preferences disable tear down after reconnect wins the handles row lock', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
-
-            await fixtureManager.enableBlueskyIntegration(account);
-
-            const activities = await raceAgainstGatedActivity(
-                Follow,
-                () =>
-                    blueskyService.reconnectBridgyForAccount(account, site.id),
-                () => blueskyService.disableForAccount(account),
-            );
-
-            expect(activities[0]).toBeInstanceOf(Follow);
-            expect(
-                activities.some((activity) => activity instanceof Create),
-            ).toBe(true);
-            expect(
-                activities.some((activity) => activity instanceof Undo),
-            ).toBe(true);
-            expect(
-                await client('bluesky_integration_account_handles')
-                    .where('account_id', account.id)
-                    .first(),
-            ).toBeUndefined();
-        });
-
-        it('should not Follow after soft disconnect wins the handles row lock', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
-
-            await fixtureManager.enableBlueskyIntegration(account);
-
-            const activities = await raceAgainstGatedActivity(
-                Create,
-                () => siteService.softDisconnectSite(account, site),
-                () =>
-                    blueskyService.reconnectBridgyForAccount(account, site.id),
-            );
-
-            expect(
-                activities.some((activity) => activity instanceof Follow),
-            ).toBe(false);
-            expect(
-                await client('sites').where('id', site.id).first(),
-            ).toBeUndefined();
-            expect(
-                await client('bluesky_integration_account_handles')
-                    .where('account_id', account.id)
-                    .first(),
-            ).toBeDefined();
-        });
-
-        it('should let soft disconnect tear down after reconnect wins the handles row lock', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
-
-            await fixtureManager.enableBlueskyIntegration(account);
-
-            const activities = await raceAgainstGatedActivity(
-                Follow,
-                () =>
-                    blueskyService.reconnectBridgyForAccount(account, site.id),
-                () => siteService.softDisconnectSite(account, site),
-            );
-
-            expect(activities[0]).toBeInstanceOf(Follow);
-            expect(
-                activities.some((activity) => activity instanceof Create),
-            ).toBe(true);
-            expect(
-                activities.some((activity) => activity instanceof Undo),
-            ).toBe(true);
-            expect(
-                await client('sites').where('id', site.id).first(),
-            ).toBeUndefined();
-            expect(
-                await client('bluesky_integration_account_handles')
-                    .where('account_id', account.id)
-                    .first(),
-            ).toBeDefined();
         });
     });
 
@@ -632,6 +513,25 @@ describe('BlueskyService', () => {
     });
 
     describe('disableForAccount', () => {
+        it('should leave the handles row when Bridgy teardown fails', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account);
+            vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
+                new Error('bridgy unavailable'),
+            );
+
+            await expect(
+                blueskyService.disableForAccount(account),
+            ).rejects.toThrow('bridgy unavailable');
+
+            expect(
+                await client('bluesky_integration_account_handles')
+                    .where('account_id', account.id)
+                    .first(),
+            ).toBeDefined();
+        });
+
         it('should send a stop message, unfollow brid.gy, and delete the handle mapping', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 

@@ -36,7 +36,7 @@ describe('SiteController', () => {
         siteService = {
             initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
             getSiteByHost: vi.fn().mockResolvedValue(mockSite),
-            disableSiteForHost: vi.fn().mockResolvedValue(true),
+            deleteSiteById: vi.fn().mockResolvedValue(true),
             softDisconnectSite: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
 
@@ -199,10 +199,10 @@ describe('SiteController', () => {
                 mockAccount,
                 mockSite,
             );
-            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
+            expect(siteService.deleteSiteById).not.toHaveBeenCalled();
         });
 
-        it('falls back to deleting the site when soft disconnect fails', async () => {
+        it('falls back to deleting the site by id when soft disconnect fails', async () => {
             vi.mocked(accountService.findAccountForSite).mockResolvedValue(
                 mockAccount,
             );
@@ -214,8 +214,8 @@ describe('SiteController', () => {
             const response = await siteController.handleDisableSite(ctx);
 
             expect(response.status).toBe(200);
-            expect(siteService.disableSiteForHost).toHaveBeenCalledWith(
-                'example.com',
+            expect(siteService.deleteSiteById).toHaveBeenCalledWith(
+                mockSite.id,
             );
             expect(Sentry.captureException).toHaveBeenCalledWith(error);
         });
@@ -234,7 +234,7 @@ describe('SiteController', () => {
                 null,
                 mockSite,
             );
-            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
+            expect(siteService.deleteSiteById).not.toHaveBeenCalled();
             expect(Sentry.captureException).not.toHaveBeenCalled();
         });
 
@@ -249,7 +249,7 @@ describe('SiteController', () => {
 
             expect(response.status).toBe(500);
             expect(siteService.softDisconnectSite).not.toHaveBeenCalled();
-            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
+            expect(siteService.deleteSiteById).not.toHaveBeenCalled();
         });
 
         it('returns 404 if the site is not found', async () => {
@@ -262,7 +262,7 @@ describe('SiteController', () => {
 
             expect(response.status).toBe(404);
             expect(siteService.softDisconnectSite).not.toHaveBeenCalled();
-            expect(siteService.disableSiteForHost).not.toHaveBeenCalled();
+            expect(siteService.deleteSiteById).not.toHaveBeenCalled();
         });
 
         it('returns 500 if soft disconnect and fallback delete both fail', async () => {
@@ -271,7 +271,7 @@ describe('SiteController', () => {
             vi.mocked(siteService.softDisconnectSite).mockRejectedValue(
                 new Error('bridgy unavailable'),
             );
-            vi.mocked(siteService.disableSiteForHost).mockRejectedValue(
+            vi.mocked(siteService.deleteSiteById).mockRejectedValue(
                 new Error('test'),
             );
 

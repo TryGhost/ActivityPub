@@ -79,7 +79,7 @@ describe('SiteService', () => {
             events,
             {
                 getBridgyAccount: vi.fn(),
-                softDisableBridgy: vi.fn(),
+                unfollowBridgy: vi.fn(),
             } as never,
         );
     });
@@ -160,10 +160,10 @@ describe('SiteService', () => {
         expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
     });
 
-    it('Can disable a site', async () => {
-        await service.initialiseSiteForHost('hostname.tld');
+    it('Can delete a site by id', async () => {
+        const site = await service.initialiseSiteForHost('hostname.tld');
 
-        const result = await service.disableSiteForHost('hostname.tld');
+        const result = await service.deleteSiteById(site.id);
 
         expect(result).toBe(true);
 
@@ -172,10 +172,10 @@ describe('SiteService', () => {
         expect(siteRows).toHaveLength(0);
     });
 
-    it('Can disable a site that does not exist', async () => {
+    it('Can delete a site that does not exist', async () => {
         await service.initialiseSiteForHost('hostname.tld');
 
-        const result = await service.disableSiteForHost('hostname.com'); // Different host
+        const result = await service.deleteSiteById(Number.MAX_SAFE_INTEGER);
 
         expect(result).toBe(false);
 
