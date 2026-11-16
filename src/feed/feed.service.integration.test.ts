@@ -188,6 +188,7 @@ describe('FeedService', () => {
             logger,
             events,
             {
+                isEnabledForAccount: async () => false,
                 getBridgyAccount: async () => {
                     throw new Error('BlueskyService stub');
                 },

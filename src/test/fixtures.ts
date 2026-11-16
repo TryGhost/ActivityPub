@@ -320,6 +320,7 @@ export function createFixtureManager(
         logger,
         events,
         {
+            isEnabledForAccount: async () => false,
             getBridgyAccount: async () => {
                 throw new Error('BlueskyService stub');
             },

@@ -78,6 +78,7 @@ describe('SiteService', () => {
             getLogger(['test', 'site-service']),
             events,
             {
+                isEnabledForAccount: vi.fn().mockResolvedValue(false),
                 getBridgyAccount: vi.fn(),
                 unfollowBridgy: vi.fn(),
             } as never,

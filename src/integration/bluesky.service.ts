@@ -84,6 +84,17 @@ export class BlueskyService {
         }
     }
 
+    /**
+     * Whether Bluesky is enabled locally for the account (handles row present).
+     */
+    async isEnabledForAccount(accountId: number): Promise<boolean> {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', accountId)
+            .first();
+
+        return !!existing;
+    }
+
     async enableForAccount(account: Account): Promise<{
         enabled: boolean;
         handleConfirmed: boolean;

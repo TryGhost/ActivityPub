@@ -178,13 +178,10 @@ export class SiteService {
         account: Account | null,
         site: Site,
     ): Promise<boolean> {
-        const existing =
-            account &&
-            (await this.client('bluesky_integration_account_handles')
-                .where('account_id', account.id)
-                .first());
-
-        if (!account || !existing) {
+        if (
+            !account ||
+            !(await this.blueskyService.isEnabledForAccount(account.id))
+        ) {
             return this.deleteSiteById(site.id);
         }
 
