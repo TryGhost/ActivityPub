@@ -36,6 +36,7 @@ import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
 import { isEqual } from '@/helpers/uri';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
+import type { ModerationService } from '@/moderation/moderation.service';
 import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
@@ -214,15 +215,40 @@ export const keypairDispatcher = (
         }
     };
 
-export function createAcceptHandler(accountService: AccountService) {
+export function createAcceptHandler(
+    accountService: AccountService,
+    moderationService: ModerationService,
+) {
     return async function handleAccept(ctx: FedifyContext, accept: Accept) {
         ctx.data.logger.debug('Handling Accept');
-        const parsed = ctx.parseUri(accept.objectId);
-        ctx.data.logger.debug('Parsed accept object', { parsed });
         if (!accept.id) {
             ctx.data.logger.debug('Accept missing id - exit');
             return;
         }
+
+        if (!accept.objectId) {
+            ctx.data.logger.debug('Accept missing object id - exit');
+            return;
+        }
+
+        const parsed = ctx.parseUri(accept.objectId);
+        if (parsed?.type !== 'object' || parsed.class !== Follow) {
+            ctx.data.logger.debug(
+                'Accept object is not our Follow, exit early',
+            );
+            return;
+        }
+
+        const storedFollow = await ctx.data.globaldb.get([
+            accept.objectId.href,
+        ]);
+        if (!storedFollow) {
+            ctx.data.logger.debug(
+                'Accepted Follow was not sent by us, exit early',
+            );
+            return;
+        }
+        const follow = await Follow.fromJsonLd(storedFollow);
 
         const sender = await accept.getActor(ctx);
         ctx.data.logger.debug('Accept sender retrieved');
@@ -231,15 +257,44 @@ export function createAcceptHandler(accountService: AccountService) {
             return;
         }
 
-        const object = await accept.getObject();
-        if (object instanceof Follow === false) {
-            ctx.data.logger.debug('Accept object is not a Follow, exit early');
+        if (!follow.objectId || !isEqual(follow.objectId, sender.id)) {
+            ctx.data.logger.debug(
+                'Accept sender is not the object of the Follow, exit early',
+            );
             return;
         }
 
-        const recipient = await object.getActor();
-        if (recipient === null || recipient.id === null) {
-            ctx.data.logger.debug('Recipient missing, exit early');
+        if (!follow.actorId) {
+            ctx.data.logger.debug('Follow actor missing, exit early');
+            return;
+        }
+
+        const followerAccount = await accountService.getByApId(follow.actorId);
+        if (!followerAccount?.isInternal) {
+            ctx.data.logger.debug(
+                'Follower is not a local account, exit early',
+            );
+            return;
+        }
+
+        const ensureAccountToFollowResult = await accountService.ensureByApId(
+            sender.id,
+        );
+        if (isError(ensureAccountToFollowResult)) {
+            ctx.data.logger.debug('Account to follow not found, exit early');
+            return;
+        }
+        const accountToFollow = getValue(ensureAccountToFollowResult);
+
+        if (
+            !(await moderationService.canInteractWithAccount(
+                accountToFollow.id,
+                followerAccount.id,
+            ))
+        ) {
+            ctx.data.logger.debug(
+                `${accountToFollow.apId} is blocked by ${followerAccount.apId}, exit early`,
+            );
             return;
         }
 
@@ -252,25 +307,6 @@ export function createAcceptHandler(accountService: AccountService) {
             ctx.data.globaldb.set([accept.id.href], acceptJson),
             ctx.data.globaldb.set([sender.id.href], senderJson),
         ]);
-
-        // Record the account of the sender as well as the follow
-        const [followerAccountResult, ensureAccountToFollowResult] =
-            await Promise.all([
-                accountService.ensureByApId(recipient.id),
-                accountService.ensureByApId(sender.id),
-            ]);
-
-        if (isError(followerAccountResult)) {
-            ctx.data.logger.debug('Follower account not found, exit early');
-            return;
-        }
-        const followerAccount = getValue(followerAccountResult);
-
-        if (isError(ensureAccountToFollowResult)) {
-            ctx.data.logger.debug('Account to follow not found, exit early');
-            return;
-        }
-        const accountToFollow = getValue(ensureAccountToFollowResult);
 
         await accountService.followAccount(followerAccount, accountToFollow);
     };
