@@ -1,5 +1,6 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
+import { PassThroughClient } from 'google-auth-library';
 
 import { error, ok, type Result } from '@/core/result';
 import type {
@@ -22,11 +23,8 @@ export class GCPStorageAdapter implements StorageAdapter {
             this.storage = new Storage({
                 apiEndpoint: this.emulatorHost,
                 projectId: 'activitypub',
-                useAuthWithCustomEndpoint: false,
-                credentials: {
-                    client_email: 'fake@example.com',
-                    private_key: 'not-a-real-key',
-                },
+                // The emulator accepts unauthenticated requests
+                authClient: new PassThroughClient(),
             });
 
             this.bucket = this.storage.bucket(this.bucketName);
