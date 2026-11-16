@@ -110,7 +110,7 @@ services:
       retries: 120
 
   redis:
-    image: redis:7-alpine@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -257,7 +257,7 @@ services:
   redis-testing:
     networks:
       - test_network
-    image: redis:7-alpine@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -299,7 +299,7 @@ services:
           - bob.test
           - charlie.test
           - fake-external-activitypub.test
-    image: caddy:2@sha256:ce773ec7a742ce15ee6bf2bb5f65882b9e2a4487b10733e6f1484f86e6b5d8bc
+    image: caddy:2@sha256:4e2425f6009577e7c651010f16679c28f7d12df3e7b1914f941a7a3370746b3c
     ports:
       - "444:443"
     volumes:
