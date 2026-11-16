@@ -78,9 +78,7 @@ describe('SiteService', () => {
             getLogger(['test', 'site-service']),
             events,
             {
-                isEnabledForAccount: vi.fn().mockResolvedValue(false),
-                getBridgyAccount: vi.fn(),
-                unfollowBridgy: vi.fn(),
+                softDisconnectForAccount: vi.fn().mockResolvedValue(undefined),
             } as never,
         );
     });
@@ -161,10 +159,10 @@ describe('SiteService', () => {
         expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
     });
 
-    it('Can delete a site by id', async () => {
-        const site = await service.initialiseSiteForHost('hostname.tld');
+    it('Can disable a site', async () => {
+        await service.initialiseSiteForHost('hostname.tld');
 
-        const result = await service.deleteSiteById(site.id);
+        const result = await service.disableSiteForHost('hostname.tld');
 
         expect(result).toBe(true);
 
@@ -173,10 +171,10 @@ describe('SiteService', () => {
         expect(siteRows).toHaveLength(0);
     });
 
-    it('Can delete a site that does not exist', async () => {
+    it('Can disable a site that does not exist', async () => {
         await service.initialiseSiteForHost('hostname.tld');
 
-        const result = await service.deleteSiteById(Number.MAX_SAFE_INTEGER);
+        const result = await service.disableSiteForHost('hostname.com'); // Different host
 
         expect(result).toBe(false);
 

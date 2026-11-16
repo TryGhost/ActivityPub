@@ -215,7 +215,7 @@ describe('BlueskyService', () => {
         });
     });
 
-    describe('SiteService.softDisconnectSite', () => {
+    describe('SiteService.disableSiteForHost', () => {
         it('should send a stop message, unfollow brid.gy, delete the site, and keep the handle mapping', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
@@ -227,7 +227,7 @@ describe('BlueskyService', () => {
                 handle,
             );
 
-            const deleted = await siteService.softDisconnectSite(account, site);
+            const deleted = await siteService.disableSiteForHost(site.host);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
@@ -265,10 +265,9 @@ describe('BlueskyService', () => {
         });
 
         it('should delete the site when Bluesky is not enabled', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
+            const [, site] = await fixtureManager.createInternalAccount();
 
-            const deleted = await siteService.softDisconnectSite(account, site);
+            const deleted = await siteService.disableSiteForHost(site.host);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -280,7 +279,9 @@ describe('BlueskyService', () => {
         it('should delete the site when there is no account', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
 
-            const deleted = await siteService.softDisconnectSite(null, site);
+            await client('users').where('site_id', site.id).delete();
+
+            const deleted = await siteService.disableSiteForHost(site.host);
 
             expect(deleted).toBe(true);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -296,7 +297,7 @@ describe('BlueskyService', () => {
             await fixtureManager.enableBlueskyIntegration(account);
             await client('sites').where('id', site.id).delete();
 
-            const deleted = await siteService.softDisconnectSite(account, site);
+            const deleted = await siteService.disableSiteForHost(site.host);
 
             expect(deleted).toBe(false);
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -307,7 +308,7 @@ describe('BlueskyService', () => {
             ).toBeDefined();
         });
 
-        it('should leave the site when Bridgy teardown fails', async () => {
+        it('should delete the site and retain the handles row when Bridgy teardown fails', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
 
@@ -317,16 +318,66 @@ describe('BlueskyService', () => {
             );
 
             await expect(
-                siteService.softDisconnectSite(account, site),
-            ).rejects.toThrow('bridgy unavailable');
+                siteService.disableSiteForHost(site.host),
+            ).resolves.toBe(true);
 
-            expect(await client('sites').where('id', site.id).first()).toEqual(
-                expect.objectContaining({ id: site.id }),
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+            expect(Sentry.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({ message: 'bridgy unavailable' }),
             );
             expect(
                 await client('bluesky_integration_account_handles')
                     .where('account_id', account.id)
                     .first(),
+            ).toBeDefined();
+        });
+
+        it('should keep the site when account lookup fails', async () => {
+            const [, site] = await fixtureManager.createInternalAccount();
+            const lookupError = new Error('db unavailable');
+            vi.spyOn(
+                accountService,
+                'findAccountForSite',
+            ).mockRejectedValueOnce(lookupError);
+
+            await expect(
+                siteService.disableSiteForHost(site.host),
+            ).rejects.toThrow(lookupError);
+
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeDefined();
+        });
+
+        it('should propagate site deletion errors after Bridgy teardown fails', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+            await fixtureManager.enableBlueskyIntegration(account);
+            vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
+                new Error('bridgy unavailable'),
+            );
+
+            const deleteError = new Error('site delete failed');
+            const failSiteDelete = ({ sql }: { sql: string }) => {
+                if (sql.startsWith('delete from `sites`')) {
+                    throw deleteError;
+                }
+            };
+            client.on('query', failSiteDelete);
+
+            try {
+                await expect(
+                    siteService.disableSiteForHost(site.host),
+                ).rejects.toThrow(deleteError);
+            } finally {
+                client.removeListener('query', failSiteDelete);
+            }
+
+            expect(
+                await client('sites').where('id', site.id).first(),
             ).toBeDefined();
         });
     });
@@ -463,7 +514,7 @@ describe('BlueskyService', () => {
             );
             await blueskyService.init();
 
-            const deleted = await siteService.softDisconnectSite(account, site);
+            const deleted = await siteService.disableSiteForHost(site.host);
 
             expect(deleted).toBe(true);
             expect(

@@ -2,9 +2,9 @@ import crypto from 'node:crypto';
 import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 
-import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
@@ -168,39 +168,35 @@ export class SiteService {
     }
 
     /**
-     * Soft-disconnect Bridgy (if enabled) and delete the site. Keeps the
-     * handles row so a later recreate can restore. Bridgy network work runs
-     * before the site delete (signing needs the site).
+     * Best-effort disconnect from Bridgy before deleting the site (signing
+     * needs the site). Keeps the handles row so a later recreate can restore.
      *
      * @returns true when the site row was deleted
      */
-    public async softDisconnectSite(
-        account: Account | null,
-        site: Site,
-    ): Promise<boolean> {
-        if (
-            !account ||
-            !(await this.blueskyService.isEnabledForAccount(account.id))
-        ) {
-            return this.deleteSiteById(site.id);
-        }
+    public async disableSiteForHost(host: string): Promise<boolean> {
+        const site = await this.getSiteByHost(host);
 
-        const existingSite = await this.client('sites')
-            .where('id', site.id)
-            .first();
-
-        if (!existingSite) {
+        if (!site) {
             return false;
         }
 
-        const bridgyAccount = await this.blueskyService.getBridgyAccount();
-        await this.blueskyService.unfollowBridgy(account, bridgyAccount);
+        const account = await this.accountService.findAccountForSite(site);
 
-        return this.deleteSiteById(site.id);
-    }
+        if (account) {
+            try {
+                await this.blueskyService.softDisconnectForAccount(account);
+            } catch (error) {
+                Sentry.captureException(error);
+                this.logger.error('Could not soft-disconnect site {host}', {
+                    host,
+                    error,
+                });
+            }
+        }
 
-    public async deleteSiteById(siteId: number): Promise<boolean> {
-        const deleted = await this.client('sites').where('id', siteId).delete();
+        const deleted = await this.client('sites')
+            .where('id', site.id)
+            .delete();
 
         return deleted === 1;
     }

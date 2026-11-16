@@ -85,14 +85,19 @@ export class BlueskyService {
     }
 
     /**
-     * Whether Bluesky is enabled locally for the account (handles row present).
+     * Disconnect from Bridgy while retaining the handles row for site reconnect.
      */
-    async isEnabledForAccount(accountId: number): Promise<boolean> {
+    async softDisconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
-            .where('account_id', accountId)
+            .where('account_id', account.id)
             .first();
 
-        return !!existing;
+        if (!existing) {
+            return;
+        }
+
+        const bridgyAccount = await this.getBridgyAccount();
+        await this.unfollowBridgy(account, bridgyAccount);
     }
 
     async enableForAccount(account: Account): Promise<{
@@ -308,7 +313,7 @@ export class BlueskyService {
         );
     }
 
-    async unfollowBridgy(account: Account, bridgyAccount: Account) {
+    private async unfollowBridgy(account: Account, bridgyAccount: Account) {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         // Send "stop" dm to brid.gy account
@@ -371,7 +376,7 @@ export class BlueskyService {
     /**
      * Resolve the BridgyFed actor.
      */
-    async getBridgyAccount() {
+    private async getBridgyAccount() {
         const ensureBridgyAccountResult =
             await this.accountService.ensureByApId(BRIDGY_AP_ID);
 

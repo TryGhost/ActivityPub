@@ -188,11 +188,7 @@ describe('FeedService', () => {
             logger,
             events,
             {
-                isEnabledForAccount: async () => false,
-                getBridgyAccount: async () => {
-                    throw new Error('BlueskyService stub');
-                },
-                unfollowBridgy: async () => {},
+                softDisconnectForAccount: async () => {},
             } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);
