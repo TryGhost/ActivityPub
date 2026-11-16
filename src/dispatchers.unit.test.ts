@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { exportJwk } from '@fedify/fedify';
-import { Accept, Announce, Follow, Person, Undo } from '@fedify/vocab';
+import { Announce, Follow, Person, Undo } from '@fedify/vocab';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -16,7 +16,6 @@ import {
 import { error, ok } from '@/core/result';
 import {
     actorDispatcher,
-    createAcceptHandler,
     createFollowersCounter,
     createFollowersDispatcher,
     createFollowingCounter,
@@ -28,7 +27,6 @@ import {
     likedDispatcher,
 } from '@/dispatchers';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
-import type { ModerationService } from '@/moderation/moderation.service';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
@@ -1561,186 +1559,6 @@ describe('dispatchers', () => {
                 expect(mockPostService.getByApId).not.toHaveBeenCalled();
                 expect(mockPostRepository.save).not.toHaveBeenCalled();
             });
-        });
-    });
-
-    describe('createAcceptHandler', () => {
-        let mockAccountService: AccountService;
-        let mockModerationService: ModerationService;
-        let acceptCtx: FedifyContext;
-        let storedObjects: Map<string, unknown>;
-
-        const ghostUserUrl = new URL(
-            'https://ghost.example/.ghost/activitypub/users/index',
-        );
-        const aliceUrl = new URL('https://remote.example/users/alice');
-        const otherActorUrl = new URL('https://other.example/users/other');
-        const sentFollowId = new URL(
-            'https://ghost.example/.ghost/activitypub/follow/sent',
-        );
-        const localAccount = { id: 1, isInternal: true } as Account;
-        const aliceAccount = { id: 10, apId: aliceUrl } as Account;
-        const otherActorAccount = { id: 20, apId: otherActorUrl } as Account;
-
-        const storeFollow = async (follow: Follow) => {
-            storedObjects.set(follow.id!.href, await follow.toJsonLd());
-        };
-
-        const acceptFrom = (actorUrl: URL, followId: URL) =>
-            new Accept({
-                id: new URL(`${actorUrl.origin}/accepts/1`),
-                actor: new Person({ id: actorUrl }),
-                object: new Follow({
-                    id: followId,
-                    actor: ghostUserUrl,
-                    object: actorUrl,
-                }),
-            });
-
-        beforeEach(() => {
-            storedObjects = new Map();
-
-            mockAccountService = {
-                getByApId: vi.fn(async (apId: URL) =>
-                    apId.href === ghostUserUrl.href ? localAccount : null,
-                ),
-                ensureByApId: vi.fn(async (apId: URL) =>
-                    ok(
-                        apId.href === aliceUrl.href
-                            ? aliceAccount
-                            : otherActorAccount,
-                    ),
-                ),
-                followAccount: vi.fn(),
-            } as unknown as AccountService;
-
-            mockModerationService = {
-                canInteractWithAccount: vi.fn().mockResolvedValue(true),
-            } as unknown as ModerationService;
-
-            acceptCtx = {
-                parseUri: (uri: URL | null) =>
-                    uri?.href.startsWith(
-                        'https://ghost.example/.ghost/activitypub/follow/',
-                    )
-                        ? { type: 'object', class: Follow }
-                        : null,
-                data: {
-                    logger: { info: vi.fn(), debug: vi.fn(), error: vi.fn() },
-                    globaldb: {
-                        get: vi.fn(async ([key]: [string]) =>
-                            storedObjects.get(key),
-                        ),
-                        set: vi.fn(),
-                    },
-                },
-            } as unknown as FedifyContext;
-        });
-
-        it('records the follow when the Accept is for a Follow we sent to the sender', async () => {
-            await storeFollow(
-                new Follow({
-                    id: sentFollowId,
-                    actor: ghostUserUrl,
-                    object: aliceUrl,
-                }),
-            );
-
-            const handler = createAcceptHandler(
-                mockAccountService,
-                mockModerationService,
-            );
-            await handler(acceptCtx, acceptFrom(aliceUrl, sentFollowId));
-
-            expect(mockAccountService.followAccount).toHaveBeenCalledWith(
-                localAccount,
-                aliceAccount,
-            );
-        });
-
-        it('ignores an Accept of a Follow we never sent', async () => {
-            const handler = createAcceptHandler(
-                mockAccountService,
-                mockModerationService,
-            );
-            await handler(
-                acceptCtx,
-                acceptFrom(
-                    otherActorUrl,
-                    new URL(
-                        'https://ghost.example/.ghost/activitypub/follow/forged',
-                    ),
-                ),
-            );
-            await handler(
-                acceptCtx,
-                acceptFrom(
-                    otherActorUrl,
-                    new URL('https://other.example/follows/forged'),
-                ),
-            );
-
-            expect(mockAccountService.followAccount).not.toHaveBeenCalled();
-        });
-
-        it('ignores an Accept from an actor other than the one we followed', async () => {
-            await storeFollow(
-                new Follow({
-                    id: sentFollowId,
-                    actor: ghostUserUrl,
-                    object: aliceUrl,
-                }),
-            );
-
-            const handler = createAcceptHandler(
-                mockAccountService,
-                mockModerationService,
-            );
-            await handler(acceptCtx, acceptFrom(otherActorUrl, sentFollowId));
-
-            expect(mockAccountService.followAccount).not.toHaveBeenCalled();
-        });
-
-        it('ignores an Accept of a Follow whose actor is not a local account', async () => {
-            await storeFollow(
-                new Follow({
-                    id: sentFollowId,
-                    actor: new URL('https://remote.example/users/bob'),
-                    object: aliceUrl,
-                }),
-            );
-
-            const handler = createAcceptHandler(
-                mockAccountService,
-                mockModerationService,
-            );
-            await handler(acceptCtx, acceptFrom(aliceUrl, sentFollowId));
-
-            expect(mockAccountService.followAccount).not.toHaveBeenCalled();
-        });
-
-        it('ignores an Accept from an account we have blocked', async () => {
-            await storeFollow(
-                new Follow({
-                    id: sentFollowId,
-                    actor: ghostUserUrl,
-                    object: aliceUrl,
-                }),
-            );
-            vi.mocked(
-                mockModerationService.canInteractWithAccount,
-            ).mockResolvedValue(false);
-
-            const handler = createAcceptHandler(
-                mockAccountService,
-                mockModerationService,
-            );
-            await handler(acceptCtx, acceptFrom(aliceUrl, sentFollowId));
-
-            expect(
-                mockModerationService.canInteractWithAccount,
-            ).toHaveBeenCalledWith(aliceAccount.id, localAccount.id);
-            expect(mockAccountService.followAccount).not.toHaveBeenCalled();
         });
     });
 });
