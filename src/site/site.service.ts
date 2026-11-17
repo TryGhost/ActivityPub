@@ -165,9 +165,6 @@ export class SiteService {
         return site;
     }
 
-    /**
-     * @returns true when the site row was deleted
-     */
     public async disableSiteForHost(host: string): Promise<boolean> {
         const site = await this.getSiteByHost(host);
 
