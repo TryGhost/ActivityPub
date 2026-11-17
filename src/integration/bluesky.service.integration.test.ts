@@ -226,10 +226,47 @@ describe('BlueskyService', () => {
     });
 
     describe('SiteService.disableSiteForHost', () => {
+        it('should wait for Bridgy teardown before deleting the site and its users', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+            await fixtureManager.enableBlueskyIntegration(account);
+            blueskyEventService.init();
+
+            let finishSending!: () => void;
+            const sending = new Promise<void>((resolve) => {
+                finishSending = resolve;
+            });
+            vi.mocked(fedifyContext.sendActivity).mockReturnValueOnce(sending);
+
+            const disabling = siteService.disableSiteForHost(site.host);
+
+            try {
+                await vi.waitFor(() => {
+                    expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
+                });
+                expect(
+                    await client('sites').where('id', site.id).first(),
+                ).toBeDefined();
+                expect(
+                    await client('users').where('site_id', site.id).first(),
+                ).toBeDefined();
+            } finally {
+                finishSending();
+                await disabling;
+            }
+
+            expect(await disabling).toBe(true);
+            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
+            expect(
+                await client('sites').where('id', site.id).first(),
+            ).toBeUndefined();
+        });
+
         it('should send a stop message, unfollow brid.gy, delete the site, and keep the handle mapping', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
             const handle = '@test.example.com.ap.brid.gy';
+            blueskyEventService.init();
 
             await fixtureManager.enableBlueskyIntegration(
                 account,
@@ -276,6 +313,7 @@ describe('BlueskyService', () => {
 
         it('should delete the site when Bluesky is not enabled', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
+            blueskyEventService.init();
 
             const deleted = await siteService.disableSiteForHost(site.host);
 
@@ -290,6 +328,7 @@ describe('BlueskyService', () => {
             const [, site] = await fixtureManager.createInternalAccount();
 
             await client('users').where('site_id', site.id).delete();
+            blueskyEventService.init();
 
             const deleted = await siteService.disableSiteForHost(site.host);
 
@@ -306,6 +345,7 @@ describe('BlueskyService', () => {
 
             await fixtureManager.enableBlueskyIntegration(account);
             await client('sites').where('id', site.id).delete();
+            blueskyEventService.init();
 
             const deleted = await siteService.disableSiteForHost(site.host);
 
@@ -321,6 +361,7 @@ describe('BlueskyService', () => {
         it('should delete the site and retain the handles row when Bridgy teardown fails', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
+            blueskyEventService.init();
 
             await fixtureManager.enableBlueskyIntegration(account);
             vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
@@ -346,11 +387,11 @@ describe('BlueskyService', () => {
 
         it('should delete the site when account lookup fails', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
+            blueskyEventService.init();
             const lookupError = new Error('db unavailable');
-            vi.spyOn(
-                accountService,
-                'findAccountForSite',
-            ).mockRejectedValueOnce(lookupError);
+            vi.spyOn(accountRepository, 'getBySite').mockRejectedValueOnce(
+                lookupError,
+            );
 
             await expect(
                 siteService.disableSiteForHost(site.host),
@@ -366,6 +407,7 @@ describe('BlueskyService', () => {
         it('should delete the site and retain the handles row when it has multiple users', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
+            blueskyEventService.init();
             await fixtureManager.enableBlueskyIntegration(account);
             await client('users').insert({
                 account_id: account.id,
@@ -395,6 +437,7 @@ describe('BlueskyService', () => {
         it('should propagate site deletion errors after Bridgy teardown fails', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
+            blueskyEventService.init();
             await fixtureManager.enableBlueskyIntegration(account);
             vi.mocked(fedifyContext.sendActivity).mockRejectedValue(
                 new Error('bridgy unavailable'),

@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
@@ -7,10 +6,12 @@ import type { Knex } from 'knex';
 
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
+import type { AsyncEvents } from '@/core/events';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
 import type { BlueskyService } from '@/integration/bluesky.service';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
 import { SiteCreatedEvent } from '@/site/site-created.event';
+import { SiteDisablingEvent } from '@/site/site-disabling.event';
 
 export type Site = {
     id: number;
@@ -29,7 +30,7 @@ export class SiteService {
         private accountService: AccountService,
         private ghostService: IGhostService,
         private logger: Logger,
-        private events: EventEmitter,
+        private events: AsyncEvents,
         private blueskyService: BlueskyService,
     ) {}
 
@@ -168,9 +169,6 @@ export class SiteService {
     }
 
     /**
-     * Best-effort disconnect from Bridgy before deleting the site (signing
-     * needs the site). Keeps the handles row so a later recreate can restore.
-     *
      * @returns true when the site row was deleted
      */
     public async disableSiteForHost(host: string): Promise<boolean> {
@@ -181,11 +179,11 @@ export class SiteService {
         }
 
         try {
-            const account = await this.accountService.findAccountForSite(site);
-
-            if (account) {
-                await this.blueskyService.disconnectForAccount(account);
-            }
+            // Let listeners finish while the site and its users still exist.
+            await this.events.emitAsync(
+                SiteDisablingEvent.getName(),
+                new SiteDisablingEvent(site.id, site.host),
+            );
         } catch (error) {
             Sentry.captureException(error);
             this.logger.error('Could not soft-disconnect site {host}', {

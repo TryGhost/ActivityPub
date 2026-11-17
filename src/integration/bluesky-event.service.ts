@@ -7,6 +7,7 @@ import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { BlueskyService } from '@/integration/bluesky.service';
 import type { SiteService } from '@/site/site.service';
 import { SiteCreatedEvent } from '@/site/site-created.event';
+import { SiteDisablingEvent } from '@/site/site-disabling.event';
 
 export class BlueskyEventService {
     constructor(
@@ -21,6 +22,10 @@ export class BlueskyEventService {
         this.events.on(
             SiteCreatedEvent.getName(),
             this.handleSiteCreated.bind(this),
+        );
+        this.events.on(
+            SiteDisablingEvent.getName(),
+            this.handleSiteDisabling.bind(this),
         );
     }
 
@@ -50,7 +55,17 @@ export class BlueskyEventService {
         }
     }
 
-    private async getAccountForEvent(event: SiteCreatedEvent) {
+    private async handleSiteDisabling(event: SiteDisablingEvent) {
+        const account = await this.getAccountForEvent(event);
+
+        if (account) {
+            await this.blueskyService.disconnectForAccount(account);
+        }
+    }
+
+    private async getAccountForEvent(
+        event: SiteCreatedEvent | SiteDisablingEvent,
+    ) {
         const site = await this.siteService.getSiteByHost(event.getSiteHost());
 
         if (!site || site.id !== event.getSiteId()) {
