@@ -1,7 +1,10 @@
 import type { SerializableEvent } from '@/events/event';
 
 export class SiteCreatedEvent implements SerializableEvent {
-    constructor(private readonly siteId: number) {}
+    constructor(
+        private readonly siteId: number,
+        private readonly siteHost: string,
+    ) {}
 
     static getName(): string {
         return 'site.created';
@@ -15,9 +18,14 @@ export class SiteCreatedEvent implements SerializableEvent {
         return this.siteId;
     }
 
+    getSiteHost(): string {
+        return this.siteHost;
+    }
+
     toJSON(): Record<string, unknown> {
         return {
             siteId: this.siteId,
+            siteHost: this.siteHost,
         };
     }
 
@@ -25,6 +33,9 @@ export class SiteCreatedEvent implements SerializableEvent {
         if (typeof data.siteId !== 'number') {
             throw new Error('siteId must be a number');
         }
-        return new SiteCreatedEvent(data.siteId);
+        if (typeof data.siteHost !== 'string') {
+            throw new Error('siteHost must be a string');
+        }
+        return new SiteCreatedEvent(data.siteId, data.siteHost);
     }
 }

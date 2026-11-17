@@ -470,7 +470,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id),
+                new SiteCreatedEvent(site.id, site.host),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -481,7 +481,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(Number.MAX_SAFE_INTEGER),
+                new SiteCreatedEvent(Number.MAX_SAFE_INTEGER, 'missing.tld'),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -499,7 +499,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(siteId),
+                new SiteCreatedEvent(siteId, 'no-account.tld'),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -520,7 +520,7 @@ describe('BlueskyService', () => {
             await expect(
                 events.emitAsync(
                     SiteCreatedEvent.getName(),
-                    new SiteCreatedEvent(site.id),
+                    new SiteCreatedEvent(site.id, site.host),
                 ),
             ).resolves.toBe(true);
 

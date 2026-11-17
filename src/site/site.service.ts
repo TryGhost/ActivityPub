@@ -160,7 +160,7 @@ export class SiteService {
 
             this.events.emit(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id),
+                new SiteCreatedEvent(site.id, site.host),
             );
         }
 

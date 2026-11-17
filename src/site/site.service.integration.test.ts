@@ -110,6 +110,9 @@ describe('SiteService', () => {
         expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
             site.id,
         );
+        expect(
+            (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),
+        ).toBe(site.host);
 
         const siteRows = await db('sites').select('*');
 
@@ -225,6 +228,9 @@ describe('SiteService', () => {
         expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
             site.id,
         );
+        expect(
+            (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),
+        ).toBe(site.host);
     });
 
     it('Handles duplicate ghost_uuid when a site changes domains', async () => {
