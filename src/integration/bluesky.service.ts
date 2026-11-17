@@ -370,9 +370,6 @@ export class BlueskyService {
         );
     }
 
-    /**
-     * Resolve the BridgyFed actor.
-     */
     private async getBridgyAccount() {
         const ensureBridgyAccountResult =
             await this.accountService.ensureByApId(BRIDGY_AP_ID);
