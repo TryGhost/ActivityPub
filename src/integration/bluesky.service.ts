@@ -84,9 +84,6 @@ export class BlueskyService {
         }
     }
 
-    /**
-     * Disconnect from Bridgy while retaining the handles row for site reconnect.
-     */
     async softDisconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
