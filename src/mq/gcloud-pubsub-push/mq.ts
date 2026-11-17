@@ -49,6 +49,17 @@ interface Message {
 }
 
 /**
+ * Remove sensitive data from a message before it is logged
+ *
+ * @param message Message to prepare
+ */
+function toLoggableMessage(message: FedifyMessage) {
+    const { keys: _keys, ...loggableMessage } = message;
+
+    return loggableMessage;
+}
+
+/**
  * Message queue implementation using a GCloud Pub/Sub push subscription
  */
 export class GCloudPubSubPushMessageQueue implements MessageQueue {
@@ -118,7 +129,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         if (delay !== undefined) {
             this.logger.info(
                 `Not enqueuing message [FedifyID: ${message.id}] due to delay being set: ${delay}`,
-                { fedifyId: message.id, mq_message: message },
+                {
+                    fedifyId: message.id,
+                    mq_message: toLoggableMessage(message),
+                },
             );
 
             return;
@@ -131,7 +145,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             if (!inboxUrl) {
                 this.logger.error(
                     `Message [FedifyID: ${message.id}] has an inbox URL that is not a valid URL: ${message.inbox}`,
-                    { fedifyId: message.id, mq_message: message },
+                    {
+                        fedifyId: message.id,
+                        mq_message: toLoggableMessage(message),
+                    },
                 );
 
                 return;
@@ -161,7 +178,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         if (!shouldDeliver) {
                             this.logger.info(
                                 `Dropping message [FedifyID: ${message.id}] due to inbox URL being an internal account: ${inboxUrl.href}`,
-                                { fedifyId: message.id, mq_message: message },
+                                {
+                                    fedifyId: message.id,
+                                    mq_message: toLoggableMessage(message),
+                                },
                             );
 
                             return;
@@ -172,7 +192,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                             {
                                 fedifyId: message.id,
                                 error,
-                                mq_message: message,
+                                mq_message: toLoggableMessage(message),
                             },
                         );
 
@@ -197,7 +217,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                             backoffUntil:
                                 activeBackoff.backoffUntil.toISOString(),
                             backoffSeconds: activeBackoff.backoffSeconds,
-                            mq_message: message,
+                            mq_message: toLoggableMessage(message),
                         },
                     );
                     return;
@@ -205,7 +225,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             } catch (error) {
                 this.logger.error(
                     `Failed to check backoff for message [FedifyID: ${message.id}]: ${error}`,
-                    { fedifyId: message.id, error, mq_message: message },
+                    {
+                        fedifyId: message.id,
+                        error,
+                        mq_message: toLoggableMessage(message),
+                    },
                 );
 
                 this.errorListener?.(error as Error);
@@ -229,13 +253,17 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 {
                     fedifyId: message.id,
                     pubSubId: messageId,
-                    mq_message: message,
+                    mq_message: toLoggableMessage(message),
                 },
             );
         } catch (error) {
             this.logger.error(
                 `Failed to enqueue message [FedifyID: ${message.id}]: ${error}`,
-                { fedifyId: message.id, error, mq_message: message },
+                {
+                    fedifyId: message.id,
+                    error,
+                    mq_message: toLoggableMessage(message),
+                },
             );
 
             this.errorListener?.(error as Error);
@@ -283,7 +311,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 {
                     fedifyId: message.attributes.fedifyId,
                     pubSubId: message.id,
-                    mq_message: message.data,
+                    mq_message: toLoggableMessage(message.data),
                     error,
                 },
             );
@@ -295,7 +323,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         this.logger.debug(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-            { fedifyId, pubSubId: message.id, mq_message: message.data },
+            {
+                fedifyId,
+                pubSubId: message.id,
+                mq_message: toLoggableMessage(message.data),
+            },
         );
 
         try {
@@ -325,7 +357,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 {
                     fedifyId,
                     pubSubId: message.id,
-                    mq_message: message.data,
+                    mq_message: toLoggableMessage(message.data),
                     error,
                     deliveryAttempt: deliveryAttemptCount,
                 },
@@ -349,7 +381,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         {
                             fedifyId,
                             pubSubId: message.id,
-                            mq_message: message.data,
+                            mq_message: toLoggableMessage(message.data),
                             error,
                             deliveryAttempt: deliveryAttemptCount,
                             isFromRetryQueue,
@@ -372,7 +404,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         {
                             fedifyId,
                             pubSubId: message.id,
-                            mq_message: message.data,
+                            mq_message: toLoggableMessage(message.data),
                             error,
                             deliveryAttempt: deliveryAttemptCount,
                             isFromRetryQueue,
@@ -394,7 +426,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     {
                         fedifyId,
                         pubSubId: message.id,
-                        mq_message: message.data,
+                        mq_message: toLoggableMessage(message.data),
                         error,
                         deliveryAttempt: deliveryAttemptCount,
                     },
@@ -407,7 +439,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     {
                         fedifyId,
                         pubSubId: message.id,
-                        mq_message: message.data,
+                        mq_message: toLoggableMessage(message.data),
                         error,
                         deliveryAttempt: deliveryAttemptCount,
                     },
@@ -441,7 +473,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         this.logger.info(
             'Recording delivery failure [FedifyID: {fedifyId}]: {error}',
-            { fedifyId: message.id, error, mq_message: message },
+            {
+                fedifyId: message.id,
+                error,
+                mq_message: toLoggableMessage(message),
+            },
         );
         try {
             const inboxUrl = new URL(message.inbox);
@@ -453,7 +489,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         } catch (error) {
             this.logger.error(
                 'Failed to record delivery failure [FedifyID: {fedifyId}]: {error}',
-                { fedifyId: message.id, error, mq_message: message },
+                {
+                    fedifyId: message.id,
+                    error,
+                    mq_message: toLoggableMessage(message),
+                },
             );
 
             this.errorListener?.(error as Error);
@@ -476,7 +516,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         } catch (error) {
             this.logger.error(
                 `Failed to clear delivery failure [FedifyID: ${message.id}]: ${error}`,
-                { fedifyId: message.id, error, mq_message: message },
+                {
+                    fedifyId: message.id,
+                    error,
+                    mq_message: toLoggableMessage(message),
+                },
             );
 
             this.errorListener?.(error as Error);
