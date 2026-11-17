@@ -1,7 +1,6 @@
 import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { BlueskyService } from '@/integration/bluesky.service';
@@ -47,7 +46,6 @@ export class BlueskyEventService {
 
             await this.blueskyService.reconnectForAccount(account);
         } catch (error) {
-            Sentry.captureException(error);
             this.logger.error(
                 'Best-effort Bridgy restore failed for site {siteId}',
                 { siteId: event.getSiteId(), host: event.getSiteHost(), error },
@@ -63,7 +61,6 @@ export class BlueskyEventService {
                 await this.blueskyService.disconnectForAccount(account);
             }
         } catch (error) {
-            Sentry.captureException(error);
             this.logger.error('Could not disconnect Bridgy for site {host}', {
                 host: event.getSiteHost(),
                 siteId: event.getSiteId(),

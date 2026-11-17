@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
@@ -28,10 +27,6 @@ import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
-
-vi.mock('@sentry/node', () => ({
-    captureException: vi.fn(),
-}));
 
 describe('BlueskyService', () => {
     let client: Knex;
@@ -374,8 +369,15 @@ describe('BlueskyService', () => {
             expect(
                 await client('sites').where('id', site.id).first(),
             ).toBeUndefined();
-            expect(Sentry.captureException).toHaveBeenCalledWith(
-                expect.objectContaining({ message: 'bridgy unavailable' }),
+            expect(logger.error).toHaveBeenCalledWith(
+                'Could not disconnect Bridgy for site {host}',
+                {
+                    host: site.host,
+                    siteId: site.id,
+                    error: expect.objectContaining({
+                        message: 'bridgy unavailable',
+                    }),
+                },
             );
             expect(
                 await client('bluesky_integration_account_handles')
@@ -397,7 +399,10 @@ describe('BlueskyService', () => {
             ).resolves.toBe(true);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            expect(Sentry.captureException).toHaveBeenCalledWith(lookupError);
+            expect(logger.error).toHaveBeenCalledWith(
+                'Could not disconnect Bridgy for site {host}',
+                { host: site.host, siteId: site.id, error: lookupError },
+            );
             expect(
                 await client('sites').where('id', site.id).first(),
             ).toBeUndefined();
@@ -418,10 +423,15 @@ describe('BlueskyService', () => {
             ).resolves.toBe(true);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            expect(Sentry.captureException).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    message: `Multiple users found for site: ${site.id}`,
-                }),
+            expect(logger.error).toHaveBeenCalledWith(
+                'Could not disconnect Bridgy for site {host}',
+                {
+                    host: site.host,
+                    siteId: site.id,
+                    error: expect.objectContaining({
+                        message: `Multiple users found for site: ${site.id}`,
+                    }),
+                },
             );
             expect(
                 await client('sites').where('id', site.id).first(),
@@ -622,8 +632,16 @@ describe('BlueskyService', () => {
                 ),
             ).resolves.toBe(true);
 
-            expect(logger.error).toHaveBeenCalled();
-            expect(Sentry.captureException).toHaveBeenCalled();
+            expect(logger.error).toHaveBeenCalledWith(
+                'Best-effort Bridgy restore failed for site {siteId}',
+                {
+                    host: site.host,
+                    siteId: site.id,
+                    error: expect.objectContaining({
+                        message: 'bridgy unavailable',
+                    }),
+                },
+            );
         });
 
         it('should restore Bridgy after soft disconnect and site recreate', async () => {
