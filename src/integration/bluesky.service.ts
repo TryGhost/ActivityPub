@@ -74,7 +74,7 @@ export class BlueskyService {
                 return;
             }
 
-            await this.reconnectBridgyForAccount(account, event.getSiteId());
+            await this.reconnectForAccount(account, event.getSiteId());
         } catch (error) {
             Sentry.captureException(error);
             this.logger.error(
@@ -84,7 +84,7 @@ export class BlueskyService {
         }
     }
 
-    async softDisconnectForAccount(account: Account): Promise<void> {
+    async disconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();
@@ -174,10 +174,7 @@ export class BlueskyService {
      * was hard-disabled from Preferences, or the site from `site.created` was
      * deleted before Follow (stale reconnect after soft disconnect).
      */
-    async reconnectBridgyForAccount(
-        account: Account,
-        siteId: number,
-    ): Promise<void> {
+    async reconnectForAccount(account: Account, siteId: number): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();

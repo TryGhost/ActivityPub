@@ -184,7 +184,7 @@ export class SiteService {
             const account = await this.accountService.findAccountForSite(site);
 
             if (account) {
-                await this.blueskyService.softDisconnectForAccount(account);
+                await this.blueskyService.disconnectForAccount(account);
             }
         } catch (error) {
             Sentry.captureException(error);

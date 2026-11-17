@@ -412,14 +412,14 @@ describe('BlueskyService', () => {
         });
     });
 
-    describe('reconnectBridgyForAccount', () => {
+    describe('reconnectForAccount', () => {
         it('should send a follow request when Bluesky is still enabled locally', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
 
-            await blueskyService.reconnectBridgyForAccount(account, site.id);
+            await blueskyService.reconnectForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
             expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
@@ -444,7 +444,7 @@ describe('BlueskyService', () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
 
-            await blueskyService.reconnectBridgyForAccount(account, site.id);
+            await blueskyService.reconnectForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
@@ -456,7 +456,7 @@ describe('BlueskyService', () => {
             await fixtureManager.enableBlueskyIntegration(account);
             await client('sites').where('id', site.id).delete();
 
-            await blueskyService.reconnectBridgyForAccount(account, site.id);
+            await blueskyService.reconnectForAccount(account, site.id);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
@@ -513,10 +513,9 @@ describe('BlueskyService', () => {
             await fixtureManager.enableBlueskyIntegration(account);
             await blueskyService.init();
 
-            vi.spyOn(
-                blueskyService,
-                'reconnectBridgyForAccount',
-            ).mockRejectedValue(new Error('bridgy unavailable'));
+            vi.spyOn(blueskyService, 'reconnectForAccount').mockRejectedValue(
+                new Error('bridgy unavailable'),
+            );
 
             await expect(
                 events.emitAsync(

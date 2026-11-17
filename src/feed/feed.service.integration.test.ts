@@ -188,7 +188,7 @@ describe('FeedService', () => {
             logger,
             events,
             {
-                softDisconnectForAccount: async () => {},
+                disconnectForAccount: async () => {},
             } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);

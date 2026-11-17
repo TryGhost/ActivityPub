@@ -78,7 +78,7 @@ describe('SiteService', () => {
             getLogger(['test', 'site-service']),
             events,
             {
-                softDisconnectForAccount: vi.fn().mockResolvedValue(undefined),
+                disconnectForAccount: vi.fn().mockResolvedValue(undefined),
             } as never,
         );
     });
