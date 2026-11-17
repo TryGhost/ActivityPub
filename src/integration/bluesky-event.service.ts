@@ -36,7 +36,6 @@ export class BlueskyEventService {
                 return;
             }
 
-            // Account lookup may have overlapped a disable or recreate.
             const site = await this.siteService.getSiteByHost(
                 event.getSiteHost(),
             );
