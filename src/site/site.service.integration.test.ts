@@ -77,9 +77,6 @@ describe('SiteService', () => {
             ghostService,
             getLogger(['test', 'site-service']),
             events,
-            {
-                disconnectForAccount: vi.fn().mockResolvedValue(undefined),
-            } as never,
         );
     });
 

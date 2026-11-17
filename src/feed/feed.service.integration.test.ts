@@ -187,9 +187,6 @@ describe('FeedService', () => {
             },
             logger,
             events,
-            {
-                disconnectForAccount: async () => {},
-            } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);
         moderationService = new ModerationService(client);

@@ -142,7 +142,6 @@ describe('BlueskyService', () => {
             },
             logger,
             events,
-            blueskyService,
         );
 
         blueskyEventService = new BlueskyEventService(

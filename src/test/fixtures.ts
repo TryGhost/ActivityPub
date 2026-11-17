@@ -319,9 +319,6 @@ export function createFixtureManager(
         },
         logger,
         events,
-        {
-            disconnectForAccount: async () => {},
-        } as never,
     );
     const postRepository = new KnexPostRepository(db, events, logger);
 

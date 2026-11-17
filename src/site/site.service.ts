@@ -8,7 +8,6 @@ import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { AsyncEvents } from '@/core/events';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
-import type { BlueskyService } from '@/integration/bluesky.service';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
 import { SiteCreatedEvent } from '@/site/site-created.event';
 import { SiteDisablingEvent } from '@/site/site-disabling.event';
@@ -31,7 +30,6 @@ export class SiteService {
         private ghostService: IGhostService,
         private logger: Logger,
         private events: AsyncEvents,
-        private blueskyService: BlueskyService,
     ) {}
 
     private async createSite(

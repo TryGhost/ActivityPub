@@ -104,9 +104,6 @@ describe('KnexPostRepository', () => {
             },
             logger,
             events,
-            {
-                disconnectForAccount: async () => {},
-            } as never,
         );
         postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);
