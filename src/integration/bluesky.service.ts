@@ -124,10 +124,9 @@ export class BlueskyService {
     /**
      * Restore BridgyFed when a site comes back online and Bluesky is still
      * enabled locally (row present). No-op when Bluesky was never enabled,
-     * was hard-disabled from Preferences, or the site from `site.created` was
-     * deleted before Follow (stale reconnect after soft disconnect).
+     * or was hard-disabled from Preferences.
      */
-    async reconnectForAccount(account: Account, siteId: number): Promise<void> {
+    async reconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
             .first();
@@ -136,17 +135,6 @@ export class BlueskyService {
             this.logger.info(
                 `Bluesky integration not enabled for account {id} - skipping Bridgy reconnect`,
                 { id: account.id },
-            );
-
-            return;
-        }
-
-        const site = await this.db('sites').where('id', siteId).first();
-
-        if (!site) {
-            this.logger.info(
-                'Skipping Bridgy reconnect for deleted site {siteId}',
-                { siteId },
             );
 
             return;

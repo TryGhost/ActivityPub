@@ -2,18 +2,17 @@ import type EventEmitter from 'node:events';
 
 import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
-import type { Knex } from 'knex';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { BlueskyService } from '@/integration/bluesky.service';
-import type { Site } from '@/site/site.service';
+import type { SiteService } from '@/site/site.service';
 import { SiteCreatedEvent } from '@/site/site-created.event';
 
 export class BlueskyEventService {
     constructor(
-        private readonly db: Knex,
         private readonly events: EventEmitter,
         private readonly blueskyService: BlueskyService,
+        private readonly siteService: SiteService,
         private readonly accountRepository: KnexAccountRepository,
         private readonly logger: Logger,
     ) {}
@@ -27,38 +26,53 @@ export class BlueskyEventService {
 
     private async handleSiteCreated(event: SiteCreatedEvent) {
         try {
-            const site = await this.db('sites')
-                .where('id', event.getSiteId())
-                .first<Site>();
-
-            if (!site) {
-                this.logger.warn(
-                    'Ignoring site.created for missing site {siteId}',
-                    { siteId: event.getSiteId() },
-                );
-                return;
-            }
-
-            const account = await this.accountRepository.getBySite(site);
+            const account = await this.getAccountForEvent(event);
 
             if (!account) {
-                this.logger.warn(
-                    'Ignoring site.created for site {siteId} with no account',
-                    { siteId: event.getSiteId() },
-                );
                 return;
             }
 
-            await this.blueskyService.reconnectForAccount(
-                account,
-                event.getSiteId(),
+            // Account lookup may have overlapped a disable or recreate.
+            const site = await this.siteService.getSiteByHost(
+                event.getSiteHost(),
             );
+            if (!site || site.id !== event.getSiteId()) {
+                return;
+            }
+
+            await this.blueskyService.reconnectForAccount(account);
         } catch (error) {
             Sentry.captureException(error);
             this.logger.error(
                 'Best-effort Bridgy restore failed for site {siteId}',
-                { siteId: event.getSiteId(), error },
+                { siteId: event.getSiteId(), host: event.getSiteHost(), error },
             );
         }
+    }
+
+    private async getAccountForEvent(event: SiteCreatedEvent) {
+        const site = await this.siteService.getSiteByHost(event.getSiteHost());
+
+        if (!site || site.id !== event.getSiteId()) {
+            this.logger.warn('Ignoring {eventName} for missing site {siteId}', {
+                eventName: event.getName(),
+                siteId: event.getSiteId(),
+            });
+            return null;
+        }
+
+        const account = await this.accountRepository.getBySite(site);
+
+        if (!account) {
+            this.logger.warn(
+                'Ignoring {eventName} for site {siteId} with no account',
+                {
+                    eventName: event.getName(),
+                    siteId: event.getSiteId(),
+                },
+            );
+        }
+
+        return account;
     }
 }

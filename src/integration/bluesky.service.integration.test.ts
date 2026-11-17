@@ -41,6 +41,7 @@ describe('BlueskyService', () => {
     let fedifyContextFactory: FedifyContextFactory;
     let logger: Logger;
     let accountService: AccountService;
+    let accountRepository: KnexAccountRepository;
     let blueskyApiClient: BlueskyApiClient;
     let blueskyService: BlueskyService;
     let blueskyEventService: BlueskyEventService;
@@ -63,7 +64,7 @@ describe('BlueskyService', () => {
 
         events.removeAllListeners();
 
-        const accountRepository = new KnexAccountRepository(client, events);
+        accountRepository = new KnexAccountRepository(client, events);
 
         fedifyContext = {
             sendActivity: vi.fn().mockResolvedValue(undefined),
@@ -145,9 +146,9 @@ describe('BlueskyService', () => {
         );
 
         blueskyEventService = new BlueskyEventService(
-            client,
             events,
             blueskyService,
+            siteService,
             accountRepository,
             logger,
         );
@@ -423,12 +424,11 @@ describe('BlueskyService', () => {
 
     describe('reconnectForAccount', () => {
         it('should send a follow request when Bluesky is still enabled locally', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
+            const [account] = await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
 
-            await blueskyService.reconnectForAccount(account, site.id);
+            await blueskyService.reconnectForAccount(account);
 
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
             expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
@@ -450,13 +450,59 @@ describe('BlueskyService', () => {
         });
 
         it('should do nothing if the Bluesky integration is not enabled', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
+            const [account] = await fixtureManager.createInternalAccount();
 
-            await blueskyService.reconnectForAccount(account, site.id);
+            await blueskyService.reconnectForAccount(account);
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
+    });
+
+    describe('site.created listener', () => {
+        it('should ignore an event for an older site at the same host', async () => {
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
+            await fixtureManager.enableBlueskyIntegration(account);
+            blueskyEventService.init();
+            const getAccount = vi.spyOn(accountRepository, 'getBySite');
+
+            await events.emitAsync(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id + 1, site.host),
+            );
+
+            expect(getAccount).not.toHaveBeenCalled();
+            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+        });
+
+        it.each(['deleted', 'replaced'])(
+            'should skip restore if the site is %s during account lookup',
+            async (change) => {
+                const [account, site] =
+                    await fixtureManager.createInternalAccount();
+                await fixtureManager.enableBlueskyIntegration(account);
+                blueskyEventService.init();
+                vi.spyOn(accountRepository, 'getBySite').mockImplementationOnce(
+                    async () => {
+                        await client('sites').where('id', site.id).delete();
+                        if (change === 'replaced') {
+                            await client('sites').insert({
+                                host: site.host,
+                                webhook_secret: 'replacement-secret',
+                            });
+                        }
+                        return account;
+                    },
+                );
+
+                await events.emitAsync(
+                    SiteCreatedEvent.getName(),
+                    new SiteCreatedEvent(site.id, site.host),
+                );
+
+                expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            },
+        );
 
         it('should skip Follow when the site from site.created was deleted', async () => {
             const [account, site] =
@@ -465,13 +511,14 @@ describe('BlueskyService', () => {
             await fixtureManager.enableBlueskyIntegration(account);
             await client('sites').where('id', site.id).delete();
 
-            await blueskyService.reconnectForAccount(account, site.id);
+            blueskyEventService.init();
+            await events.emitAsync(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.id, site.host),
+            );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
-    });
-
-    describe('site.created listener', () => {
         it('should not restore Bridgy when the Bluesky row is missing', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
 
