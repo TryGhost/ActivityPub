@@ -94,11 +94,6 @@ export class BlueskyService {
         };
     }
 
-    /**
-     * Hard-disable Bluesky for Preferences: tear down BridgyFed and delete local
-     * intent so site reconnect will not restore it. Bridgy network work runs
-     * before the handles delete.
-     */
     async disableForAccount(account: Account) {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
