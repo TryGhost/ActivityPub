@@ -22,6 +22,7 @@ import {
 } from '@/core/result';
 import { BlueskyService, BRIDGY_AP_ID } from '@/integration/bluesky.service';
 import type { BlueskyApiClient } from '@/integration/bluesky-api.client';
+import { BlueskyEventService } from '@/integration/bluesky-event.service';
 import { SiteService } from '@/site/site.service';
 import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
@@ -42,6 +43,7 @@ describe('BlueskyService', () => {
     let accountService: AccountService;
     let blueskyApiClient: BlueskyApiClient;
     let blueskyService: BlueskyService;
+    let blueskyEventService: BlueskyEventService;
     let siteService: SiteService;
 
     const bridgyAccount = {
@@ -118,7 +120,6 @@ describe('BlueskyService', () => {
             fedifyContextFactory,
             logger,
             blueskyApiClient,
-            events,
         );
 
         siteService = new SiteService(
@@ -141,6 +142,14 @@ describe('BlueskyService', () => {
             logger,
             events,
             blueskyService,
+        );
+
+        blueskyEventService = new BlueskyEventService(
+            client,
+            events,
+            blueskyService,
+            accountRepository,
+            logger,
         );
 
         vi.clearAllMocks();
@@ -466,7 +475,7 @@ describe('BlueskyService', () => {
         it('should not restore Bridgy when the Bluesky row is missing', async () => {
             const [, site] = await fixtureManager.createInternalAccount();
 
-            await blueskyService.init();
+            blueskyEventService.init();
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
@@ -477,7 +486,7 @@ describe('BlueskyService', () => {
         });
 
         it('should ignore a missing site', async () => {
-            await blueskyService.init();
+            blueskyEventService.init();
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
@@ -495,7 +504,7 @@ describe('BlueskyService', () => {
                 ghost_uuid: 'no-account-uuid',
             });
 
-            await blueskyService.init();
+            blueskyEventService.init();
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
@@ -511,7 +520,7 @@ describe('BlueskyService', () => {
                 await fixtureManager.createInternalAccount();
 
             await fixtureManager.enableBlueskyIntegration(account);
-            await blueskyService.init();
+            blueskyEventService.init();
 
             vi.spyOn(blueskyService, 'reconnectForAccount').mockRejectedValue(
                 new Error('bridgy unavailable'),
@@ -541,7 +550,7 @@ describe('BlueskyService', () => {
                 true,
                 handle,
             );
-            await blueskyService.init();
+            blueskyEventService.init();
 
             const deleted = await siteService.disableSiteForHost(site.host);
 

@@ -135,7 +135,7 @@ import {
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
-import type { BlueskyService } from '@/integration/bluesky.service';
+import type { BlueskyEventService } from '@/integration/bluesky-event.service';
 import {
     createPushMessageHandler,
     type GCloudPubSubPushMessageQueue,
@@ -270,7 +270,7 @@ container.resolve<GhostPostService>('ghostPostService').init();
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
-container.resolve<BlueskyService>('blueskyService').init();
+container.resolve<BlueskyEventService>('blueskyEventService').init();
 
 // Register all events with the event serializer
 const globalEventSerializer =

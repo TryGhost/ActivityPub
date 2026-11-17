@@ -1,8 +1,5 @@
-import type EventEmitter from 'node:events';
-
 import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,8 +20,6 @@ import type {
     BlueskyApiClient,
     BlueskyApiError,
 } from '@/integration/bluesky-api.client';
-import type { Site } from '@/site/site.service';
-import { SiteCreatedEvent } from '@/site/site-created.event';
 
 /**
  * @see https://fed.brid.gy/docs
@@ -40,49 +35,7 @@ export class BlueskyService {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly logger: Logger,
         private readonly blueskyApiClient: BlueskyApiClient,
-        private readonly events: EventEmitter,
     ) {}
-
-    async init() {
-        this.events.on(
-            SiteCreatedEvent.getName(),
-            this.handleSiteCreated.bind(this),
-        );
-    }
-
-    private async handleSiteCreated(event: SiteCreatedEvent) {
-        try {
-            const site = await this.db('sites')
-                .where('id', event.getSiteId())
-                .first<Site>();
-
-            if (!site) {
-                this.logger.warn(
-                    'Ignoring site.created for missing site {siteId}',
-                    { siteId: event.getSiteId() },
-                );
-                return;
-            }
-
-            const account = await this.accountRepository.getBySite(site);
-
-            if (!account) {
-                this.logger.warn(
-                    'Ignoring site.created for site {siteId} with no account',
-                    { siteId: event.getSiteId() },
-                );
-                return;
-            }
-
-            await this.reconnectForAccount(account, event.getSiteId());
-        } catch (error) {
-            Sentry.captureException(error);
-            this.logger.error(
-                'Best-effort Bridgy restore failed for site {siteId}',
-                { siteId: event.getSiteId(), error },
-            );
-        }
-    }
 
     async disconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
