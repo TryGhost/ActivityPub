@@ -172,7 +172,6 @@ export class SiteService {
             return false;
         }
 
-        // Let listeners finish while the site and its users still exist.
         await this.events.emitAsync(
             SiteDisablingEvent.getName(),
             new SiteDisablingEvent(site.id, site.host),
