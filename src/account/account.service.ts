@@ -866,17 +866,13 @@ export class AccountService {
     }
 
     async getAccountForSite(site: Site): Promise<Account> {
-        const account = await this.findAccountForSite(site);
+        const account = await this.accountRepository.getBySite(site);
 
         if (!account) {
             throw new Error(`No user found for site: ${site.id}`);
         }
 
         return account;
-    }
-
-    async findAccountForSite(site: Site): Promise<Account | null> {
-        return this.accountRepository.getBySite(site);
     }
 
     /**
