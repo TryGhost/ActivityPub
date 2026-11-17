@@ -116,11 +116,6 @@ export class BlueskyService {
             .delete();
     }
 
-    /**
-     * Restore BridgyFed when a site comes back online and Bluesky is still
-     * enabled locally (row present). No-op when Bluesky was never enabled,
-     * or was hard-disabled from Preferences.
-     */
     async reconnectForAccount(account: Account): Promise<void> {
         const existing = await this.db('bluesky_integration_account_handles')
             .where('account_id', account.id)
