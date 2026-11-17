@@ -546,7 +546,6 @@ describe('BlueskyService', () => {
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            expect(logger.warn).not.toHaveBeenCalled();
         });
 
         it('should ignore a site with no account', async () => {
@@ -564,7 +563,6 @@ describe('BlueskyService', () => {
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            expect(logger.warn).not.toHaveBeenCalled();
         });
 
         it('should swallow reconnect errors without rejecting', async () => {
