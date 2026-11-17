@@ -56,10 +56,19 @@ export class BlueskyEventService {
     }
 
     private async handleSiteDisabling(event: SiteDisablingEvent) {
-        const account = await this.getAccountForEvent(event);
+        try {
+            const account = await this.getAccountForEvent(event);
 
-        if (account) {
-            await this.blueskyService.disconnectForAccount(account);
+            if (account) {
+                await this.blueskyService.disconnectForAccount(account);
+            }
+        } catch (error) {
+            Sentry.captureException(error);
+            this.logger.error('Could not disconnect Bridgy for site {host}', {
+                host: event.getSiteHost(),
+                siteId: event.getSiteId(),
+                error,
+            });
         }
     }
 

@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 
 import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 import type { Knex } from 'knex';
 
 import type { AccountService } from '@/account/account.service';
@@ -176,19 +175,11 @@ export class SiteService {
             return false;
         }
 
-        try {
-            // Let listeners finish while the site and its users still exist.
-            await this.events.emitAsync(
-                SiteDisablingEvent.getName(),
-                new SiteDisablingEvent(site.id, site.host),
-            );
-        } catch (error) {
-            Sentry.captureException(error);
-            this.logger.error('Could not soft-disconnect site {host}', {
-                host,
-                error,
-            });
-        }
+        // Let listeners finish while the site and its users still exist.
+        await this.events.emitAsync(
+            SiteDisablingEvent.getName(),
+            new SiteDisablingEvent(site.id, site.host),
+        );
 
         const deleted = await this.client('sites')
             .where('id', site.id)
