@@ -373,7 +373,6 @@ describe('BlueskyService', () => {
                 'Could not disconnect Bridgy for site {host}',
                 {
                     host: site.host,
-                    siteId: site.id,
                     error: expect.objectContaining({
                         message: 'bridgy unavailable',
                     }),
@@ -401,7 +400,7 @@ describe('BlueskyService', () => {
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
             expect(logger.error).toHaveBeenCalledWith(
                 'Could not disconnect Bridgy for site {host}',
-                { host: site.host, siteId: site.id, error: lookupError },
+                { host: site.host, error: lookupError },
             );
             expect(
                 await client('sites').where('id', site.id).first(),
@@ -427,7 +426,6 @@ describe('BlueskyService', () => {
                 'Could not disconnect Bridgy for site {host}',
                 {
                     host: site.host,
-                    siteId: site.id,
                     error: expect.objectContaining({
                         message: `Multiple users found for site: ${site.id}`,
                     }),
@@ -511,51 +509,6 @@ describe('BlueskyService', () => {
     });
 
     describe('site.created listener', () => {
-        it('should ignore an event for an older site at the same host', async () => {
-            const [account, site] =
-                await fixtureManager.createInternalAccount();
-            await fixtureManager.enableBlueskyIntegration(account);
-            blueskyEventService.init();
-            const getAccount = vi.spyOn(accountRepository, 'getBySite');
-
-            await events.emitAsync(
-                SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id + 1, site.host),
-            );
-
-            expect(getAccount).not.toHaveBeenCalled();
-            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-        });
-
-        it.each(['deleted', 'replaced'])(
-            'should skip restore if the site is %s during account lookup',
-            async (change) => {
-                const [account, site] =
-                    await fixtureManager.createInternalAccount();
-                await fixtureManager.enableBlueskyIntegration(account);
-                blueskyEventService.init();
-                vi.spyOn(accountRepository, 'getBySite').mockImplementationOnce(
-                    async () => {
-                        await client('sites').where('id', site.id).delete();
-                        if (change === 'replaced') {
-                            await client('sites').insert({
-                                host: site.host,
-                                webhook_secret: 'replacement-secret',
-                            });
-                        }
-                        return account;
-                    },
-                );
-
-                await events.emitAsync(
-                    SiteCreatedEvent.getName(),
-                    new SiteCreatedEvent(site.id, site.host),
-                );
-
-                expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
-            },
-        );
-
         it('should skip Follow when the site from site.created was deleted', async () => {
             const [account, site] =
                 await fixtureManager.createInternalAccount();
@@ -566,7 +519,7 @@ describe('BlueskyService', () => {
             blueskyEventService.init();
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id, site.host),
+                new SiteCreatedEvent(site.host),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -578,7 +531,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id, site.host),
+                new SiteCreatedEvent(site.host),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -589,7 +542,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(Number.MAX_SAFE_INTEGER, 'missing.tld'),
+                new SiteCreatedEvent('missing.tld'),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -597,7 +550,7 @@ describe('BlueskyService', () => {
         });
 
         it('should ignore a site with no account', async () => {
-            const [siteId] = await client('sites').insert({
+            await client('sites').insert({
                 host: 'no-account.tld',
                 webhook_secret: 'secret',
                 ghost_uuid: 'no-account-uuid',
@@ -607,7 +560,7 @@ describe('BlueskyService', () => {
 
             await events.emitAsync(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(siteId, 'no-account.tld'),
+                new SiteCreatedEvent('no-account.tld'),
             );
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
@@ -628,15 +581,14 @@ describe('BlueskyService', () => {
             await expect(
                 events.emitAsync(
                     SiteCreatedEvent.getName(),
-                    new SiteCreatedEvent(site.id, site.host),
+                    new SiteCreatedEvent(site.host),
                 ),
             ).resolves.toBe(true);
 
             expect(logger.error).toHaveBeenCalledWith(
-                'Best-effort Bridgy restore failed for site {siteId}',
+                'Best-effort Bridgy restore failed for site {host}',
                 {
                     host: site.host,
-                    siteId: site.id,
                     error: expect.objectContaining({
                         message: 'bridgy unavailable',
                     }),

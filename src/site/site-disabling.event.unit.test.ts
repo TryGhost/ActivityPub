@@ -5,30 +5,29 @@ import { SiteDisablingEvent } from '@/site/site-disabling.event';
 describe('SiteDisablingEvent', () => {
     it('returns the event name', () => {
         expect(SiteDisablingEvent.getName()).toBe('site.disabling');
-        expect(new SiteDisablingEvent(1, 'example.com').getName()).toBe(
+        expect(new SiteDisablingEvent('example.com').getName()).toBe(
             'site.disabling',
         );
     });
 
-    it('exposes the site id and host', () => {
-        const event = new SiteDisablingEvent(42, 'example.com');
-        expect(event.getSiteId()).toBe(42);
+    it('exposes the site host', () => {
+        const event = new SiteDisablingEvent('example.com');
         expect(event.getSiteHost()).toBe('example.com');
     });
 
     it('serialises and deserialises', () => {
-        const event = new SiteDisablingEvent(7, 'example.com');
+        const event = new SiteDisablingEvent('example.com');
+        expect(event.toJSON()).toEqual({ siteHost: 'example.com' });
         const restored = SiteDisablingEvent.fromJSON(event.toJSON());
 
-        expect(restored.getSiteId()).toBe(7);
         expect(restored.getSiteHost()).toBe('example.com');
     });
 
     it('rejects invalid JSON', () => {
         expect(() => SiteDisablingEvent.fromJSON({})).toThrow(
-            'siteId must be a number',
+            'siteHost must be a string',
         );
-        expect(() => SiteDisablingEvent.fromJSON({ siteId: 7 })).toThrow(
+        expect(() => SiteDisablingEvent.fromJSON({ siteHost: 7 })).toThrow(
             'siteHost must be a string',
         );
     });

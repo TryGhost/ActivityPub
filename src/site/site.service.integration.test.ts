@@ -104,9 +104,6 @@ describe('SiteService', () => {
             SiteCreatedEvent.getName(),
             expect.any(SiteCreatedEvent),
         );
-        expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
-            site.id,
-        );
         expect(
             (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),
         ).toBe(site.host);
@@ -221,9 +218,6 @@ describe('SiteService', () => {
         expect(emitSpy).toHaveBeenCalledWith(
             SiteCreatedEvent.getName(),
             expect.any(SiteCreatedEvent),
-        );
-        expect((emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteId()).toBe(
-            site.id,
         );
         expect(
             (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),

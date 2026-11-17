@@ -36,18 +36,11 @@ export class BlueskyEventService {
                 return;
             }
 
-            const site = await this.siteService.getSiteByHost(
-                event.getSiteHost(),
-            );
-            if (!site || site.id !== event.getSiteId()) {
-                return;
-            }
-
             await this.blueskyService.reconnectForAccount(account);
         } catch (error) {
             this.logger.error(
-                'Best-effort Bridgy restore failed for site {siteId}',
-                { siteId: event.getSiteId(), host: event.getSiteHost(), error },
+                'Best-effort Bridgy restore failed for site {host}',
+                { host: event.getSiteHost(), error },
             );
         }
     }
@@ -62,7 +55,6 @@ export class BlueskyEventService {
         } catch (error) {
             this.logger.error('Could not disconnect Bridgy for site {host}', {
                 host: event.getSiteHost(),
-                siteId: event.getSiteId(),
                 error,
             });
         }
@@ -73,10 +65,10 @@ export class BlueskyEventService {
     ) {
         const site = await this.siteService.getSiteByHost(event.getSiteHost());
 
-        if (!site || site.id !== event.getSiteId()) {
-            this.logger.warn('Ignoring {eventName} for missing site {siteId}', {
+        if (!site) {
+            this.logger.warn('Ignoring {eventName} for missing site {host}', {
                 eventName: event.getName(),
-                siteId: event.getSiteId(),
+                host: event.getSiteHost(),
             });
             return null;
         }
@@ -85,10 +77,10 @@ export class BlueskyEventService {
 
         if (!account) {
             this.logger.warn(
-                'Ignoring {eventName} for site {siteId} with no account',
+                'Ignoring {eventName} for site {host} with no account',
                 {
                     eventName: event.getName(),
-                    siteId: event.getSiteId(),
+                    host: event.getSiteHost(),
                 },
             );
         }

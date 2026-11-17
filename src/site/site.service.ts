@@ -158,7 +158,7 @@ export class SiteService {
 
             this.events.emit(
                 SiteCreatedEvent.getName(),
-                new SiteCreatedEvent(site.id, site.host),
+                new SiteCreatedEvent(site.host),
             );
         }
 
@@ -174,7 +174,7 @@ export class SiteService {
 
         await this.events.emitAsync(
             SiteDisablingEvent.getName(),
-            new SiteDisablingEvent(site.id, site.host),
+            new SiteDisablingEvent(site.host),
         );
 
         const deleted = await this.client('sites')
