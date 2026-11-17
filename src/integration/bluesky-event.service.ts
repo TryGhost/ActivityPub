@@ -66,25 +66,9 @@ export class BlueskyEventService {
         const site = await this.siteService.getSiteByHost(event.getSiteHost());
 
         if (!site) {
-            this.logger.warn('Ignoring {eventName} for missing site {host}', {
-                eventName: event.getName(),
-                host: event.getSiteHost(),
-            });
             return null;
         }
 
-        const account = await this.accountRepository.getBySite(site);
-
-        if (!account) {
-            this.logger.warn(
-                'Ignoring {eventName} for site {host} with no account',
-                {
-                    eventName: event.getName(),
-                    host: event.getSiteHost(),
-                },
-            );
-        }
-
-        return account;
+        return this.accountRepository.getBySite(site);
     }
 }
