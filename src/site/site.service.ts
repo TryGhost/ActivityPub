@@ -156,7 +156,7 @@ export class SiteService {
                 internalAccountData,
             );
 
-            this.events.emit(
+            await this.events.emitAsync(
                 SiteCreatedEvent.getName(),
                 new SiteCreatedEvent(site.host),
             );

@@ -645,16 +645,14 @@ describe('BlueskyService', () => {
 
             expect(reattachedUser?.account_id).toBe(account.id);
 
-            await vi.waitFor(() => {
-                expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
-                    { username: account.username },
-                    {
-                        id: bridgyAccount.apId,
-                        inboxId: bridgyAccount.apInbox,
-                    },
-                    expect.any(Follow),
-                );
-            });
+            expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+                { username: account.username },
+                {
+                    id: bridgyAccount.apId,
+                    inboxId: bridgyAccount.apInbox,
+                },
+                expect.any(Follow),
+            );
         });
     });
 

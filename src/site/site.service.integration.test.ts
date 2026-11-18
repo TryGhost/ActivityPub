@@ -90,7 +90,7 @@ describe('SiteService', () => {
             'createInternalAccount',
         );
 
-        const emitSpy = vi.spyOn(events, 'emit');
+        const emitSpy = vi.spyOn(events, 'emitAsync');
 
         const site = await service.initialiseSiteForHost('hostname.tld');
 
@@ -203,7 +203,7 @@ describe('SiteService', () => {
             ghost_uuid: 'some-uuid',
         });
 
-        const emitSpy = vi.spyOn(events, 'emit');
+        const emitSpy = vi.spyOn(events, 'emitAsync');
 
         const site = await service.initialiseSiteForHost('hostname.tld');
 
