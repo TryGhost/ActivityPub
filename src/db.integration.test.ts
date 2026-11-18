@@ -49,31 +49,35 @@ describe('Session time zone', () => {
     it('runs every connection in UTC, whatever the server zone is', async () => {
         // Holding both transactions open forces the pool to create two connections
         const trxA = await knex.transaction();
-        const trxB = await knex.transaction();
 
         try {
-            const sessions = [];
+            const trxB = await knex.transaction();
 
-            for (const trx of [trxA, trxB]) {
-                const [rows] = await trx.raw(
-                    'SELECT CONNECTION_ID() AS connection_id, @@session.time_zone AS session_zone, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) AS offset_seconds',
+            try {
+                const sessions = [];
+
+                for (const trx of [trxA, trxB]) {
+                    const [rows] = await trx.raw(
+                        'SELECT CONNECTION_ID() AS connection_id, @@session.time_zone AS session_zone, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) AS offset_seconds',
+                    );
+                    sessions.push(rows[0]);
+                }
+
+                expect(sessions[0].connection_id).not.toBe(
+                    sessions[1].connection_id,
                 );
-                sessions.push(rows[0]);
-            }
 
-            expect(sessions[0].connection_id).not.toBe(
-                sessions[1].connection_id,
-            );
-
-            for (const session of sessions) {
-                expect(session).toMatchObject({
-                    session_zone: '+00:00',
-                    offset_seconds: 0,
-                });
+                for (const session of sessions) {
+                    expect(session).toMatchObject({
+                        session_zone: '+00:00',
+                        offset_seconds: 0,
+                    });
+                }
+            } finally {
+                await trxB.commit();
             }
         } finally {
             await trxA.commit();
-            await trxB.commit();
         }
     });
 });
