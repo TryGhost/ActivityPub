@@ -80,9 +80,14 @@ const poolConfig = {
         connection: Connection,
         done: (error: Error | null, connection: Connection) => void,
     ) => {
-        connection.query("SET time_zone = '+00:00'", (error) =>
-            done(error, connection),
-        );
+        connection.query("SET time_zone = '+00:00'", (error) => {
+            // Knex never hands a connection to the pool when this hook fails, so
+            // nothing else would close it and its session would stay open.
+            if (error) {
+                connection.destroy();
+            }
+            done(error, connection);
+        });
     },
 };
 
