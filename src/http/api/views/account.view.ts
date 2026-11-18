@@ -8,6 +8,10 @@ import { getError, getValue, isError } from '@/core/result';
 import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
+import {
+    type DomainHandle,
+    toDomainHandle,
+} from '@/integration/bluesky.service';
 import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 import { domainBlockMatchesAccount } from '@/moderation/domain-blocks';
 
@@ -75,10 +79,15 @@ export class AccountView {
         let blueskyEnabled: boolean = false;
         let blueskyHandle: string | null = null;
         let blueskyHandleConfirmed: boolean = false;
+        let blueskyDomainHandle: DomainHandle | null = null;
 
         if (shouldIncludeBlueskyIntegrationData) {
-            ({ blueskyEnabled, blueskyHandle, blueskyHandleConfirmed } =
-                await this.getBlueskyIntegrationData(accountData.id));
+            ({
+                blueskyEnabled,
+                blueskyHandle,
+                blueskyHandleConfirmed,
+                blueskyDomainHandle,
+            } = await this.getBlueskyIntegrationData(accountData.id));
         }
 
         return {
@@ -111,6 +120,7 @@ export class AccountView {
                       blueskyEnabled,
                       blueskyHandle,
                       blueskyHandleConfirmed,
+                      blueskyDomainHandle,
                   }
                 : {}),
         };
@@ -421,6 +431,7 @@ export class AccountView {
             blueskyEnabled: !!row,
             blueskyHandle: row?.handle || null,
             blueskyHandleConfirmed: !!row?.confirmed,
+            blueskyDomainHandle: row ? toDomainHandle(row) : null,
         };
     }
 

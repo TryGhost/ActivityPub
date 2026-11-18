@@ -104,6 +104,10 @@ import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
 import { isLocalEnvironment } from '@/helpers/environment';
 import { AccountController } from '@/http/api/account.controller';
+import {
+    ATPROTO_DID_PATH,
+    type AtprotoDidController,
+} from '@/http/api/atproto-did.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
 import { ClientConfigController } from '@/http/api/client-config.controller';
@@ -746,8 +750,11 @@ app.use(async (c, next) => {
 
     if (process.env.ACTIVITYPUB_SURROGATE_CACHE_CONTROL) {
         const isApiRequest = c.req.path.startsWith('/.ghost/activitypub/v1');
+        // Changes as soon as a domain handle is claimed, and the claim checks
+        // it right away
+        const isAtprotoDidRequest = c.req.path === ATPROTO_DID_PATH;
 
-        if (!isApiRequest) {
+        if (!isApiRequest && !isAtprotoDidRequest) {
             if (c.req.method === 'GET' || c.req.method === 'HEAD') {
                 c.res.headers.set('Cache-Control', 'public, max-age=0');
                 c.res.headers.set(
@@ -884,6 +891,16 @@ app.get(
             'webFingerController',
         );
         return webFingerController.handleWebFinger(ctx, next);
+    }),
+);
+
+app.get(
+    ATPROTO_DID_PATH,
+    spanWrapper((ctx: HonoContext) => {
+        const atprotoDidController = container.resolve<AtprotoDidController>(
+            'atprotoDidController',
+        );
+        return atprotoDidController.handleGetAtprotoDid(ctx);
     }),
 );
 

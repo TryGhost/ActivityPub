@@ -68,6 +68,23 @@ export class SiteService {
                 await trx('sites')
                     .where({ host: verifiedOwnerHost, ghost_uuid: ghostUuid })
                     .update({ ghost_uuid: null });
+
+                // The publication moved to this host, so the previous host's
+                // account stops serving its Bluesky DID for its old domain.
+                // Every status changes, so a claim already in progress for the
+                // old account is dropped too
+                await trx('bluesky_integration_account_handles')
+                    .whereIn(
+                        'account_id',
+                        trx('users')
+                            .join('sites', 'sites.id', 'users.site_id')
+                            .where('sites.host', verifiedOwnerHost)
+                            .select('users.account_id'),
+                    )
+                    .update({
+                        domain_handle_status: 'released',
+                        domain_handle_automatic: false,
+                    });
             }
 
             const [id] = await trx('sites').insert({
