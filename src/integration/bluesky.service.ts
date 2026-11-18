@@ -43,6 +43,11 @@ export class BlueskyService {
             .first();
 
         if (!existing) {
+            this.logger.info(
+                `Bluesky integration not enabled for account {id} - skipping Bridgy disconnect`,
+                { id: account.id },
+            );
+
             return;
         }
 
