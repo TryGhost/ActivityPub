@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
-import { Follow, Reject } from '@fedify/vocab';
+import { Delete, Follow, Reject } from '@fedify/vocab';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -10,7 +10,7 @@ import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { FedifyContext } from '@/app';
-import { Post, PostType } from '@/post/post.entity';
+import { Audience, Post, PostType } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
@@ -66,6 +66,7 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
             postRepository,
+            [],
         );
     });
 
@@ -168,6 +169,7 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
             postRepository,
+            [],
         );
         await bridge.init();
 
@@ -252,6 +254,7 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
             postRepository,
+            [],
         );
         await bridge.init();
 
@@ -298,6 +301,7 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
             postRepository,
+            [],
         );
         await bridge.init();
 
@@ -341,6 +345,7 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
             postRepository,
+            [],
         );
         await bridge.init();
 
@@ -689,5 +694,152 @@ describe('FediverseBridge', () => {
         expect(accountService.getAccountById).toHaveBeenCalledWith(999);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    describe('relays', () => {
+        const relayInbox = new URL('https://relay.example/inbox');
+
+        // Run the bridge's handlers for the event, and wait for them to finish
+        const handle = async (name: string, event: unknown) => {
+            await Promise.all(
+                events.listeners(name).map((listener) => listener(event)),
+            );
+        };
+
+        const getPost = (audience: Audience, inReplyTo: number | null) => {
+            const author = Object.create(AccountEntity);
+            author.id = 123;
+            author.username = 'testuser';
+            author.apId = new URL('https://example.com/user/foo');
+            author.isInternal = true;
+            author.apFollowers = new URL(
+                'https://example.com/user/foo/followers',
+            );
+
+            const post = Object.create(Post);
+            post.id = 456;
+            post.author = author;
+            post.type = PostType.Note;
+            post.audience = audience;
+            post.inReplyTo = inReplyTo;
+            post.content = 'Note content';
+            post.apId = new URL('https://example.com/note/post-123');
+            post.mentions = [];
+            post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+            post.publishedAt = new Date('2025-01-01T00:00:00Z');
+
+            return post as Post;
+        };
+
+        const handlePostDeleted = async (post: Post) => {
+            vi.mocked(accountService.getAccountById).mockResolvedValue(
+                post.author as AccountEntity,
+            );
+
+            await handle(
+                PostDeletedEvent.getName(),
+                new PostDeletedEvent(
+                    post.id as number,
+                    post.apId.href,
+                    123,
+                    post.author.apId.href,
+                    'https://example.com/user/foo/followers',
+                    'testuser',
+                    true,
+                ),
+            );
+        };
+
+        beforeEach(async () => {
+            events = new EventEmitter();
+            bridge = new FediverseBridge(
+                events,
+                fedifyContextFactory,
+                accountService,
+                postRepository,
+                [relayInbox],
+            );
+
+            await bridge.init();
+        });
+
+        it('should send public posts to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+
+            vi.mocked(postRepository.getById).mockResolvedValue(
+                getPost(Audience.Public, null),
+            );
+
+            await handle(PostCreatedEvent.getName(), new PostCreatedEvent(456));
+
+            expect(sendActivity).toHaveBeenCalledTimes(2);
+            expect(sendActivity.mock.calls[1][0]).toEqual({
+                username: 'testuser',
+            });
+            expect(sendActivity.mock.calls[1][1]).toEqual([
+                { id: relayInbox, inboxId: relayInbox },
+            ]);
+            expect(sendActivity.mock.calls[1][2]).toBe(
+                sendActivity.mock.calls[0][2],
+            );
+        });
+
+        it('should not send followers-only posts to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+
+            vi.mocked(postRepository.getById).mockResolvedValue(
+                getPost(Audience.FollowersOnly, null),
+            );
+
+            await handle(PostCreatedEvent.getName(), new PostCreatedEvent(456));
+            await handle(PostUpdatedEvent.getName(), new PostUpdatedEvent(456));
+
+            expect(sendActivity.mock.calls.map((call) => call[1])).toEqual([
+                'followers',
+                'followers',
+            ]);
+        });
+
+        it('should not send updates to replies to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+
+            vi.mocked(postRepository.getById).mockResolvedValue(
+                getPost(Audience.Public, 789),
+            );
+
+            await handle(PostUpdatedEvent.getName(), new PostUpdatedEvent(456));
+
+            expect(sendActivity.mock.calls.map((call) => call[1])).toEqual([
+                'followers',
+            ]);
+        });
+
+        it('should send the deletion of public posts to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+            const post = getPost(Audience.Public, null);
+
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+            await handlePostDeleted(post);
+
+            expect(sendActivity).toHaveBeenCalledTimes(2);
+            expect(sendActivity.mock.calls[1][1]).toEqual([
+                { id: relayInbox, inboxId: relayInbox },
+            ]);
+            expect(sendActivity.mock.calls[1][2]).toBeInstanceOf(Delete);
+        });
+
+        it('should not send the deletion of followers-only posts to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+            const post = getPost(Audience.FollowersOnly, null);
+
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+            await handlePostDeleted(post);
+
+            expect(sendActivity.mock.calls.map((call) => call[1])).toEqual([
+                'followers',
+            ]);
+        });
     });
 });
