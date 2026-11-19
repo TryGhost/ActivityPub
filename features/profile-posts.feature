@@ -58,3 +58,24 @@ Feature: My Posts on Profile
     And "MyNote" is in the posts
     And "BobNote" is in the posts
     And "AliceNote" is in the posts
+
+  Scenario: Profile posts do not include our replies
+    Given we reply "MyReply" to "AliceNote" with the content
+      """
+      Hello Alice
+      """
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me"
+    Then the request is accepted
+    And post "1" in the "posts" response is "AliceNote"
+    And post "2" in the "posts" response is "MyNote"
+
+  Scenario: Profile posts with replies include our replies
+    Given we reply "MyReply" to "AliceNote" with the content
+      """
+      Hello Alice
+      """
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/with-replies"
+    Then the request is accepted
+    And post "1" in the "posts" response is "MyReply"
+    And post "2" in the "posts" response is "AliceNote"
+    And post "3" in the "posts" response is "MyNote"

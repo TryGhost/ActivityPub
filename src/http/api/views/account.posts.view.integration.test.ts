@@ -283,6 +283,27 @@ describe('AccountPostsView', () => {
             }
         });
 
+        it('returns replies alongside posts when includeReplies is set', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            const reply = await fixtureManager.createReply(account, post);
+
+            const result = await viewer.getPostsFromOutbox(
+                account,
+                contextAccount.id,
+                10,
+                null,
+                true,
+            );
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const accountPosts = getValue(result);
+                expect(accountPosts.results).toHaveLength(2);
+                expect(accountPosts.results[0].id).toBe(reply.apId.href);
+                expect(accountPosts.results[1].id).toBe(post.apId.href);
+            }
+        });
+
         it('sets likedByMe and repostedByMe correctly', async () => {
             const post = await fixtureManager.createPost(account);
             await postRepository.save(post);

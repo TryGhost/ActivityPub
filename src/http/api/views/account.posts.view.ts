@@ -101,6 +101,7 @@ export class AccountPostsView {
         currentContextAccount: Account,
         limit: number,
         cursor: string | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
@@ -109,6 +110,7 @@ export class AccountPostsView {
                 currentContextAccount.id,
                 limit,
                 cursor,
+                includeReplies,
             );
             if (isError(result)) {
                 throw new Error(
@@ -126,6 +128,7 @@ export class AccountPostsView {
             apId,
             cursor,
             account,
+            includeReplies,
         );
     }
 
@@ -134,6 +137,7 @@ export class AccountPostsView {
         contextAccountId: number,
         limit: number,
         cursor: string | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsFromOutboxError>> {
         if (!account.isInternal) {
             return error('not-internal-account');
@@ -253,7 +257,11 @@ export class AccountPostsView {
                 );
             })
             .where('outboxes.account_id', account.id)
-            .whereNot('outboxes.outbox_type', OutboxType.Reply)
+            .modify((query) => {
+                if (!includeReplies) {
+                    query.whereNot('outboxes.outbox_type', OutboxType.Reply);
+                }
+            })
             .modify((query) => {
                 if (cursor) {
                     query.where('outboxes.published_at', '<', cursor);
@@ -284,6 +292,7 @@ export class AccountPostsView {
         apId: URL,
         cursor: string | null,
         account?: Account | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
@@ -428,7 +437,7 @@ export class AccountPostsView {
                     };
                 };
 
-                if (activity.object.inReplyTo) {
+                if (activity.object.inReplyTo && !includeReplies) {
                     continue;
                 }
 
