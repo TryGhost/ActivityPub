@@ -73,6 +73,22 @@ const poolConfig = {
         process.env.MYSQL_CONN_POOL_CREATE_RETRY_INTERVAL ?? '200',
         10,
     ),
+    // `timezone: '+00:00'` only tells mysql2 how to read and write dates; MySQL still
+    // reads TIMESTAMP columns and CURRENT_TIMESTAMP in the session time zone, which
+    // defaults to the server's. Pin the session to UTC so both sides agree on any server.
+    afterCreate: (
+        connection: Connection,
+        done: (error: Error | null, connection: Connection) => void,
+    ) => {
+        connection.query("SET time_zone = '+00:00'", (error) => {
+            // Knex never hands a connection to the pool when this hook fails, so
+            // nothing else would close it and its session would stay open.
+            if (error) {
+                connection.destroy();
+            }
+            done(error, connection);
+        });
+    },
 };
 
 export const knex = Knex({
