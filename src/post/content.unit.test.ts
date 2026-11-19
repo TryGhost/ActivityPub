@@ -21,6 +21,7 @@ describe('ContentPreparer', () => {
             extractLinks: false,
             addPaidContentMessage: false as const,
             addMentions: false as const,
+            addHashtags: false as const,
         };
 
         describe('Removing gated content', () => {
@@ -397,6 +398,112 @@ describe('ContentPreparer', () => {
                 });
 
                 expect(result).toEqual(content);
+            });
+        });
+
+        describe('Adding hashtags', () => {
+            const siteUrl = new URL('https://example.com');
+
+            // Matches how notes are prepared
+            const prepareNote = (content: string, url = siteUrl) =>
+                preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    escapeHtml: true,
+                    extractLinks: true,
+                    addHashtags: { siteUrl: url },
+                });
+
+            it('should link hashtags to the site tag archive', () => {
+                expect(prepareNote('Hello #world')).toEqual(
+                    'Hello <a href="https://example.com/tag/world/" class="mention hashtag" rel="tag">#<span>world</span></a>',
+                );
+            });
+
+            it('should keep the case of the hashtag but lowercase the link', () => {
+                expect(prepareNote('#GhostCMS')).toEqual(
+                    '<a href="https://example.com/tag/ghostcms/" class="mention hashtag" rel="tag">#<span>GhostCMS</span></a>',
+                );
+            });
+
+            it('should link non-latin hashtags', () => {
+                expect(prepareNote('#café')).toEqual(
+                    '<a href="https://example.com/tag/caf%C3%A9/" class="mention hashtag" rel="tag">#<span>café</span></a>',
+                );
+            });
+
+            it('should link hashtags to the archive of their normalized name', () => {
+                expect(prepareNote('#ＧＨＯＳＴ')).toEqual(
+                    '<a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>ＧＨＯＳＴ</span></a>',
+                );
+            });
+
+            it('should link tags relative to a site in a subdirectory', () => {
+                expect(
+                    prepareNote('#world', new URL('https://example.com/blog')),
+                ).toEqual(
+                    '<a href="https://example.com/blog/tag/world/" class="mention hashtag" rel="tag">#<span>world</span></a>',
+                );
+            });
+
+            it('should not link text that is not a hashtag', () => {
+                const cases = [
+                    'No tags here',
+                    'Number #1',
+                    'C#sharp',
+                    'path/#anchor',
+                    'Q&A#tag',
+                    '##double',
+                ];
+
+                for (const content of cases) {
+                    expect(prepareNote(content)).not.toContain('rel="tag"');
+                }
+            });
+
+            it('should not treat escaped HTML as hashtags', () => {
+                const options = {
+                    ...allOptionsDisabled,
+                    escapeHtml: true,
+                    addHashtags: { siteUrl },
+                };
+
+                expect(preparer.prepare("It's #fine", options)).toEqual(
+                    'It&#x27;s <a href="https://example.com/tag/fine/" class="mention hashtag" rel="tag">#<span>fine</span></a>',
+                );
+                expect(
+                    preparer.prepare('path/#anchor Q&#tag', options),
+                ).toEqual('path&#x2F;#anchor Q&amp;#tag');
+            });
+
+            it('should not link hashtags inside links', () => {
+                const result = prepareNote(
+                    'See https://example.com/page#section and #news',
+                );
+
+                expect(
+                    ContentPreparer.parseHashtagLinks(result).map(
+                        (hashtag) => hashtag.name,
+                    ),
+                ).toEqual(['news']);
+                expect(result).toContain(
+                    '<a href="https://example.com/page#section">',
+                );
+            });
+
+            it('should link hashtags across line breaks and paragraphs', () => {
+                const result = preparer.prepare('#one\n#two', {
+                    ...allOptionsDisabled,
+                    escapeHtml: true,
+                    convertLineBreaks: true,
+                    wrapInParagraph: true,
+                    addHashtags: { siteUrl },
+                });
+
+                expect(
+                    ContentPreparer.parseHashtagLinks(result).map(
+                        (hashtag) => hashtag.name,
+                    ),
+                ).toEqual(['one', 'two']);
             });
         });
     });
@@ -863,6 +970,46 @@ describe('ContentPreparer', () => {
             ]);
 
             expect(result).toEqual(content);
+        });
+    });
+
+    describe('parseHashtagLinks', () => {
+        it('should return hashtag links', () => {
+            const result = ContentPreparer.parseHashtagLinks(
+                '<p><a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and <a href="https://mastodon.example/tags/news" rel="tag ugc">#news</a></p>',
+            );
+
+            expect(result).toEqual([
+                {
+                    name: 'Ghost',
+                    href: new URL('https://example.com/tag/ghost/'),
+                },
+                {
+                    name: 'news',
+                    href: new URL('https://mastodon.example/tags/news'),
+                },
+            ]);
+        });
+
+        it('should only return each hashtag once', () => {
+            const result = ContentPreparer.parseHashtagLinks(
+                '<a href="https://example.com/tag/ghost/" rel="tag">#Ghost</a> <a href="https://example.com/tag/ghost/" rel="tag">#ghost</a>',
+            );
+
+            expect(result).toEqual([
+                {
+                    name: 'Ghost',
+                    href: new URL('https://example.com/tag/ghost/'),
+                },
+            ]);
+        });
+
+        it('should ignore links that are not hashtags', () => {
+            const result = ContentPreparer.parseHashtagLinks(
+                '<a href="https://example.com/#ghost">#ghost</a> <a href="https://example.com/tag/ghost/" rel="tag">Ghost</a> <a href="https://example.xyz/@user" class="mention">@user</a>',
+            );
+
+            expect(result).toEqual([]);
         });
     });
 });

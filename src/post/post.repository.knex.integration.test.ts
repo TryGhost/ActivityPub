@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
+import type { Account } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
@@ -1488,9 +1489,167 @@ describe('KnexPostRepository', () => {
                         profile_image: null,
                     },
                 ],
+                ghostTags: [],
             },
             'Metadata should match',
         );
+    });
+
+    describe('Hashtags', () => {
+        const getHashtagNamesForPost = async (post: Post) =>
+            (
+                await client('post_hashtags')
+                    .join('hashtags', 'hashtags.id', 'post_hashtags.hashtag_id')
+                    .where('post_hashtags.post_id', post.id)
+                    .orderBy('hashtags.name')
+                    .select('hashtags.name')
+            ).map((row: { name: string }) => row.name);
+
+        const createArticle = async (
+            account: Account,
+            tags: { name: string; url: string; visibility: string }[],
+        ) =>
+            getValue(
+                (await Post.createArticleFromGhostPost(account, {
+                    title: 'Title',
+                    uuid: randomUUID(),
+                    html: '<p>Hello, world!</p>',
+                    excerpt: 'Hello, world!',
+                    custom_excerpt: null,
+                    feature_image: null,
+                    url: `https://testing-hashtags.com/${randomUUID()}`,
+                    published_at: '2025-04-01T00:00:00.000Z',
+                    visibility: 'public',
+                    authors: [],
+                    tags,
+                })) as Ok<Post>,
+            ) as Post;
+
+        it('saves the hashtags of a new post', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = await createArticle(account, [
+                {
+                    name: 'Getting Started',
+                    url: 'https://testing-hashtags.com/tag/getting-started/',
+                    visibility: 'public',
+                },
+                {
+                    name: 'News',
+                    url: 'https://testing-hashtags.com/tag/news/',
+                    visibility: 'public',
+                },
+            ]);
+
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([
+                'gettingstarted',
+                'news',
+            ]);
+
+            const row = await client('post_hashtags')
+                .where('post_id', post.id)
+                .first();
+            expect(new Date(row.published_at)).toEqual(post.publishedAt);
+        });
+
+        it('reuses existing hashtags', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const tags = [
+                {
+                    name: 'News',
+                    url: 'https://testing-hashtags.com/tag/news/',
+                    visibility: 'public',
+                },
+            ];
+
+            await postRepository.save(await createArticle(account, tags));
+            await postRepository.save(await createArticle(account, tags));
+
+            expect(
+                await client('hashtags').where('name', 'news').count('* as c'),
+            ).toEqual([{ c: 1 }]);
+            expect(await client('post_hashtags').count('* as c')).toEqual([
+                { c: 2 },
+            ]);
+        });
+
+        it('replaces the hashtags of an updated post', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = await createArticle(account, [
+                {
+                    name: 'News',
+                    url: 'https://testing-hashtags.com/tag/news/',
+                    visibility: 'public',
+                },
+            ]);
+            await postRepository.save(post);
+
+            post.update(account, {
+                title: post.title,
+                content: post.content,
+                excerpt: post.excerpt,
+                summary: post.summary,
+                imageUrl: post.imageUrl,
+                url: post.url,
+                metadata: {
+                    ghostAuthors: [],
+                    ghostTags: [
+                        {
+                            name: 'Ghost',
+                            url: 'https://testing-hashtags.com/tag/ghost/',
+                        },
+                    ],
+                },
+            });
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual(['ghost']);
+        });
+
+        it('removes the hashtags of a deleted post', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = await createArticle(account, [
+                {
+                    name: 'News',
+                    url: 'https://testing-hashtags.com/tag/news/',
+                    visibility: 'public',
+                },
+            ]);
+            await postRepository.save(post);
+
+            post.delete(account);
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([]);
+        });
+
+        it('does not save the hashtags of a post that is not public', async () => {
+            const account = await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                audience: Audience.FollowersOnly,
+                content: '<p>Hello</p>',
+                apId: new URL(`https://example.com/note/${randomUUID()}`),
+                hashtags: ['news'],
+            });
+
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([]);
+        });
     });
 
     it('Handles mentions of a new post', async () => {
@@ -2163,6 +2322,7 @@ describe('KnexPostRepository', () => {
                             'https://example.com/original-author.jpg',
                     },
                 ],
+                ghostTags: [],
             });
 
             const updateParams = {

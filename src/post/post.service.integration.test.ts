@@ -4,11 +4,13 @@ import {
     Article,
     Collection,
     Document,
+    Hashtag,
     Image,
     Link,
     lookupObject,
     Mention,
     Note,
+    PUBLIC_COLLECTION,
 } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
@@ -25,6 +27,7 @@ import {
     getError,
     getValue,
     isError,
+    type Ok,
     ok,
 } from '@/core/result';
 import { ModerationService } from '@/moderation/moderation.service';
@@ -1021,6 +1024,91 @@ describe('PostService', () => {
             expect(post.mentions).toHaveLength(1);
             expect(post.mentions[0].username).toBe(mentionedAccount.username);
             expect(post.mentions[0].apId).toEqual(mentionedAccount.apId);
+        });
+
+        describe('hashtags', () => {
+            const getHashtagNamesForPost = async (post: Post) =>
+                (
+                    await db('post_hashtags')
+                        .join(
+                            'hashtags',
+                            'hashtags.id',
+                            'post_hashtags.hashtag_id',
+                        )
+                        .where('post_hashtags.post_id', post.id)
+                        .orderBy('hashtags.name')
+                        .select('hashtags.name')
+                ).map((row: { name: string }) => row.name);
+
+            const createNoteWithHashtags = (
+                apId: URL,
+                author: Account,
+                addressing: { tos: URL[]; ccs: URL[] },
+            ) =>
+                new Note({
+                    id: apId,
+                    content: 'Hello #News and #Ghost',
+                    published: Temporal.Now.instant(),
+                    attribution: author.apId,
+                    ...addressing,
+                    tags: [
+                        new Hashtag({
+                            href: new URL('https://example.com/tags/news'),
+                            name: '#News',
+                        }),
+                        new Hashtag({
+                            href: new URL('https://example.com/tags/ghost'),
+                            name: 'ghost',
+                        }),
+                        new Hashtag({
+                            href: new URL('https://example.com/tags/invalid'),
+                            name: '#not valid',
+                        }),
+                    ],
+                });
+
+            it('saves the hashtags of incoming public posts', async () => {
+                const author = await fixtureManager.createExternalAccount();
+                const apId = new URL(
+                    'https://example.com/post/hashtags-public',
+                );
+
+                vi.mocked(lookupObject).mockResolvedValue(
+                    createNoteWithHashtags(apId, author, {
+                        tos: [PUBLIC_COLLECTION],
+                        ccs: [author.apFollowers as URL],
+                    }),
+                );
+
+                const post = getValue(
+                    (await postService.getByApId(apId)) as Ok<Post>,
+                );
+
+                expect(await getHashtagNamesForPost(post)).toEqual([
+                    'ghost',
+                    'news',
+                ]);
+            });
+
+            it('does not save the hashtags of incoming unlisted posts', async () => {
+                const author = await fixtureManager.createExternalAccount();
+                const apId = new URL(
+                    'https://example.com/post/hashtags-unlisted',
+                );
+
+                vi.mocked(lookupObject).mockResolvedValue(
+                    createNoteWithHashtags(apId, author, {
+                        tos: [author.apFollowers as URL],
+                        ccs: [PUBLIC_COLLECTION],
+                    }),
+                );
+
+                const post = getValue(
+                    (await postService.getByApId(apId)) as Ok<Post>,
+                );
+
+                expect(await getHashtagNamesForPost(post)).toEqual([]);
+            });
         });
     });
 

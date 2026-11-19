@@ -8,6 +8,12 @@ import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
 import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
+import {
+    type GhostTag,
+    getHashtagLinksFromGhostTags,
+    type HashtagLink,
+    normalizeHashtags,
+} from '@/post/hashtag';
 
 /** @see PostSummary.parse to get a branded PostSummary */
 export type PostSummary = string & { readonly __brand: unique symbol };
@@ -80,6 +86,10 @@ type GhostAuthor = {
 
 export type Metadata = {
     ghostAuthors: GhostAuthor[];
+    /**
+     * Public tags of the Ghost post, used to publish the post's hashtags
+     */
+    ghostTags?: GhostTag[];
 } & Record<string, unknown>;
 
 // TODO Deduplicate this with the webhook handler
@@ -94,6 +104,7 @@ export interface GhostPost {
     url: string;
     visibility: string;
     authors?: GhostAuthor[] | null;
+    tags?: (GhostTag & { visibility: string })[] | null;
 }
 
 export interface PostUpdateParams {
@@ -145,6 +156,10 @@ export interface PostData {
     apId?: URL | null;
     attachments?: PostAttachment[] | null;
     mentions?: Mention[] | null;
+    /**
+     * Names of the hashtags the post is tagged with
+     */
+    hashtags?: string[] | null;
     metadata?: Metadata | null;
 }
 
@@ -162,6 +177,27 @@ export function isPublicPost(post: Post): post is PublicPost {
 
 export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
     return post.audience === Audience.FollowersOnly;
+}
+
+/**
+ * Get the hashtags an internal post is published with. Articles use the
+ * post's Ghost tags, notes use the hashtag links in their content.
+ *
+ * External posts declare their hashtags in their `tag` property instead,
+ * which is not kept on the post.
+ */
+export function getPublishedHashtags(
+    post: Pick<Post, 'type' | 'content' | 'metadata'>,
+): HashtagLink[] {
+    if (post.type === PostType.Article) {
+        return getHashtagLinksFromGhostTags(post.metadata?.ghostTags ?? []);
+    }
+
+    if (post.type === PostType.Note && post.content) {
+        return ContentPreparer.parseHashtagLinks(post.content);
+    }
+
+    return [];
 }
 
 export type CreatePostError = 'private-content' | 'missing-content';
@@ -196,6 +232,7 @@ export class Post extends BaseEntity {
     private _imageUrl: URL | null;
     private _metadata: Metadata | null;
     public readonly mentions: MentionedAccount[] = [];
+    private hashtagsToSave: string[] | null = null;
 
     constructor(
         public readonly id: number | null,
@@ -323,6 +360,7 @@ export class Post extends BaseEntity {
         this._imageUrl = params.imageUrl;
         this._url = params.url;
         this._metadata = params.metadata;
+        this.hashtagsToSave = this.getHashtagNames();
     }
 
     private static normalizeTitle(title: string | null): PostTitle | null {
@@ -423,6 +461,22 @@ export class Post extends BaseEntity {
         this.mentions.push(account);
     }
 
+    /**
+     * Get the normalized names of the hashtags to save for this post, or null
+     * if they have not changed since the post was loaded
+     */
+    getChangedHashtags(): string[] | null {
+        const hashtags = this.hashtagsToSave;
+        this.hashtagsToSave = null;
+        return hashtags;
+    }
+
+    private getHashtagNames(): string[] {
+        return normalizeHashtags(
+            getPublishedHashtags(this).map((hashtag) => hashtag.name),
+        );
+    }
+
     get likeCount() {
         return this._likeCount;
     }
@@ -491,6 +545,7 @@ export class Post extends BaseEntity {
             extractLinks: false,
             addPaidContentMessage: false,
             addMentions: false,
+            addHashtags: false,
         };
 
         if (content === null || content === '') {
@@ -532,25 +587,29 @@ export class Post extends BaseEntity {
             ? PostSummary.parse(ghostPost.custom_excerpt)
             : null;
 
-        return ok(
-            new Post(
-                null,
-                randomUUID(),
-                account,
-                PostType.Article,
-                Audience.Public,
-                ghostPost.title,
-                excerpt,
-                summary,
-                content,
-                new URL(ghostPost.url),
-                parseURL(ghostPost.feature_image),
-                new Date(ghostPost.published_at),
-                {
-                    ghostAuthors: ghostPost.authors ?? [],
-                },
-            ),
+        const post = new Post(
+            null,
+            randomUUID(),
+            account,
+            PostType.Article,
+            Audience.Public,
+            ghostPost.title,
+            excerpt,
+            summary,
+            content,
+            new URL(ghostPost.url),
+            parseURL(ghostPost.feature_image),
+            new Date(ghostPost.published_at),
+            {
+                ghostAuthors: ghostPost.authors ?? [],
+                ghostTags: (ghostPost.tags ?? [])
+                    .filter((tag) => tag.visibility === 'public')
+                    .map((tag) => ({ name: tag.name, url: tag.url })),
+            },
         );
+        post.hashtagsToSave = post.getHashtagNames();
+
+        return ok(post);
     }
 
     static createFromData(account: Account, data: PostData): Post {
@@ -615,6 +674,8 @@ export class Post extends BaseEntity {
             post.addMention(mention.account);
         }
 
+        post.hashtagsToSave = normalizeHashtags(data.hashtags ?? []);
+
         return post;
     }
 
@@ -637,6 +698,7 @@ export class Post extends BaseEntity {
             extractLinks: true,
             addPaidContentMessage: false,
             addMentions: mentions,
+            addHashtags: { siteUrl: account.url },
         });
 
         const postAttachment = image
@@ -680,6 +742,8 @@ export class Post extends BaseEntity {
             }
         }
 
+        post.hashtagsToSave = post.getHashtagNames();
+
         return post;
     }
 
@@ -710,6 +774,7 @@ export class Post extends BaseEntity {
             extractLinks: true,
             addPaidContentMessage: false,
             addMentions: mentions,
+            addHashtags: { siteUrl: account.url },
         });
 
         const postAttachment = image
@@ -752,6 +817,8 @@ export class Post extends BaseEntity {
                 post.addMention(mention.account);
             }
         }
+
+        post.hashtagsToSave = post.getHashtagNames();
 
         return post;
     }

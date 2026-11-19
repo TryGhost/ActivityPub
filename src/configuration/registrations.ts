@@ -74,6 +74,7 @@ import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
+import { HashtagSearchView } from '@/http/api/views/hashtag.search.view';
 import { RecommendationsView } from '@/http/api/views/recommendations.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { TopicView } from '@/http/api/views/topic.view';
@@ -88,6 +89,7 @@ import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
 import { NotificationService } from '@/notification/notification.service';
 import { NotificationEventService } from '@/notification/notification-event.service';
+import { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -390,6 +392,14 @@ export function registerDependencies(
         'postInteractionCountsService',
         asClass(PostInteractionCountsService).singleton(),
     );
+    container.register(
+        'hashtagServiceDomain',
+        asValue(process.env.HASHTAG_SERVICE_DOMAIN || null),
+    );
+    container.register(
+        'hashtagPostsImportService',
+        asClass(HashtagPostsImportService).singleton(),
+    );
     container.register('nodeInfoService', asClass(NodeInfoService).singleton());
     container.register(
         'ghostService',
@@ -443,6 +453,10 @@ export function registerDependencies(
     container.register(
         'accountSearchView',
         asClass(AccountSearchView).singleton(),
+    );
+    container.register(
+        'hashtagSearchView',
+        asClass(HashtagSearchView).singleton(),
     );
     container.register('blocksView', asClass(BlocksView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());

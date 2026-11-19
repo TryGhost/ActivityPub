@@ -6,6 +6,7 @@ import type { AccountEntity } from '@/account/account.entity';
 import type { AppContext } from '@/app';
 import type { FeedService } from '@/feed/feed.service';
 import { FeedController } from '@/http/api/feed.controller';
+import type { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
 import { PostType } from '@/post/post.entity';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import type { Site } from '@/site/site.service';
@@ -20,6 +21,7 @@ vi.mock('@sentry/node', () => {
 describe('Feed API', () => {
     let feedService: FeedService;
     let postInteractionCountsService: PostInteractionCountsService;
+    let hashtagPostsImportService: HashtagPostsImportService;
     let feedController: FeedController;
     let site: Site;
     let account: AccountEntity;
@@ -161,11 +163,16 @@ describe('Feed API', () => {
             requestUpdate: vi.fn().mockResolvedValue(undefined),
         } as unknown as PostInteractionCountsService;
 
+        hashtagPostsImportService = {
+            requestImport: vi.fn().mockResolvedValue(undefined),
+        } as unknown as HashtagPostsImportService;
+
         feedService = {} as FeedService;
 
         feedController = new FeedController(
             feedService,
             postInteractionCountsService,
+            hashtagPostsImportService,
         );
 
         ctx = {
@@ -282,6 +289,87 @@ describe('Feed API', () => {
             expect(body.posts[0].title).toContain('world');
             expect(body.posts[0].title).not.toContain('<script');
             expect(body.posts[0].title).not.toContain('alert("xss")');
+        });
+    });
+
+    describe('retrieving a hashtag feed', () => {
+        const withHashtagParam = (
+            hashtag: string,
+            next: string | null = null,
+        ) =>
+            ({
+                ...ctx,
+                req: {
+                    param: () => hashtag,
+                    query: (key: string) => (key === 'next' ? next : '2'),
+                },
+            }) as unknown as AppContext;
+
+        it('should return the posts for the normalized hashtag', async () => {
+            feedService.getHashtagFeedData = vi.fn().mockResolvedValue(
+                getMockFeedData({
+                    accountId: account.id,
+                    feedType: 'Inbox',
+                    limit: 2,
+                    cursor: null,
+                }),
+            );
+
+            const response = await feedController.getHashtagFeed(
+                withHashtagParam('#Ghost'),
+            );
+
+            expect(response.status).toBe(200);
+            expect(feedService.getHashtagFeedData).toHaveBeenCalledWith(
+                'ghost',
+                account.id,
+                2,
+                null,
+            );
+            const body = await response.json();
+            expect(body.posts).toHaveLength(2);
+            expect(
+                postInteractionCountsService.requestUpdate,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should request recent posts for the hashtag when the first page is opened', async () => {
+            feedService.getHashtagFeedData = vi.fn().mockResolvedValue({
+                results: [],
+                nextCursor: null,
+            });
+
+            await feedController.getHashtagFeed(withHashtagParam('#Ghost'));
+
+            expect(
+                hashtagPostsImportService.requestImport,
+            ).toHaveBeenCalledWith(site.host, 'ghost');
+        });
+
+        it('should not request recent posts for the hashtag when a later page is opened', async () => {
+            feedService.getHashtagFeedData = vi.fn().mockResolvedValue({
+                results: [],
+                nextCursor: null,
+            });
+
+            await feedController.getHashtagFeed(
+                withHashtagParam('#Ghost', 'cursor-1'),
+            );
+
+            expect(
+                hashtagPostsImportService.requestImport,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should return a 400 for an invalid hashtag', async () => {
+            feedService.getHashtagFeedData = vi.fn();
+
+            const response = await feedController.getHashtagFeed(
+                withHashtagParam('not a hashtag'),
+            );
+
+            expect(response.status).toBe(400);
+            expect(feedService.getHashtagFeedData).not.toHaveBeenCalled();
         });
     });
 });
