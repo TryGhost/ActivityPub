@@ -180,6 +180,8 @@ services:
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
       - JWKS_REFETCH_COOLDOWN_MS=0
+      # Keeps the tests from requesting posts from tags.pub
+      - HASHTAG_SERVICE_DOMAIN=
     command: pnpm build:watch
     depends_on:
       migrate-testing:
