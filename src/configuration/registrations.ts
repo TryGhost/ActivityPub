@@ -399,6 +399,16 @@ export function registerDependencies(
     );
     container.register('siteService', asClass(SiteService).singleton());
     container.register('feedService', asClass(FeedService).singleton());
+    container.register(
+        'relayInboxes',
+        asValue(
+            (process.env.RELAY_INBOXES ?? '')
+                .split(',')
+                .map((inbox) => inbox.trim())
+                .filter((inbox) => inbox !== '')
+                .map((inbox) => new URL(inbox)),
+        ),
+    );
     container.register('fediverseBridge', asClass(FediverseBridge).singleton());
 
     container.register(
