@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     getHashtagLinksFromGhostTags,
     getHashtagNameFromGhostTag,
+    getHashtagServiceHandle,
     getHashtagUrl,
     normalizeHashtag,
     normalizeHashtags,
@@ -122,5 +123,21 @@ describe('getHashtagUrl', () => {
         expect(
             getHashtagUrl(new URL('https://example.com/blog/'), 'café').href,
         ).toBe('https://example.com/blog/tag/caf%C3%A9/');
+    });
+});
+
+describe('getHashtagServiceHandle', () => {
+    it('should return the handle of the hashtag account on the service', () => {
+        expect(getHashtagServiceHandle('ghost', 'tags.pub')).toBe(
+            '@ghost@tags.pub',
+        );
+        expect(getHashtagServiceHandle('web3', 'tags.pub')).toBe(
+            '@web3@tags.pub',
+        );
+    });
+
+    it('should return null for hashtags the service would fold into another', () => {
+        expect(getHashtagServiceHandle('café', 'tags.pub')).toBeNull();
+        expect(getHashtagServiceHandle('open_web', 'tags.pub')).toBeNull();
     });
 });

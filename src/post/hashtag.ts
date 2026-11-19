@@ -168,6 +168,30 @@ export function getHashtagUrl(siteUrl: URL, name: string): URL {
     return new URL(`tag/${encodeURIComponent(name.toLowerCase())}/`, base);
 }
 
+/**
+ * Get the handle of the account that shares a hashtag's posts on a hashtag
+ * service like tags.pub, which has one account per hashtag (`@foo@tags.pub`
+ * for `#foo`). Following that account brings the hashtag's posts from across
+ * the network into the follower's feed.
+ *
+ * tags.pub folds hashtags into ASCII letters and digits (`#Café_Culture`
+ * becomes `@cafeculture@tags.pub`), so a hashtag with other characters gets
+ * no handle rather than one for a broader set of hashtags.
+ *
+ * @param name Normalized hashtag name, without a leading `#`
+ * @param serviceDomain Domain of the hashtag service, e.g. `tags.pub`
+ */
+export function getHashtagServiceHandle(
+    name: string,
+    serviceDomain: string,
+): string | null {
+    if (!/^[a-z0-9]+$/.test(name)) {
+        return null;
+    }
+
+    return `@${name}@${serviceDomain}`;
+}
+
 function isValidHashtagName(name: string): boolean {
     return (
         [...name].length <= MAX_HASHTAG_LENGTH &&

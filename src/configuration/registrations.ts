@@ -89,6 +89,7 @@ import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
 import { NotificationService } from '@/notification/notification.service';
 import { NotificationEventService } from '@/notification/notification-event.service';
+import { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -390,6 +391,14 @@ export function registerDependencies(
     container.register(
         'postInteractionCountsService',
         asClass(PostInteractionCountsService).singleton(),
+    );
+    container.register(
+        'hashtagServiceDomain',
+        asValue(process.env.HASHTAG_SERVICE_DOMAIN || null),
+    );
+    container.register(
+        'hashtagPostsImportService',
+        asClass(HashtagPostsImportService).singleton(),
     );
     container.register('nodeInfoService', asClass(NodeInfoService).singleton());
     container.register(

@@ -32,6 +32,9 @@ This ActivityPub service uses a variety of environment variables to configure it
   - Only used in `production` environments with a CDN (i.e Fastly)
   - Example: `max-age=60, stale-while-revalidate=300, stale-if-error=0`
 - `FORCE_INTERNAL_ACTIVITY_DELIVERY` - Set to `true` to force internal activities to be delivered via the Fediverse
+- `HASHTAG_SERVICE_DOMAIN` - Domain of a global hashtag service with one account per hashtag, like [tags.pub](https://tags.pub)
+  - Hashtag feeds also show recent posts from across the network, imported from the hashtag's account (e.g. `@ghost@tags.pub` for `#ghost`) at most every 15 minutes
+  - If not set, hashtag feeds only show posts that reached this server
 
 ## Database Configuration
 

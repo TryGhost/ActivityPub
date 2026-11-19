@@ -14,6 +14,7 @@ import { requireParam } from '@/http/api/helpers/request';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { normalizeHashtag } from '@/post/hashtag';
+import type { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 
 /**
@@ -33,6 +34,7 @@ export class FeedController {
     constructor(
         private readonly feedService: FeedService,
         private readonly postInteractionCountsService: PostInteractionCountsService,
+        private readonly hashtagPostsImportService: HashtagPostsImportService,
     ) {}
 
     @APIRoute('GET', 'feed/notes')
@@ -188,6 +190,22 @@ export class FeedController {
             );
 
         const posts = this.mapFeedResultsToPostDTO(results, account);
+
+        // Request recent posts from across the network for the next time the
+        // feed is opened - We do not await this as we do not want to increase
+        // the response time of the request
+        if (cursor === null) {
+            this.hashtagPostsImportService
+                .requestImport(ctx.get('site').host, hashtag)
+                .catch((error) => {
+                    Sentry.captureException(error);
+
+                    ctx.get('logger').error(
+                        'Error requesting import of posts for hashtag {hashtag} {error}',
+                        { hashtag, error },
+                    );
+                });
+        }
 
         return new Response(
             JSON.stringify({
