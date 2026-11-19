@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 
-import { normalizeHashtag } from '@/post/hashtag';
+import { normalizeHashtagPrefix } from '@/post/hashtag';
 
 const SEARCH_RESULT_LIMIT = 10;
 
@@ -21,18 +21,20 @@ export class HashtagSearchView {
      * @param query Search query, with or without a leading `#`
      */
     async search(query: string): Promise<HashtagSearchResult[]> {
-        const hashtag = normalizeHashtag(query.trim());
+        const hashtag = normalizeHashtagPrefix(query.trim());
 
         if (hashtag === null) {
             return [];
         }
 
-        // Escape LIKE wildcards - `_` is valid in hashtag names
-        const prefix = hashtag.replace(/[%_\\]/g, '\\$&');
+        // Escape LIKE wildcards - `_` is valid in hashtag names. The escape
+        // character is set explicitly, as the default one depends on the
+        // server's SQL mode
+        const prefix = hashtag.replace(/[!%_]/g, '!$&');
 
         return this.db('hashtags')
             .select('name')
-            .where('name', 'like', `${prefix}%`)
+            .whereRaw("name LIKE ? ESCAPE '!'", [`${prefix}%`])
             .orderBy('name', 'asc')
             .limit(SEARCH_RESULT_LIMIT);
     }

@@ -57,6 +57,27 @@ export function normalizeHashtag(name: string): string | null {
 }
 
 /**
+ * Normalize the start of a hashtag name, e.g. a search query, like
+ * `normalizeHashtag`. Unlike a full name it needn't contain a letter, as
+ * `2026` can start `2026news`. Returns `null` if no hashtag name can start
+ * with it.
+ *
+ * @param prefix Start of a hashtag name, with or without a leading `#`
+ */
+export function normalizeHashtagPrefix(prefix: string): string | null {
+    const normalized = prefix.replace(/^#/, '').normalize('NFKC').toLowerCase();
+
+    if (
+        [...normalized].length > MAX_HASHTAG_LENGTH ||
+        !HASHTAG_NAME_REGEX.test(normalized)
+    ) {
+        return null;
+    }
+
+    return normalized;
+}
+
+/**
  * Normalize and deduplicate a list of hashtag names, dropping invalid ones.
  *
  * @param names Hashtag names, with or without a leading `#`

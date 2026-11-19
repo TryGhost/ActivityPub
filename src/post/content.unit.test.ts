@@ -431,6 +431,12 @@ describe('ContentPreparer', () => {
                 );
             });
 
+            it('should link hashtags to the archive of their normalized name', () => {
+                expect(prepareNote('#ＧＨＯＳＴ')).toEqual(
+                    '<a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>ＧＨＯＳＴ</span></a>',
+                );
+            });
+
             it('should link tags relative to a site in a subdirectory', () => {
                 expect(
                     prepareNote('#world', new URL('https://example.com/blog')),

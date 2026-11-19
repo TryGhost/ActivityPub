@@ -327,6 +327,9 @@ export class FeedService {
             viewerAccountId,
         )
             .where('post_hashtags.hashtag_id', hashtagRow.id)
+            // Posts with a published_at date set in the future are left out
+            // until then, else they would pin themselves to the top
+            .where('post_hashtags.published_at', '<=', new Date())
             .modify((query) => {
                 if (cursor) {
                     query.where('post_hashtags.published_at', '<', cursor);

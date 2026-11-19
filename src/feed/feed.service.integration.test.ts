@@ -1312,6 +1312,36 @@ describe('FeedService', () => {
             expect(feed.nextCursor).toBeNull();
         });
 
+        it('should not get posts with a published date in the future', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const viewerAccount =
+                await createInternalAccount('hashtag-viewer.com');
+            const author = await createExternalAccount('hashtag-author.com');
+
+            const currentPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news'],
+            });
+            const futurePost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news'],
+                publishedAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            });
+            await postRepository.save(currentPost);
+            await postRepository.save(futurePost);
+
+            const feed = await feedService.getHashtagFeedData(
+                'news',
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results.map((result) => result.post_id)).toEqual([
+                currentPost.id,
+            ]);
+        });
+
         it('should filter out posts from blocked and domain-blocked authors', async () => {
             const feedService = new FeedService(client, moderationService);
             const viewerAccount =

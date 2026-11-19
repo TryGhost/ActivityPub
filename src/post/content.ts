@@ -240,11 +240,13 @@ export class ContentPreparer {
                 return segment.replace(
                     HASHTAG_IN_TEXT_REGEX,
                     (match, prefix: string, name: string) => {
-                        if (normalizeHashtag(name) === null) {
+                        const hashtag = normalizeHashtag(name);
+
+                        if (hashtag === null) {
                             return match;
                         }
 
-                        const href = getHashtagUrl(siteUrl, name);
+                        const href = getHashtagUrl(siteUrl, hashtag);
 
                         return `${prefix}<a href="${href.href}" class="mention hashtag" rel="tag">#<span>${name}</span></a>`;
                     },

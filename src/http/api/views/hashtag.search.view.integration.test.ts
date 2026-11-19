@@ -20,9 +20,14 @@ describe('HashtagSearchView', () => {
         await fixtureManager.reset();
 
         await db('hashtags').insert(
-            ['news', 'newsletter', 'ghost', 'new_york', 'newyork'].map(
-                (name) => ({ name }),
-            ),
+            [
+                'news',
+                'newsletter',
+                'ghost',
+                'new_york',
+                'newyork',
+                '2026news',
+            ].map((name) => ({ name })),
         );
 
         hashtagSearchView = new HashtagSearchView(db);
@@ -44,6 +49,13 @@ describe('HashtagSearchView', () => {
         const results = await hashtagSearchView.search('new_');
 
         expect(results).toEqual([{ name: 'new_york' }]);
+    });
+
+    it('should return hashtags starting with a query without letters', async () => {
+        expect(await hashtagSearchView.search('#2026')).toEqual([
+            { name: '2026news' },
+        ]);
+        expect(await hashtagSearchView.search('_')).toEqual([]);
     });
 
     it('should return no hashtags for a query that is not a valid hashtag', async () => {
