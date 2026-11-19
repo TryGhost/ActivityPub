@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { getValue, isError } from '@/core/result';
 import { normalizePlainText } from '@/helpers/html';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { PostType } from '@/post/post.entity';
@@ -556,6 +557,90 @@ describe('Account Posts View', () => {
                     followedByMe: false,
                 }),
             });
+        });
+
+        it('should only include replies when includeReplies is set', async () => {
+            // Arrange
+            const currentContextAccountId = 1;
+            const currentContextAccountApId = new URL(
+                'https://example.com/users/current',
+            );
+            const profileApId = new URL('https://example.com/users/profile');
+
+            const fedifyModule = await vi.importMock('@fedify/vocab');
+            const ActivityClass = (
+                fedifyModule as { Activity: new () => unknown }
+            ).Activity;
+
+            const createActivity = (id: string, inReplyTo?: string) => {
+                const activity = Object.create(ActivityClass.prototype);
+                activity.getObject = vi.fn().mockResolvedValue({
+                    id: new URL(id),
+                    getAttribution: vi.fn().mockResolvedValue(mockActor),
+                });
+                activity.toJsonLd = vi.fn().mockResolvedValue({
+                    type: 'Create',
+                    object: {
+                        id,
+                        type: 'Note',
+                        content: 'Test post',
+                        attributedTo: 'https://example.com/users/profile',
+                        inReplyTo,
+                    },
+                    actor: {
+                        id: 'https://example.com/users/profile',
+                        preferredUsername: 'profile',
+                        name: 'Profile User',
+                    },
+                });
+                return activity;
+            };
+
+            mockPage.getItems.mockImplementation(async function* () {
+                yield createActivity(
+                    'https://example.com/posts/2',
+                    'https://other.com/posts/1',
+                );
+                yield createActivity('https://example.com/posts/1');
+            });
+
+            // Mock getByApId to return null (post not in our DB)
+            mockDb.mockReturnValue({
+                select: vi.fn().mockReturnThis(),
+                whereRaw: vi.fn().mockReturnThis(),
+                first: vi.fn().mockResolvedValue(null),
+            });
+
+            // Act
+            const withoutReplies = await view.getPostsByRemoteLookUp(
+                currentContextAccountId,
+                currentContextAccountApId,
+                profileApId,
+                null,
+                null,
+            );
+            const withReplies = await view.getPostsByRemoteLookUp(
+                currentContextAccountId,
+                currentContextAccountApId,
+                profileApId,
+                null,
+                null,
+                true,
+            );
+
+            // Assert
+            if (isError(withoutReplies) || isError(withReplies)) {
+                throw new Error('Expected remote lookups to succeed');
+            }
+            expect(
+                getValue(withoutReplies).results.map((post) => post.id),
+            ).toEqual(['https://example.com/posts/1']);
+            expect(
+                getValue(withReplies).results.map((post) => post.id),
+            ).toEqual([
+                'https://example.com/posts/2',
+                'https://example.com/posts/1',
+            ]);
         });
 
         it('should set followedByMe correctly for Announce activities when user follows the original author', async () => {
