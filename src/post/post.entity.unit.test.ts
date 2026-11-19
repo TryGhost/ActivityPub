@@ -4,6 +4,7 @@ import { getValue, isError, type Ok } from '@/core/result';
 import {
     Audience,
     classifySummary,
+    getPublishedHashtags,
     Post,
     type PostData,
     PostSummary,
@@ -764,18 +765,16 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.metadata).toEqual({
-            ghostAuthors: [
-                {
-                    name: 'Author 1',
-                    profile_image: 'https://image.com/author1.jpg',
-                },
-                {
-                    name: 'Author 2',
-                    profile_image: null,
-                },
-            ],
-        });
+        expect(post.metadata?.ghostAuthors).toEqual([
+            {
+                name: 'Author 1',
+                profile_image: 'https://image.com/author1.jpg',
+            },
+            {
+                name: 'Author 2',
+                profile_image: null,
+            },
+        ]);
     });
 
     it('should handle an empty array of ghost authors', async () => {
@@ -799,8 +798,130 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.metadata).toEqual({
-            ghostAuthors: [],
+        expect(post.metadata?.ghostAuthors).toEqual([]);
+    });
+
+    describe('hashtags', () => {
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p>Welcome!</p>',
+            excerpt: 'Welcome!',
+            custom_excerpt: null,
+            feature_image: null,
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'public',
+            authors: [],
+            tags: [
+                {
+                    name: 'Getting Started',
+                    url: 'https://ghost.org/tag/getting-started/',
+                    visibility: 'public',
+                },
+                {
+                    name: '#internal',
+                    url: 'https://ghost.org/404/',
+                    visibility: 'internal',
+                },
+                {
+                    name: '2024',
+                    url: 'https://ghost.org/tag/2024/',
+                    visibility: 'public',
+                },
+            ],
+        };
+
+        it('should use the public Ghost tags of an article as hashtags', async () => {
+            const post = getValue(
+                (await Post.createArticleFromGhostPost(
+                    await internalAccount(),
+                    ghostPost,
+                )) as Ok<Post>,
+            );
+
+            expect(post.metadata?.ghostTags).toEqual([
+                {
+                    name: 'Getting Started',
+                    url: 'https://ghost.org/tag/getting-started/',
+                },
+                { name: '2024', url: 'https://ghost.org/tag/2024/' },
+            ]);
+            expect(getPublishedHashtags(post)).toEqual([
+                {
+                    name: 'GettingStarted',
+                    href: new URL('https://ghost.org/tag/getting-started/'),
+                },
+            ]);
+            expect(post.getChangedHashtags()).toEqual(['gettingstarted']);
+        });
+
+        it('should replace the hashtags of an article when it is updated', async () => {
+            const author = await internalAccount();
+            const post = getValue(
+                (await Post.createArticleFromGhostPost(
+                    author,
+                    ghostPost,
+                )) as Ok<Post>,
+            );
+            post.getChangedHashtags();
+
+            post.update(author, {
+                title: post.title,
+                content: post.content,
+                excerpt: post.excerpt,
+                summary: post.summary,
+                imageUrl: post.imageUrl,
+                url: post.url,
+                metadata: {
+                    ghostAuthors: [],
+                    ghostTags: [
+                        { name: 'News', url: 'https://ghost.org/tag/news/' },
+                    ],
+                },
+            });
+
+            expect(post.getChangedHashtags()).toEqual(['news']);
+        });
+
+        it('should link and use the hashtags in the content of a note', async () => {
+            const account = await createTestInternalAccount(123, {
+                host: new URL('https://foobar.com'),
+                username: 'foobar',
+                name: 'Foo Bar',
+                bio: null,
+                url: new URL('https://foobar.com'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+            const post = Post.createNote(account, 'Hello #Ghost and #news');
+
+            expect(post.content).toEqual(
+                '<p>Hello <a href="https://foobar.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and <a href="https://foobar.com/tag/news/" class="mention hashtag" rel="tag">#<span>news</span></a></p>',
+            );
+            expect(
+                getPublishedHashtags(post).map((hashtag) => hashtag.name),
+            ).toEqual(['Ghost', 'news']);
+            expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
+        });
+
+        it('should use the given hashtags of an external post', async () => {
+            const post = Post.createFromData(await externalAccount(), {
+                type: PostType.Note,
+                content: '<p>Hello</p>',
+                apId: new URL('https://foobar.com/note/1'),
+                hashtags: ['#Ghost', 'ghost', '#2024', '#News'],
+            });
+
+            expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
+        });
+
+        it('should only return changed hashtags once', async () => {
+            const post = Post.createNote(await internalAccount(), '#Ghost');
+
+            expect(post.getChangedHashtags()).toEqual(['ghost']);
+            expect(post.getChangedHashtags()).toBeNull();
         });
     });
 

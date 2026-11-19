@@ -74,6 +74,7 @@ import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
+import { HashtagSearchView } from '@/http/api/views/hashtag.search.view';
 import { RecommendationsView } from '@/http/api/views/recommendations.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { TopicView } from '@/http/api/views/topic.view';
@@ -443,6 +444,10 @@ export function registerDependencies(
     container.register(
         'accountSearchView',
         asClass(AccountSearchView).singleton(),
+    );
+    container.register(
+        'hashtagSearchView',
+        asClass(HashtagSearchView).singleton(),
     );
     container.register('blocksView', asClass(BlocksView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());

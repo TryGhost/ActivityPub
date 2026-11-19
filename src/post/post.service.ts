@@ -1,8 +1,10 @@
 import {
     Article,
     Mention as FedifyMention,
+    Hashtag,
     lookupObject,
     Note,
+    PUBLIC_COLLECTION,
 } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import { mapAsync } from 'es-toolkit/array';
@@ -118,16 +120,29 @@ export class PostService {
         return postAttachments;
     }
 
-    private async getMentionedAccounts(
-        object: Note | Article,
-    ): Promise<Mention[]> {
+    /**
+     * Get the mentions and hashtags from the object's `tag` property
+     */
+    private async getTags(object: Note | Article): Promise<{
+        mentionTags: { href: URL; name: string }[];
+        hashtags: string[];
+    }> {
         const mentionTags: { href: URL; name: string }[] = [];
+        const hashtags: string[] = [];
         for await (const tag of object.getTags()) {
             if (tag instanceof FedifyMention && tag.href && tag.name) {
                 mentionTags.push({ href: tag.href, name: tag.name.toString() });
+            } else if (tag instanceof Hashtag && tag.name) {
+                hashtags.push(tag.name.toString());
             }
         }
 
+        return { mentionTags, hashtags };
+    }
+
+    private async getMentionedAccounts(
+        mentionTags: { href: URL; name: string }[],
+    ): Promise<Mention[]> {
         const results = await mapAsync(
             mentionTags,
             async (tag): Promise<Mention | null> => {
@@ -232,7 +247,14 @@ export class PostService {
             }
         }
 
-        const mentions = await this.getMentionedAccounts(foundObject);
+        const { mentionTags, hashtags } = await this.getTags(foundObject);
+        const mentions = await this.getMentionedAccounts(mentionTags);
+
+        // Only posts addressed to the public are listed under their hashtags.
+        // Unlisted posts (public in `cc` only) are not, like on Mastodon.
+        const isListed = foundObject.toIds.some(
+            (to) => to.href === PUBLIC_COLLECTION.href,
+        );
 
         const sensitive = foundObject.sensitive === true;
         const { summary, contentWarning } = classifySummary(
@@ -253,6 +275,7 @@ export class PostService {
             apId: id,
             inReplyTo,
             mentions,
+            hashtags: isListed ? hashtags : [],
             attachments: await this.getPostAttachments(foundObject),
         });
 

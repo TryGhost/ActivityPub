@@ -145,6 +145,8 @@ describe('FeedService', () => {
         await client('users').truncate();
         await client('sites').truncate();
         await client('outboxes').truncate();
+        await client('post_hashtags').truncate();
+        await client('hashtags').truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Reset test state
@@ -1241,6 +1243,158 @@ describe('FeedService', () => {
             // Should get the second allowed post (blocked post is skipped)
             expect(page2.results).toHaveLength(1);
             expect(page2.results[0].post_id).toBe(allowedPost2.id);
+            expect(page2.nextCursor).toBeNull();
+        });
+    });
+
+    describe('getHashtagFeedData', () => {
+        it('should get the public posts with the hashtag, sorted by most recently published', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const viewerAccount =
+                await createInternalAccount('hashtag-viewer.com');
+            const author = await createExternalAccount('hashtag-author.com');
+
+            const olderPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news'],
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            const newerPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news', 'ghost'],
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            const otherHashtagPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['ghost'],
+            });
+            const followersOnlyPost = await createPost(author, {
+                type: PostType.Note,
+                audience: Audience.FollowersOnly,
+                hashtags: ['news'],
+            });
+            for (const post of [
+                olderPost,
+                newerPost,
+                otherHashtagPost,
+                followersOnlyPost,
+            ]) {
+                await postRepository.save(post);
+            }
+
+            const feed = await feedService.getHashtagFeedData(
+                'news',
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results.map((result) => result.post_id)).toEqual([
+                newerPost.id,
+                olderPost.id,
+            ]);
+            expect(feed.nextCursor).toBeNull();
+        });
+
+        it('should return no posts for an unknown hashtag', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const viewerAccount =
+                await createInternalAccount('hashtag-viewer.com');
+
+            const feed = await feedService.getHashtagFeedData(
+                'unknown',
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results).toEqual([]);
+            expect(feed.nextCursor).toBeNull();
+        });
+
+        it('should filter out posts from blocked and domain-blocked authors', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const viewerAccount =
+                await createInternalAccount('hashtag-viewer.com');
+            const blockedAuthor = await createExternalAccount('blocked.com');
+            const domainBlockedAuthor =
+                await createExternalAccount('domain-blocked.com');
+            const allowedAuthor = await createExternalAccount('allowed.com');
+
+            const allowedPost = await createPost(allowedAuthor, {
+                type: PostType.Note,
+                hashtags: ['news'],
+            });
+            for (const post of [
+                await createPost(blockedAuthor, {
+                    type: PostType.Note,
+                    hashtags: ['news'],
+                }),
+                await createPost(domainBlockedAuthor, {
+                    type: PostType.Note,
+                    hashtags: ['news'],
+                }),
+                allowedPost,
+            ]) {
+                await postRepository.save(post);
+            }
+
+            await fixtureManager.createBlock(viewerAccount, blockedAuthor);
+            await fixtureManager.createDomainBlock(
+                viewerAccount,
+                new URL('https://domain-blocked.com'),
+            );
+
+            const feed = await feedService.getHashtagFeedData(
+                'news',
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results.map((result) => result.post_id)).toEqual([
+                allowedPost.id,
+            ]);
+        });
+
+        it('should paginate using the cursor', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const viewerAccount =
+                await createInternalAccount('hashtag-viewer.com');
+            const author = await createExternalAccount('hashtag-author.com');
+
+            const newerPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news'],
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            const olderPost = await createPost(author, {
+                type: PostType.Note,
+                hashtags: ['news'],
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(newerPost);
+            await postRepository.save(olderPost);
+
+            const page1 = await feedService.getHashtagFeedData(
+                'news',
+                viewerAccount.id,
+                1,
+                null,
+            );
+            const page2 = await feedService.getHashtagFeedData(
+                'news',
+                viewerAccount.id,
+                1,
+                page1.nextCursor,
+            );
+
+            expect(page1.results.map((result) => result.post_id)).toEqual([
+                newerPost.id,
+            ]);
+            expect(page2.results.map((result) => result.post_id)).toEqual([
+                olderPost.id,
+            ]);
             expect(page2.nextCursor).toBeNull();
         });
     });

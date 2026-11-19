@@ -6,6 +6,10 @@ import { isUri } from '@/helpers/uri';
 import type { AccountDTO } from '@/http/api/types';
 import type { AccountSearchView } from '@/http/api/views/account.search.view';
 import type { AccountView } from '@/http/api/views/account.view';
+import type {
+    HashtagSearchResult,
+    HashtagSearchView,
+} from '@/http/api/views/hashtag.search.view';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 
@@ -34,12 +38,14 @@ function toSearchResult(dto: AccountDTO): AccountSearchResult {
 
 interface SearchResults {
     accounts: AccountSearchResult[];
+    hashtags: HashtagSearchResult[];
 }
 
 export class SearchController {
     constructor(
         private readonly accountView: AccountView,
         private readonly accountSearchView: AccountSearchView,
+        private readonly hashtagSearchView: HashtagSearchView,
     ) {}
 
     /**
@@ -58,6 +64,7 @@ export class SearchController {
         // Init search results
         const results: SearchResults = {
             accounts: [],
+            hashtags: [],
         };
 
         const account = ctx.get('account');
@@ -114,6 +121,9 @@ export class SearchController {
                 account.id,
             );
         }
+
+        // Hashtag search (prefix match on name)
+        results.hashtags = await this.hashtagSearchView.search(query);
 
         // External account handle search (exact match, single result)
         if (isHandle(query) && results.accounts.length === 0) {

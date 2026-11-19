@@ -284,4 +284,51 @@ describe('Feed API', () => {
             expect(body.posts[0].title).not.toContain('alert("xss")');
         });
     });
+
+    describe('retrieving a hashtag feed', () => {
+        const withHashtagParam = (hashtag: string) =>
+            ({
+                ...ctx,
+                req: { ...ctx.req, param: () => hashtag },
+            }) as unknown as AppContext;
+
+        it('should return the posts for the normalized hashtag', async () => {
+            feedService.getHashtagFeedData = vi.fn().mockResolvedValue(
+                getMockFeedData({
+                    accountId: account.id,
+                    feedType: 'Inbox',
+                    limit: 2,
+                    cursor: null,
+                }),
+            );
+
+            const response = await feedController.getHashtagFeed(
+                withHashtagParam('#Ghost'),
+            );
+
+            expect(response.status).toBe(200);
+            expect(feedService.getHashtagFeedData).toHaveBeenCalledWith(
+                'ghost',
+                account.id,
+                2,
+                null,
+            );
+            const body = await response.json();
+            expect(body.posts).toHaveLength(2);
+            expect(
+                postInteractionCountsService.requestUpdate,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should return a 400 for an invalid hashtag', async () => {
+            feedService.getHashtagFeedData = vi.fn();
+
+            const response = await feedController.getHashtagFeed(
+                withHashtagParam('not a hashtag'),
+            );
+
+            expect(response.status).toBe(400);
+            expect(feedService.getHashtagFeedData).not.toHaveBeenCalled();
+        });
+    });
 });

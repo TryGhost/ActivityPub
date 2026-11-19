@@ -13,6 +13,7 @@ import { normalizePlainText } from '@/helpers/html';
 import { requireParam } from '@/http/api/helpers/request';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
+import { normalizeHashtag } from '@/post/hashtag';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 
 /**
@@ -133,6 +134,54 @@ export class FeedController {
         const { results, nextCursor } =
             await this.feedService.getDiscoveryFeedData(
                 topic.id,
+                account.id,
+                limit,
+                cursor,
+            );
+
+        const posts = this.mapFeedResultsToPostDTO(results, account);
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('GET', 'feed/hashtag/:hashtag')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async getHashtagFeed(ctx: AppContext) {
+        const hashtag = normalizeHashtag(requireParam(ctx, 'hashtag'));
+
+        if (hashtag === null) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = ctx.get('account');
+
+        const { results, nextCursor } =
+            await this.feedService.getHashtagFeedData(
+                hashtag,
                 account.id,
                 limit,
                 cursor,

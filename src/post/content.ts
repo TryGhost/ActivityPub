@@ -7,6 +7,11 @@ import { HANDLE_REGEX } from '@/constants';
 import { normalizePlainText } from '@/helpers/html';
 import { isEqual } from '@/helpers/uri';
 import {
+    getHashtagUrl,
+    type HashtagLink,
+    normalizeHashtag,
+} from '@/post/hashtag';
+import {
     type Mention,
     PostContentWarning,
     PostSummary,
@@ -22,6 +27,23 @@ export const MEMBER_CONTENT_MARKER = '<!--members-only-->';
  */
 export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
     `<div class="gh-paid-content-notice"><h3>This post is for subscribers only</h3><p>Become a member to get access to all content</p><a class="gh-paid-content-cta" href="${url.href}#/portal/signup">Subscribe now</a></div>`;
+
+/**
+ * Matches hashtags in plain text, which may have been HTML escaped.
+ *
+ * The `#` must be at the start of the text or follow a character that can't be
+ * part of a word, URL path or HTML entity, so `/#anchor`, `page#anchor` and
+ * `&#x27;` are not treated as hashtags. The lookbehind covers `/` and `&`
+ * once they have been escaped.
+ */
+const HASHTAG_IN_TEXT_REGEX =
+    /(^|[^\p{L}\p{M}\p{N}_&/#])(?<!&#x2F;|&amp;)#([\p{L}\p{M}\p{N}_]+)/gu;
+
+/**
+ * Matches anchors and other HTML tags so that hashtags are only linked in text
+ * outside of existing links.
+ */
+const ANCHOR_OR_TAG_REGEX = /(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi;
 
 /**
  * Options for preparing content
@@ -63,6 +85,14 @@ export interface PrepareContentOptions {
      * Whether to add mentions to the content
      */
     addMentions: false | Mention[];
+    /**
+     * Whether to link hashtags in the content to the site's tag archives
+     */
+    addHashtags:
+        | false
+        | {
+              siteUrl: URL;
+          };
 }
 
 export class ContentPreparer {
@@ -79,6 +109,7 @@ export class ContentPreparer {
             extractLinks: false,
             addPaidContentMessage: false,
             addMentions: false,
+            addHashtags: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -101,6 +132,7 @@ export class ContentPreparer {
             extractLinks: false,
             addPaidContentMessage: false,
             addMentions: false,
+            addHashtags: false,
         },
     ) {
         let prepared = content;
@@ -138,6 +170,10 @@ export class ContentPreparer {
 
         if (options.addMentions !== false && options.addMentions.length > 0) {
             prepared = this.addMentions(prepared, options.addMentions);
+        }
+
+        if (options.addHashtags !== false) {
+            prepared = this.addHashtags(prepared, options.addHashtags.siteUrl);
         }
 
         return prepared;
@@ -183,6 +219,77 @@ export class ContentPreparer {
             /__URL_(\d+)__/g,
             (_, index) => urls[Number.parseInt(index, 10)],
         );
+    }
+
+    /**
+     * Link hashtags in the content to the site's tag archives, using the same
+     * markup as Mastodon so that other Fediverse software recognises them.
+     * Text inside existing links is left untouched.
+     *
+     * @param html HTML content to add hashtag links to
+     * @param siteUrl URL of the site that owns the tag archives
+     */
+    private addHashtags(html: string, siteUrl: URL): string {
+        return html
+            .split(ANCHOR_OR_TAG_REGEX)
+            .map((segment) => {
+                if (segment.startsWith('<')) {
+                    return segment;
+                }
+
+                return segment.replace(
+                    HASHTAG_IN_TEXT_REGEX,
+                    (match, prefix: string, name: string) => {
+                        if (normalizeHashtag(name) === null) {
+                            return match;
+                        }
+
+                        const href = getHashtagUrl(siteUrl, name);
+
+                        return `${prefix}<a href="${href.href}" class="mention hashtag" rel="tag">#<span>${name}</span></a>`;
+                    },
+                );
+            })
+            .join('');
+    }
+
+    static parseHashtagLinks(html: string) {
+        return ContentPreparer.instance.parseHashtagLinks(html);
+    }
+
+    /**
+     * Get the hashtag links in the content, i.e. links with `rel="tag"` whose
+     * text is a hashtag. Duplicate hashtags are only returned once.
+     *
+     * @param html HTML content to get hashtag links from
+     */
+    private parseHashtagLinks(html: string): HashtagLink[] {
+        const hashtagLinks = new Map<string, HashtagLink>();
+
+        for (const link of parse(html).querySelectorAll('a')) {
+            const rel = link.getAttribute('rel')?.split(/\s+/) ?? [];
+            const href = link.getAttribute('href');
+            const text = link.textContent.trim();
+
+            if (!rel.includes('tag') || !href || !text.startsWith('#')) {
+                continue;
+            }
+
+            const name = text.slice(1);
+            const normalized = normalizeHashtag(name);
+
+            if (normalized === null || hashtagLinks.has(normalized)) {
+                continue;
+            }
+
+            try {
+                hashtagLinks.set(normalized, { name, href: new URL(href) });
+            } catch {
+                // Ignore links with invalid URLs
+            }
+        }
+
+        return [...hashtagLinks.values()];
     }
 
     /**
