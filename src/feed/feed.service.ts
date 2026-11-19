@@ -280,9 +280,83 @@ export class FeedService {
         cursor: string | null,
     ): Promise<GetFeedDataResult> {
         const postType: PostType = PostType.Article;
+
+        const results = await this.getPostsForViewerQuery(
+            'discovery_feeds',
+            viewerAccountId,
+        )
+            .whereRaw('discovery_feeds.topic_id = ?', [topicId])
+            .where('discovery_feeds.post_type', postType)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('discovery_feeds.published_at', '<', cursor);
+                }
+            })
+            .orderBy('discovery_feeds.published_at', 'desc')
+            .limit(limit + 1);
+
+        return this.paginateFeedResults(results, limit);
+    }
+
+    /**
+     * Get data for a hashtag feed: public posts tagged with the hashtag, from
+     * any author known to the server, newest first
+     *
+     * @param hashtag Normalized name of the hashtag
+     * @param viewerAccountId ID of the account of the user viewing the feed
+     * @param limit Maximum number of posts to return
+     * @param cursor Cursor to use for pagination
+     */
+    async getHashtagFeedData(
+        hashtag: string,
+        viewerAccountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<GetFeedDataResult> {
+        const hashtagRow = await this.db('hashtags')
+            .select('id')
+            .whereRaw('name_hash = UNHEX(SHA2(?, 256))', [hashtag])
+            .first();
+
+        if (!hashtagRow) {
+            return { results: [], nextCursor: null };
+        }
+
+        const results = await this.getPostsForViewerQuery(
+            'post_hashtags',
+            viewerAccountId,
+        )
+            .where('post_hashtags.hashtag_id', hashtagRow.id)
+            // Posts with a published_at date set in the future are left out
+            // until then, else they would pin themselves to the top
+            .where('post_hashtags.published_at', '<=', new Date())
+            .modify((query) => {
+                if (cursor) {
+                    query.where('post_hashtags.published_at', '<', cursor);
+                }
+            })
+            .orderBy('post_hashtags.published_at', 'desc')
+            .limit(limit + 1);
+
+        return this.paginateFeedResults(results, limit);
+    }
+
+    /**
+     * Build a query for the posts in a table of feed entries (e.g. a discovery
+     * feed), with the viewer's interactions with each post and its author.
+     * Posts by authors the viewer has blocked, or on domains the viewer has
+     * blocked, are excluded.
+     *
+     * @param source Table of feed entries, with `post_id` and `published_at`
+     * @param viewerAccountId ID of the account of the user viewing the feed
+     */
+    private getPostsForViewerQuery(
+        source: 'discovery_feeds' | 'post_hashtags',
+        viewerAccountId: number,
+    ) {
         const db = this.db;
 
-        const results = await db('discovery_feeds')
+        return db(source)
             .select(
                 // Post fields
                 'posts.id as post_id',
@@ -327,9 +401,9 @@ export class FeedService {
                         ELSE 0
                     END AS author_followed_by_user
                 `),
-                'discovery_feeds.published_at as feed_published_at',
+                `${source}.published_at as feed_published_at`,
             )
-            .innerJoin('posts', 'posts.id', 'discovery_feeds.post_id')
+            .innerJoin('posts', 'posts.id', `${source}.post_id`)
             .innerJoin(
                 'accounts as author_account',
                 'author_account.id',
@@ -360,10 +434,7 @@ export class FeedService {
                 );
             })
             .leftJoin('blocks', function () {
-                this.on(
-                    'blocks.blocked_id',
-                    'discovery_feeds.author_id',
-                ).andOnVal(
+                this.on('blocks.blocked_id', 'posts.author_id').andOnVal(
                     'blocks.blocker_id',
                     '=',
                     viewerAccountId.toString(),
@@ -378,24 +449,20 @@ export class FeedService {
                     viewerAccountId.toString(),
                 );
             })
-            .whereRaw('discovery_feeds.topic_id = ?', [topicId])
-            .where('discovery_feeds.post_type', postType)
             .whereNull('blocks.id')
-            .whereNull('domain_blocks.id')
-            .modify((query) => {
-                if (cursor) {
-                    query.where('discovery_feeds.published_at', '<', cursor);
-                }
-            })
-            .orderBy('discovery_feeds.published_at', 'desc')
-            .limit(limit + 1);
+            .whereNull('domain_blocks.id');
+    }
 
+    private paginateFeedResults(
+        results: (GetFeedDataResultRow & { feed_published_at: string })[],
+        limit: number,
+    ): GetFeedDataResult {
         const hasMore = results.length > limit;
         const paginatedResults = results.slice(0, limit);
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
-            results: paginatedResults.map((item: BaseGetFeedDataResultRow) => {
+            results: paginatedResults.map((item) => {
                 return {
                     ...item,
                     post_content: sanitizeHtml(item.post_content ?? ''),

@@ -32,6 +32,16 @@ const PostInputSchema = z.object({
         )
         .nullable()
         .optional(),
+    tags: z
+        .array(
+            z.object({
+                name: z.string(),
+                url: z.string(),
+                visibility: z.string(),
+            }),
+        )
+        .nullable()
+        .optional(),
 });
 
 type PostInput = z.infer<typeof PostInputSchema>;

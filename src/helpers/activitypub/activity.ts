@@ -5,6 +5,7 @@ import {
     Article,
     Create,
     Note as FedifyNote,
+    Hashtag,
     Image,
     Mention,
     PUBLIC_COLLECTION,
@@ -14,7 +15,17 @@ import {
 import type { Account } from '@/account/account.entity';
 import { getAccountHandleHost } from '@/account/utils';
 import type { FedifyContext } from '@/app';
-import { type Post, PostType } from '@/post/post.entity';
+import { getPublishedHashtags, type Post, PostType } from '@/post/post.entity';
+
+export function getHashtagsForPost(post: Post): Hashtag[] {
+    return getPublishedHashtags(post).map(
+        (hashtag) =>
+            new Hashtag({
+                name: `#${hashtag.name}`,
+                href: hashtag.href,
+            }),
+    );
+}
 
 async function getFedifyObjectForPost(
     post: Post,
@@ -58,7 +69,7 @@ async function getFedifyObjectForPost(
                               }),
                       )
                 : undefined,
-            tags: mentions,
+            tags: [...mentions, ...getHashtagsForPost(post)],
             to: PUBLIC_COLLECTION,
             ccs: ccs,
         });
@@ -80,6 +91,7 @@ async function getFedifyObjectForPost(
             updated: updatedAt,
             preview,
             url: post.url,
+            tags: getHashtagsForPost(post),
             to: PUBLIC_COLLECTION,
             ccs: ccs,
         });
