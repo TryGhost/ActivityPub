@@ -75,6 +75,36 @@ Feature: Creating a note
     When we create a note "Note" with an invalid image url
     Then the note is not created
 
+  Scenario: Creating a note with several images
+    Given we are followed by "Alice"
+    When we create a note "Note" with the images
+      | url                                                | altText   |
+      | https://self.test/.ghost/activitypub/gcs/one.jpg   | First     |
+      | https://self.test/.ghost/activitypub/gcs/two.jpg   |           |
+      | https://self.test/.ghost/activitypub/gcs/three.jpg | Third     |
+    Then Activity with object "Note" sent to followers has the images
+      | url                                                | altText   |
+      | https://self.test/.ghost/activitypub/gcs/one.jpg   | First     |
+      | https://self.test/.ghost/activitypub/gcs/two.jpg   |           |
+      | https://self.test/.ghost/activitypub/gcs/three.jpg | Third     |
+
+  Scenario: Creating a note with more than four images
+    When we create a note "Note" with the images
+      | url                                               | altText |
+      | https://self.test/.ghost/activitypub/gcs/1.jpg    |         |
+      | https://self.test/.ghost/activitypub/gcs/2.jpg    |         |
+      | https://self.test/.ghost/activitypub/gcs/3.jpg    |         |
+      | https://self.test/.ghost/activitypub/gcs/4.jpg    |         |
+      | https://self.test/.ghost/activitypub/gcs/5.jpg    |         |
+    Then the request is rejected with a 400
+
+  Scenario: Creating a note where one of the images is not ours
+    When we create a note "Note" with the images
+      | url                                               | altText |
+      | https://self.test/.ghost/activitypub/gcs/one.jpg  |         |
+      | https://example.com/two.jpg                       |         |
+    Then the note is not created
+
   Scenario: Delivering notes and mentions to internal accounts
     Given I have internal account followers
     When I create a note which mentions alice

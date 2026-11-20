@@ -121,6 +121,34 @@ Then(
     },
 );
 
+When(
+    'we create a note {string} with the images',
+    async function (noteName, table) {
+        this.response = await fetchActivityPub(
+            'https://self.test/.ghost/activitypub/v1/actions/note',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: 'Hello, world!',
+                    images: table.hashes().map(({ url, altText }) => ({
+                        url,
+                        altText: altText || undefined,
+                    })),
+                }),
+            },
+        );
+
+        if (this.response.ok) {
+            const responseJson = await this.response.clone().json();
+            const object = await mapPostToActivityPubObject(responseJson.post);
+            this.objects[noteName] = object;
+        }
+    },
+);
+
 When('we create a note {string} with an image', async function (noteName) {
     const content = 'Hello World';
     const imageUrl = 'https://self.test/.ghost/activitypub/gcs/image.jpg';

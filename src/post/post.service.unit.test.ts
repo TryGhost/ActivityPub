@@ -2,14 +2,54 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '@logtape/logtape';
 
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { error, ok } from '@/core/result';
 import type { ModerationService } from '@/moderation/moderation.service';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 
 describe('PostService', () => {
+    it('should not save a note when any of its images fails verification', async () => {
+        const goodImageUrl = new URL('https://example.com/good.jpg');
+        const badImageUrl = new URL('https://example.com/missing.jpg');
+
+        const postRepository = {
+            save: vi.fn(),
+        };
+
+        const imageStorageService = {
+            verifyFileUrl: vi.fn((url: URL) =>
+                Promise.resolve(
+                    url.href === goodImageUrl.href
+                        ? ok(true)
+                        : error('file-not-found'),
+                ),
+            ),
+        };
+
+        const postService = new PostService(
+            postRepository as unknown as KnexPostRepository,
+            {} as AccountService,
+            {} as FedifyContextFactory,
+            imageStorageService as unknown as ImageStorageService,
+            {} as ModerationService,
+            {} as Logger,
+        );
+
+        const result = await postService.createNote(
+            {} as Account,
+            'This is a test note',
+            [{ url: goodImageUrl }, { url: badImageUrl }],
+        );
+
+        expect(result).toEqual(error('file-not-found'));
+        expect(imageStorageService.verifyFileUrl).toHaveBeenCalledTimes(2);
+        expect(postRepository.save).not.toHaveBeenCalled();
+    });
+
     it('should be able to check if a post is liked by an account', async () => {
         const postId = 123;
         const accountId = 456;

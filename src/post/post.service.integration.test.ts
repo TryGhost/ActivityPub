@@ -168,9 +168,9 @@ describe('PostService', () => {
             const content = 'This is a test note with an image';
             const imageUrl = new URL('https://example.com/image.jpg');
 
-            const result = await postService.createNote(account, content, {
-                url: imageUrl,
-            });
+            const result = await postService.createNote(account, content, [
+                { url: imageUrl },
+            ]);
 
             if (isError(result)) {
                 throw new Error('Result should not be an error');
@@ -191,10 +191,9 @@ describe('PostService', () => {
             const content = 'This is a test note with an image';
             const imageUrl = new URL('https://example.com/image.jpg');
 
-            const result = await postService.createNote(account, content, {
-                url: imageUrl,
-                altText: 'Image alt text',
-            });
+            const result = await postService.createNote(account, content, [
+                { url: imageUrl, altText: 'Image alt text' },
+            ]);
 
             if (isError(result)) {
                 throw new Error('Result should not be an error');
@@ -232,9 +231,7 @@ describe('PostService', () => {
             const result = await serviceWithFailingStorage.createNote(
                 account,
                 content,
-                {
-                    url: new URL('https://example.com/bad-image.jpg'),
-                },
+                [{ url: new URL('https://example.com/bad-image.jpg') }],
             );
 
             expect(isError(result)).toBe(true);

@@ -68,6 +68,16 @@ Feature: Creating a reply
       """
     Then the request is rejected with a 400
 
+  Scenario: Creating a reply with several images
+    When we reply "Reply" to "Article" with the images
+      | url                                              | altText |
+      | https://self.test/.ghost/activitypub/gcs/one.jpg | First   |
+      | https://self.test/.ghost/activitypub/gcs/two.jpg |         |
+    Then Activity with object "Reply" sent to followers has the images
+      | url                                              | altText |
+      | https://self.test/.ghost/activitypub/gcs/one.jpg | First   |
+      | https://self.test/.ghost/activitypub/gcs/two.jpg |         |
+
   Scenario: Delivering replies to internal accounts
     Given I have internal account followers
     When I create a reply to alice
