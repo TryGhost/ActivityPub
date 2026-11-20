@@ -36,6 +36,37 @@ import type { ImageAttachment } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 
+const MAX_IMAGES = 4;
+
+const ImageSchema = z.object({
+    url: z.url(),
+    altText: z.string().optional(),
+});
+
+const NoteSchema = z
+    .object({
+        content: z.string(),
+        image: ImageSchema.optional(),
+        imageUrl: z.url().optional(),
+        images: z.array(ImageSchema).max(MAX_IMAGES).optional(),
+    })
+    .refine((data) => !data.images || (!data.image && !data.imageUrl));
+
+function getImages(data: z.infer<typeof NoteSchema>): ImageAttachment[] {
+    if (data.images) {
+        return data.images.map((image) => ({
+            url: new URL(image.url),
+            altText: image.altText,
+        }));
+    }
+
+    const imageUrl = data.imageUrl ?? data.image?.url;
+
+    return imageUrl
+        ? [{ url: new URL(imageUrl), altText: data.image?.altText }]
+        : [];
+}
+
 /**
  * Controller for post-related operations
  */
@@ -205,17 +236,6 @@ export class PostController {
     @APIRoute('POST', 'actions/note')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleCreateNote(ctx: AppContext) {
-        const NoteSchema = z.object({
-            content: z.string(),
-            image: z
-                .object({
-                    url: z.url(),
-                    altText: z.string().optional(),
-                })
-                .optional(),
-            imageUrl: z.url().optional(),
-        });
-
         let data: z.infer<typeof NoteSchema>;
 
         try {
@@ -227,25 +247,10 @@ export class PostController {
             );
         }
 
-        let imageUrl: URL | undefined;
-
-        if (data.imageUrl) {
-            imageUrl = new URL(data.imageUrl);
-        } else if (data.image) {
-            imageUrl = new URL(data.image.url);
-        }
-
-        const image: ImageAttachment | undefined = imageUrl
-            ? {
-                  url: imageUrl,
-                  altText: data.image?.altText ?? undefined,
-              }
-            : undefined;
-
         const postResult = await this.postService.createNote(
             ctx.get('account'),
             data.content,
-            image,
+            getImages(data),
         );
 
         if (isError(postResult)) {
@@ -299,21 +304,10 @@ export class PostController {
         const logger = ctx.get('logger');
         const id = requireParam(ctx, 'id');
 
-        const ReplyActionSchema = z.object({
-            content: z.string(),
-            image: z
-                .object({
-                    url: z.url(),
-                    altText: z.string().optional(),
-                })
-                .optional(),
-            imageUrl: z.url().optional(),
-        });
-
-        let data: z.infer<typeof ReplyActionSchema>;
+        let data: z.infer<typeof NoteSchema>;
 
         try {
-            data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+            data = NoteSchema.parse((await ctx.req.json()) as unknown);
         } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
@@ -375,26 +369,11 @@ export class PostController {
             }),
         ];
 
-        let imageUrl: URL | undefined;
-
-        if (data.imageUrl) {
-            imageUrl = new URL(data.imageUrl);
-        } else if (data.image) {
-            imageUrl = new URL(data.image.url);
-        }
-
-        const image: ImageAttachment | undefined = imageUrl
-            ? {
-                  url: imageUrl,
-                  altText: data.image?.altText ?? undefined,
-              }
-            : undefined;
-
         const newReplyResult = await this.postService.createReply(
             account,
             data.content,
             inReplyToId,
-            image,
+            getImages(data),
         );
 
         if (isError(newReplyResult)) {

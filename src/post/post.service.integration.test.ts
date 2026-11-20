@@ -168,9 +168,9 @@ describe('PostService', () => {
             const content = 'This is a test note with an image';
             const imageUrl = new URL('https://example.com/image.jpg');
 
-            const result = await postService.createNote(account, content, {
-                url: imageUrl,
-            });
+            const result = await postService.createNote(account, content, [
+                { url: imageUrl },
+            ]);
 
             if (isError(result)) {
                 throw new Error('Result should not be an error');
@@ -191,10 +191,9 @@ describe('PostService', () => {
             const content = 'This is a test note with an image';
             const imageUrl = new URL('https://example.com/image.jpg');
 
-            const result = await postService.createNote(account, content, {
-                url: imageUrl,
-                altText: 'Image alt text',
-            });
+            const result = await postService.createNote(account, content, [
+                { url: imageUrl, altText: 'Image alt text' },
+            ]);
 
             if (isError(result)) {
                 throw new Error('Result should not be an error');
@@ -232,13 +231,46 @@ describe('PostService', () => {
             const result = await serviceWithFailingStorage.createNote(
                 account,
                 content,
-                {
-                    url: new URL('https://example.com/bad-image.jpg'),
-                },
+                [{ url: new URL('https://example.com/bad-image.jpg') }],
             );
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('invalid-url');
+        });
+
+        it('should not create a note when any of its images fails verification', async () => {
+            const goodImageUrl = new URL('https://example.com/good.jpg');
+            const storageService = {
+                verifyFileUrl: vi.fn((url: URL) =>
+                    Promise.resolve(
+                        url.href === goodImageUrl.href
+                            ? ok(true)
+                            : createError('file-not-found'),
+                    ),
+                ),
+            } as unknown as ImageStorageService;
+
+            const serviceWithStorage = new PostService(
+                postRepository,
+                accountService,
+                mockFedifyContextFactory,
+                storageService,
+                moderationService,
+                logger,
+            );
+            const saveSpy = vi.spyOn(postRepository, 'save');
+
+            const result = await serviceWithStorage.createNote(
+                account,
+                'This is a test note',
+                [
+                    { url: goodImageUrl },
+                    { url: new URL('https://example.com/missing.jpg') },
+                ],
+            );
+
+            expect(getError(result as Err<string>)).toBe('file-not-found');
+            expect(saveSpy).not.toHaveBeenCalled();
         });
 
         it('should store mentions in database and format them in content', async () => {

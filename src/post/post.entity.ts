@@ -621,7 +621,7 @@ export class Post extends BaseEntity {
     static createNote(
         account: Account,
         noteContent: string,
-        image?: ImageAttachment,
+        images: ImageAttachment[] = [],
         mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
@@ -639,16 +639,12 @@ export class Post extends BaseEntity {
             addMentions: mentions,
         });
 
-        const postAttachment = image
-            ? [
-                  {
-                      type: 'Image',
-                      mediaType: null,
-                      name: image.altText ?? null,
-                      url: image.url,
-                  },
-              ]
-            : [];
+        const postAttachment = images.map((image) => ({
+            type: 'Image',
+            mediaType: null,
+            name: image.altText ?? null,
+            url: image.url,
+        }));
 
         const post = new Post(
             null,
@@ -687,7 +683,7 @@ export class Post extends BaseEntity {
         account: Account,
         replyContent: string,
         inReplyTo: Post,
-        image?: ImageAttachment,
+        images: ImageAttachment[] = [],
         mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
@@ -712,16 +708,12 @@ export class Post extends BaseEntity {
             addMentions: mentions,
         });
 
-        const postAttachment = image
-            ? [
-                  {
-                      type: 'Image',
-                      mediaType: null,
-                      name: image.altText ?? null,
-                      url: image.url,
-                  },
-              ]
-            : [];
+        const postAttachment = images.map((image) => ({
+            type: 'Image',
+            mediaType: null,
+            name: image.altText ?? null,
+            url: image.url,
+        }));
 
         const post = new Post(
             null,
