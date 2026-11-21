@@ -1,9 +1,8 @@
 import * as Sentry from '@sentry/node';
 
 import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getStoredAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
-import { parseURL } from '@/core/url';
 import type {
     FeedService,
     FeedType,
@@ -183,9 +182,11 @@ export class FeedController {
                 author: {
                     id: result.author_id.toString(),
                     handle: getAccountHandle(
-                        result.author_webfinger_host ??
-                            parseURL(result.author_url)?.host ??
-                            '',
+                        getStoredAccountHandleHost({
+                            webfingerHost: result.author_webfinger_host,
+                            url: result.author_url,
+                            apId: result.author_ap_id,
+                        }),
                         result.author_username,
                     ),
                     name: result.author_name ?? '',
@@ -200,9 +201,11 @@ export class FeedController {
                     ? {
                           id: result.reposter_id.toString(),
                           handle: getAccountHandle(
-                              result.reposter_webfinger_host ??
-                                  parseURL(result.reposter_url)?.host ??
-                                  '',
+                              getStoredAccountHandleHost({
+                                  webfingerHost: result.reposter_webfinger_host,
+                                  url: result.reposter_url,
+                                  apId: result.reposter_ap_id,
+                              }),
                               result.reposter_username,
                           ),
                           name: result.reposter_name ?? '',

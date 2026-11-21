@@ -5,6 +5,7 @@ import { type Actor, PropertyValue } from '@fedify/vocab';
 import {
     getAccountHandle,
     getAccountHandleHost,
+    getStoredAccountHandleHost,
     mapActorToExternalAccountData,
     normalizeWebfingerHost,
 } from '@/account/utils';
@@ -90,6 +91,65 @@ describe('getAccountHandleHost', () => {
                 webfingerHost: null,
             }),
         ).toBe('blog.example.com');
+    });
+});
+
+describe('getStoredAccountHandleHost', () => {
+    it('returns the webfinger host when present', () => {
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: 'example.com',
+                url: 'https://blog.example.com/',
+                apId: 'https://blog.example.com/users/index',
+            }),
+        ).toBe('example.com');
+    });
+
+    it('falls back to the URL host', () => {
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: null,
+                url: 'https://example.com/@alice',
+                apId: 'https://ap.example.com/users/alice',
+            }),
+        ).toBe('example.com');
+    });
+
+    it('falls back to the AP ID host when the account has no URL', () => {
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: null,
+                url: null,
+                apId: 'https://relay.fedi.buzz/tag/ghost',
+            }),
+        ).toBe('relay.fedi.buzz');
+    });
+
+    it('falls back to the AP ID host when the URL is empty or invalid', () => {
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: '',
+                url: '',
+                apId: 'https://relay.fedi.buzz/tag/ghost',
+            }),
+        ).toBe('relay.fedi.buzz');
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: null,
+                url: 'not a url',
+                apId: 'https://relay.fedi.buzz/tag/ghost',
+            }),
+        ).toBe('relay.fedi.buzz');
+    });
+
+    it('returns an empty string when nothing is known', () => {
+        expect(
+            getStoredAccountHandleHost({
+                webfingerHost: null,
+                url: null,
+                apId: null,
+            }),
+        ).toBe('');
     });
 });
 

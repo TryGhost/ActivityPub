@@ -4,6 +4,7 @@ import { type Actor, PropertyValue } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { ExternalAccountData } from '@/account/types';
+import { parseURL } from '@/core/url';
 
 interface PublicKey {
     id: string;
@@ -86,6 +87,29 @@ export function getAccountHandleHost(
     account: Pick<Account, 'apId' | 'webfingerHost'>,
 ) {
     return account.webfingerHost || account.apId.host;
+}
+
+/**
+ * Compute the handle host for an account read straight from the database:
+ * its WebFinger host if it has one, else the host of its profile URL, else
+ * the host of its ActivityPub ID
+ *
+ * The profile URL is optional for actors: relays, for example, have none, and
+ * without the final fallback their handle comes out as `@username@unknown`
+ *
+ * @param account Columns of the account row
+ */
+export function getStoredAccountHandleHost(account: {
+    webfingerHost: string | null;
+    url: string | null;
+    apId: string | null;
+}) {
+    return (
+        account.webfingerHost ||
+        parseURL(account.url)?.host ||
+        parseURL(account.apId)?.host ||
+        ''
+    );
 }
 
 export function normalizeWebfingerHost(input: string): string | null {

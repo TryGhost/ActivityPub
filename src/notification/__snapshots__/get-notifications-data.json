@@ -1,5 +1,6 @@
 [
   {
+    "actor_ap_id": "https://charlie.com/user/charlie",
     "actor_avatar_url": null,
     "actor_followed_by_user": 0,
     "actor_id": 3,
@@ -34,6 +35,7 @@
     "post_url": "http://charlie.com/post/some-reply",
   },
   {
+    "actor_ap_id": "https://dan.com/user/dan",
     "actor_avatar_url": null,
     "actor_followed_by_user": 0,
     "actor_id": 4,
@@ -68,6 +70,7 @@
     "post_url": null,
   },
   {
+    "actor_ap_id": "https://bob.com/user/bob",
     "actor_avatar_url": null,
     "actor_followed_by_user": 1,
     "actor_id": 2,
@@ -108,6 +111,7 @@
     "post_url": "http://bob.com/post/some-reply",
   },
   {
+    "actor_ap_id": "https://charlie.com/user/charlie",
     "actor_avatar_url": null,
     "actor_followed_by_user": 0,
     "actor_id": 3,
@@ -146,6 +150,7 @@
     "post_url": "http://alice.com/post/some-post",
   },
   {
+    "actor_ap_id": "https://bob.com/user/bob",
     "actor_avatar_url": null,
     "actor_followed_by_user": 1,
     "actor_id": 2,
