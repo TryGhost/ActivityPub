@@ -764,7 +764,11 @@ export class AccountPostsView {
             type: object.type === 'Article' ? PostType.Article : PostType.Note,
             title: normalizePlainText(object.name || ''),
             excerpt: object.preview?.content || '',
-            summary,
+            // Summaries are HTML in ActivityPub, but plain text in our API: posts
+            // stored from incoming activities go through the same conversion
+            summary: summary
+                ? ContentPreparer.regenerateExcerpt(summary)
+                : null,
             sensitive,
             contentWarning: contentWarning
                 ? ContentPreparer.regenerateContentWarning(contentWarning)
