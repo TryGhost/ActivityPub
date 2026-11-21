@@ -32,6 +32,8 @@ const PostInputSchema = z.object({
         )
         .nullable()
         .optional(),
+    social_web_share: z.enum(['article', 'note', 'none']).nullable().optional(),
+    social_web_note: z.string().nullable().optional(),
 });
 
 type PostInput = z.infer<typeof PostInputSchema>;
@@ -98,6 +100,17 @@ export class WebhookController {
 
         if (isError(postResult)) {
             const error = getError(postResult);
+
+            if (error === 'not-shared') {
+                this.logger.info(
+                    'Post with uuid: {uuid} is not shared to the Fediverse',
+                    { uuid: data.uuid },
+                );
+
+                return new Response(null, {
+                    status: 200,
+                });
+            }
 
             this.logger.error(
                 'Failed to create post from webhook for uuid: {uuid}, error: {error}',
@@ -180,7 +193,7 @@ export class WebhookController {
 
         const account = ctx.get('account');
 
-        await this.ghostPostService.updateArticleFromGhostPost(account, data);
+        await this.ghostPostService.updateGhostPost(account, data);
 
         return new Response(null, {
             status: 200,
@@ -218,6 +231,18 @@ export class WebhookController {
         if (isError(deleteResult)) {
             const error = getError(deleteResult);
 
+            // Posts that were never shared (or were already removed) have
+            // nothing to delete
+            if (error === 'post-not-found') {
+                this.logger.info('No shared post to delete for uuid: {uuid}', {
+                    uuid,
+                });
+
+                return new Response(null, {
+                    status: 200,
+                });
+            }
+
             this.logger.error(
                 'Failed to delete post with uuid: {uuid}, error: {error}',
                 { uuid, error: error },
@@ -227,7 +252,6 @@ export class WebhookController {
                 case 'upstream-error':
                 case 'not-a-post':
                 case 'missing-author':
-                case 'post-not-found':
                     return BadRequest('Failed to delete ghost post');
                 case 'not-author':
                     return Forbidden(

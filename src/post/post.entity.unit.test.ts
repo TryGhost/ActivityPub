@@ -4,6 +4,8 @@ import { getValue, isError, type Ok } from '@/core/result';
 import {
     Audience,
     classifySummary,
+    GHOST_POST_NOTE_MAX_LENGTH,
+    type GhostPost,
     Post,
     type PostData,
     PostSummary,
@@ -525,6 +527,239 @@ describe('Post', () => {
 
             expect(note.content).toBe(
                 '<p>Check out <a href="https://ghost.org">https://ghost.org</a> it is super cool</p>',
+            );
+        });
+    });
+
+    describe('createNoteFromGhostPost', () => {
+        const url = 'https://example.com/my-post/';
+        const link = `<p><a href="${url}">${url}</a></p>`;
+
+        const ghostPost = (overrides: Partial<GhostPost> = {}): GhostPost => ({
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p>This is such a great post</p>',
+            excerpt: 'This is such a great post',
+            custom_excerpt: null,
+            feature_image: 'https://example.com/feature-image.jpeg',
+            published_at: '2020-01-01T00:00:00.000Z',
+            url,
+            visibility: 'public',
+            authors: [{ name: 'Author', profile_image: null }],
+            social_web_share: 'note',
+            ...overrides,
+        });
+
+        const plainTextLength = (html: string) =>
+            Array.from(
+                html
+                    .replace(/<\/p><p>/g, '\n\n')
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/&amp;/g, '&'),
+            ).length;
+
+        it('creates a note with the title, excerpt and a link to the post', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(account, ghostPost());
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.audience).toBe(Audience.Public);
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>This is such a great post</p>${link}`,
+            );
+            expect(note.title).toBeNull();
+            expect(note.summary).toBeNull();
+            expect(note.excerpt).toBeNull();
+            expect(note.imageUrl).toBeNull();
+            expect(note.attachments).toEqual([]);
+            expect(note.url.href).toBe(url);
+            expect(note.publishedAt).toEqual(
+                new Date('2020-01-01T00:00:00.000Z'),
+            );
+            expect(note.metadata).toEqual({
+                ghostAuthors: [{ name: 'Author', profile_image: null }],
+            });
+            expect(note.apId.pathname).toMatch(
+                /^\/\.ghost\/activitypub\/note\//,
+            );
+        });
+
+        it('shortens the excerpt so that the note fits the length limit', async () => {
+            const account = await internalAccount();
+            const excerpt = 'word '.repeat(100).trim();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ excerpt }),
+            );
+
+            const budget =
+                GHOST_POST_NOTE_MAX_LENGTH -
+                'Title of my post'.length -
+                url.length -
+                4;
+            const shortExcerpt = `${excerpt.slice(0, budget - 3).trimEnd()}...`;
+
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>${shortExcerpt}</p>${link}`,
+            );
+            expect(plainTextLength(note.content ?? '')).toBeLessThanOrEqual(
+                GHOST_POST_NOTE_MAX_LENGTH,
+            );
+        });
+
+        it('collapses whitespace in the excerpt', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ excerpt: 'First line\n\nSecond   line' }),
+            );
+
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>First line Second line</p>${link}`,
+            );
+        });
+
+        it('leaves out the excerpt when the post has none', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ excerpt: null, html: null }),
+            );
+
+            expect(note.content).toBe(`<p>Title of my post</p>${link}`);
+        });
+
+        it('leaves out the excerpt when there is no room for it', async () => {
+            const account = await internalAccount();
+            const longUrl = `https://example.com/${'a'.repeat(240)}/`;
+            const title = 't'.repeat(230);
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ url: longUrl, title }),
+            );
+
+            expect(note.content).toBe(
+                `<p>${title}</p><p><a href="${longUrl}">${longUrl}</a></p>`,
+            );
+        });
+
+        it('escapes html in the title and excerpt', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({
+                    title: 'Cats & <dogs>',
+                    excerpt: '<script>alert("hax")</script>',
+                }),
+            );
+
+            expect(note.content).toBe(
+                `<p>Cats &amp; &lt;dogs&gt;</p><p>&lt;script&gt;alert("hax")&lt;/script&gt;</p>${link}`,
+            );
+        });
+
+        it('only uses the public part of a members-only post', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({
+                    visibility: 'paid',
+                    html: '<p>Free intro</p><!--members-only--><p>Secret part</p>',
+                    excerpt: 'Free intro Secret part',
+                }),
+            );
+
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>Free intro</p>${link}`,
+            );
+        });
+
+        it('uses the custom excerpt of a members-only post', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({
+                    visibility: 'members',
+                    html: '<!--members-only--><p>Secret part</p>',
+                    excerpt: 'A teaser for members',
+                    custom_excerpt: 'A teaser for members',
+                }),
+            );
+
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>A teaser for members</p>${link}`,
+            );
+        });
+
+        it('leaves out the excerpt of a members-only post with no public content', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({
+                    visibility: 'members',
+                    html: '<!--members-only--><p>Secret part</p>',
+                    excerpt: 'Secret part',
+                }),
+            );
+
+            expect(note.content).toBe(`<p>Title of my post</p>${link}`);
+        });
+
+        it('uses the custom note text instead of the title and excerpt', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({
+                    social_web_note:
+                        '  New post is out!\r\nGo read it @index@alice.test  ',
+                }),
+            );
+
+            expect(note.content).toBe(
+                `<p>New post is out!<br />Go read it @index@alice.test</p>${link}`,
+            );
+            expect(note.mentions).toEqual([]);
+        });
+
+        it('ignores custom note text that is only whitespace', async () => {
+            const account = await internalAccount();
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ social_web_note: '  \n ' }),
+            );
+
+            expect(note.content).toBe(
+                `<p>Title of my post</p><p>This is such a great post</p>${link}`,
+            );
+        });
+
+        it('shortens custom note text that is too long', async () => {
+            const account = await internalAccount();
+            const text = 'é'.repeat(600);
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ social_web_note: text }),
+            );
+
+            const budget = GHOST_POST_NOTE_MAX_LENGTH - url.length - 2;
+
+            expect(note.content).toBe(
+                `<p>${'é'.repeat(budget - 3)}...</p>${link}`,
+            );
+            expect(plainTextLength(note.content ?? '')).toBe(
+                GHOST_POST_NOTE_MAX_LENGTH,
             );
         });
     });

@@ -1,5 +1,6 @@
-import { Given, When } from '@cucumber/cucumber';
+import { Given, Then, When } from '@cucumber/cucumber';
 
+import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
 
 import { merge } from 'es-toolkit';
@@ -10,6 +11,8 @@ import { fetchActivityPub } from '../support/request.js';
 const endpoints = {
     'post.published':
         'https://self.test/.ghost/activitypub/v1/webhooks/post/published',
+    'post.unpublished':
+        'https://self.test/.ghost/activitypub/v1/webhooks/post/unpublished',
 };
 
 Given('a {string} webhook', function (string) {
@@ -116,3 +119,16 @@ When(
         });
     },
 );
+
+Then('the post is not shared', async function () {
+    assert.strictEqual(
+        this.response.status,
+        200,
+        `Expected status code 200 - got ${this.response.status}`,
+    );
+    assert.strictEqual(
+        await this.response.clone().text(),
+        '',
+        'Expected no post to be created',
+    );
+});

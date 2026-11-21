@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
@@ -7,9 +7,24 @@ import type { Account } from '@/account/account.entity';
 import type { AsyncEvents } from '@/core/events';
 import { error, getError, getValue, isError, ok } from '@/core/result';
 import { GhostPostService } from '@/ghost/ghost-post.service';
-import { Post } from '@/post/post.entity';
+import { Post, PostType } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
+
+function createGhostPostData() {
+    return {
+        title: 'Test Ghost Post',
+        uuid: 'test-uuid-123',
+        html: '<p>Test content</p>',
+        excerpt: 'Test excerpt',
+        custom_excerpt: null,
+        feature_image: null,
+        published_at: new Date().toISOString(),
+        url: 'https://example.com/test-post',
+        visibility: 'public' as const,
+        authors: [],
+    };
+}
 
 describe('GhostPostService', () => {
     let ghostPostService: GhostPostService;
@@ -54,6 +69,7 @@ describe('GhostPostService', () => {
 
         mockPostRepository = {
             save: vi.fn().mockResolvedValue(undefined),
+            getByApId: vi.fn().mockResolvedValue(null),
         } as unknown as KnexPostRepository;
 
         mockPostService = {
@@ -84,6 +100,10 @@ describe('GhostPostService', () => {
             mockLogger,
             mockEvents,
         );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     describe('createGhostPost', () => {
@@ -177,9 +197,65 @@ describe('GhostPostService', () => {
 
             expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
         });
+
+        it('should not create a post when the post is not shared', async () => {
+            const result = await ghostPostService.createGhostPost(mockAccount, {
+                ...createGhostPostData(),
+                social_web_share: 'none',
+            });
+
+            expect(isError(result)).toBe(true);
+            if (!isError(result)) {
+                throw new Error('Expected error result');
+            }
+            expect(getError(result)).toBe('not-shared');
+            expect(Post.createArticleFromGhostPost).not.toHaveBeenCalled();
+            expect(mockPostRepository.save).not.toHaveBeenCalled();
+            expect(mockQueryBuilder.insert).not.toHaveBeenCalled();
+        });
+
+        it('should create a note when the post is shared as a note', async () => {
+            mockQueryBuilder.first.mockResolvedValue(null);
+            mockQueryBuilder.insert.mockResolvedValue([1]);
+            vi.spyOn(Post, 'createNoteFromGhostPost').mockReturnValue(mockPost);
+            const ghostPostData = {
+                ...createGhostPostData(),
+                social_web_share: 'note' as const,
+            };
+
+            const result = await ghostPostService.createGhostPost(
+                mockAccount,
+                ghostPostData,
+            );
+
+            expect(isError(result)).toBe(false);
+            expect(Post.createNoteFromGhostPost).toHaveBeenCalledWith(
+                mockAccount,
+                ghostPostData,
+            );
+            expect(Post.createArticleFromGhostPost).not.toHaveBeenCalled();
+            expect(mockPostRepository.save).toHaveBeenCalledWith(mockPost);
+            expect(mockQueryBuilder.insert).toHaveBeenCalledWith({
+                ghost_uuid: ghostPostData.uuid,
+                ap_id: mockPost.apId.href,
+            });
+        });
+
+        it('should create an article when the share setting is missing', async () => {
+            mockQueryBuilder.first.mockResolvedValue(null);
+            mockQueryBuilder.insert.mockResolvedValue([1]);
+            const ghostPostData = createGhostPostData();
+
+            await ghostPostService.createGhostPost(mockAccount, ghostPostData);
+
+            expect(Post.createArticleFromGhostPost).toHaveBeenCalledWith(
+                mockAccount,
+                ghostPostData,
+            );
+        });
     });
 
-    describe('updateArticleFromGhostPost', () => {
+    describe('updateGhostPost', () => {
         it('should return early if the post does not exist', async () => {
             mockQueryBuilder.first.mockResolvedValue(null); // No mapping found
 
@@ -196,7 +272,7 @@ describe('GhostPostService', () => {
                 authors: [],
             };
 
-            const result = await ghostPostService.updateArticleFromGhostPost(
+            const result = await ghostPostService.updateGhostPost(
                 mockAccount,
                 ghostPostData,
             );
@@ -226,7 +302,7 @@ describe('GhostPostService', () => {
                 authors: [],
             };
 
-            const result = await ghostPostService.updateArticleFromGhostPost(
+            const result = await ghostPostService.updateGhostPost(
                 mockAccount,
                 ghostPostData,
             );
@@ -241,6 +317,45 @@ describe('GhostPostService', () => {
                     content: expect.any(String),
                 }),
             );
+        });
+
+        it('should delete the post when it should no longer be shared', async () => {
+            const apIdHref = 'https://example.com/posts/existing-post';
+            mockQueryBuilder.first.mockResolvedValue({ ap_id: apIdHref });
+
+            await ghostPostService.updateGhostPost(mockAccount, {
+                ...createGhostPostData(),
+                social_web_share: 'none',
+            });
+
+            expect(mockPostService.deleteByApId).toHaveBeenCalledWith(
+                new URL(apIdHref),
+                mockAccount,
+            );
+            expect(mockPostService.updateByApId).not.toHaveBeenCalled();
+        });
+
+        it('should not update a post that was shared as a note', async () => {
+            const apIdHref = 'https://example.com/note/existing-note';
+            mockQueryBuilder.first.mockResolvedValue({ ap_id: apIdHref });
+            vi.mocked(mockPostRepository.getByApId).mockResolvedValue({
+                ...mockPost,
+                type: PostType.Note,
+            } as unknown as Post);
+
+            const ghostPostData = {
+                ...createGhostPostData(),
+                title: 'Updated title',
+                html: '<p>The full content of the post</p>',
+                excerpt: 'Updated excerpt',
+                social_web_share: 'note' as const,
+            };
+
+            await ghostPostService.updateGhostPost(mockAccount, ghostPostData);
+
+            expect(Post.createArticleFromGhostPost).not.toHaveBeenCalled();
+            expect(mockPostService.updateByApId).not.toHaveBeenCalled();
+            expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
         });
     });
 

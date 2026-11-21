@@ -43,9 +43,11 @@ Given('I have internal account followers', async () => {
     }
 });
 
-When('I create a post in ghost', async function () {
-    this.originalGhostPost = createWebhookPost();
-    const body = JSON.stringify(this.originalGhostPost);
+async function publishPostInGhost(postOverrides = {}) {
+    const ghostPost = createWebhookPost();
+    Object.assign(ghostPost.post.current, postOverrides);
+
+    const body = JSON.stringify(ghostPost);
     const timestamp = Date.now();
     const hmac = createHmac('sha256', getWebhookSecret())
         .update(body + timestamp)
@@ -63,7 +65,80 @@ When('I create a post in ghost', async function () {
         },
     );
 
-    this.article = await response.json();
+    return { ghostPost, post: await response.json() };
+}
+
+When('I create a post in ghost', async function () {
+    const { ghostPost, post } = await publishPostInGhost();
+
+    this.originalGhostPost = ghostPost;
+    this.article = post;
+});
+
+When('I create a post in ghost that is shared as a note', async function () {
+    const { ghostPost, post } = await publishPostInGhost({
+        social_web_share: 'note',
+    });
+
+    this.originalGhostPost = ghostPost;
+    this.postNote = post;
+});
+
+Then('the post note is in my followers feeds', async function () {
+    const feeds = await Promise.allSettled(
+        ['alice', 'bob', 'charlie'].map((name) =>
+            waitForItemInFeed(
+                this.postNote.id,
+                `https://${name}.test/.ghost/activitypub/v1/feed/notes`,
+            ),
+        ),
+    );
+
+    assert(
+        feeds.every((feed) => feed.status === 'fulfilled'),
+        'Post note is not in all feeds',
+    );
+
+    for (const feed of feeds) {
+        const note = feed.value;
+        const ghostPost = this.originalGhostPost.post.current;
+
+        assert.strictEqual(note.type, 0, 'Post should be shared as a note');
+        assert(
+            note.content.includes(ghostPost.title),
+            'Note should contain the post title',
+        );
+        assert(
+            note.content.includes(`href="${ghostPost.url}"`),
+            'Note should link to the post',
+        );
+    }
+});
+
+Then('the post note is unchanged in my followers feeds', async function () {
+    const feeds = await Promise.all(
+        ['alice', 'bob', 'charlie'].map((name) =>
+            fetchActivityPub(
+                `https://${name}.test/.ghost/activitypub/v1/feed/notes`,
+                { method: 'GET' },
+            ),
+        ),
+    );
+
+    for (const feed of feeds) {
+        const json = await feed.json();
+        const note = json.posts.find((post) => post.id === this.postNote.id);
+        assert(note, 'Post note is not in feed');
+
+        assert(
+            note.content.includes(this.originalGhostPost.post.current.title),
+            'Note should keep the original post title',
+        );
+        assert(
+            !note.content.includes(this.updatedPostData.title),
+            'Note should not change when the post is edited',
+        );
+    }
 });
 
 Then('the article is in my followers feeds', async function () {

@@ -105,7 +105,7 @@ describe('GhostPostService', () => {
         await db.destroy();
     });
 
-    describe('updateArticleFromGhostPost', () => {
+    describe('updateGhostPost', () => {
         it('should update an existing article post successfully', async () => {
             const ghostPost = {
                 title: 'Updated Test Article',
@@ -143,10 +143,7 @@ describe('GhostPostService', () => {
             }
             const initialPost = getValue(initialResult);
 
-            await ghostPostService.updateArticleFromGhostPost(
-                account,
-                ghostPost,
-            );
+            await ghostPostService.updateGhostPost(account, ghostPost);
 
             // Verify the post was updated
             const updatedPost = await postRepository.getById(initialPost.id!);
@@ -200,7 +197,7 @@ describe('GhostPostService', () => {
 
             const deleteByApIdSpy = vi.spyOn(postService, 'deleteByApId');
 
-            await ghostPostService.updateArticleFromGhostPost(
+            await ghostPostService.updateGhostPost(
                 account,
                 ghostPostWithMissingContent,
             );
@@ -253,10 +250,7 @@ describe('GhostPostService', () => {
 
             const deleteByApIdSpy = vi.spyOn(postService, 'deleteByApId');
 
-            await ghostPostService.updateArticleFromGhostPost(
-                account,
-                privateGhostPost,
-            );
+            await ghostPostService.updateGhostPost(account, privateGhostPost);
 
             expect(deleteByApIdSpy).toHaveBeenCalledWith(
                 initialPost.apId,
@@ -293,10 +287,7 @@ describe('GhostPostService', () => {
             }
             const initialPost = getValue(initialResult);
 
-            await ghostPostService.updateArticleFromGhostPost(
-                account,
-                ghostPost,
-            );
+            await ghostPostService.updateGhostPost(account, ghostPost);
 
             // Verify the post still exists and has the correct values
             const updatedPost = await postRepository.getById(initialPost.id!);
@@ -343,10 +334,7 @@ describe('GhostPostService', () => {
                     { name: 'Jane Smith', profile_image: null },
                 ],
             };
-            await ghostPostService.updateArticleFromGhostPost(
-                account,
-                ghostPost,
-            );
+            await ghostPostService.updateGhostPost(account, ghostPost);
 
             const apIdForPost = await db('ghost_ap_post_mappings')
                 .select('ap_id')
