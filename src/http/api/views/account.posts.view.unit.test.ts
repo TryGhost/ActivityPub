@@ -33,14 +33,21 @@ vi.mock('@/helpers/html', () => ({
     normalizePlainText: vi.fn((content: string) => content),
 }));
 
-vi.mock('@/post/content', () => ({
-    ContentPreparer: {
-        updateMentions: vi.fn(
-            (content: string) => `${content} [mentions updated]`,
-        ),
-        regenerateContentWarning: vi.fn((html: string) => html),
-    },
-}));
+vi.mock('@/post/content', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/post/content')>();
+
+    return {
+        ContentPreparer: {
+            updateMentions: vi.fn(
+                (content: string) => `${content} [mentions updated]`,
+            ),
+            regenerateContentWarning: vi.fn((html: string) => html),
+            regenerateExcerpt: vi.fn((html: string) =>
+                actual.ContentPreparer.regenerateExcerpt(html),
+            ),
+        },
+    };
+});
 
 describe('Account Posts View', () => {
     let view: AccountPostsView;
@@ -303,6 +310,39 @@ describe('Account Posts View', () => {
                 summary: null,
                 contentWarning: 'Sensitive topic',
             });
+        });
+        it('should map the HTML summary of a remote post to plain text', () => {
+            const activity = {
+                type: 'Create',
+                object: {
+                    id: 'https://write.as/api/posts/o4ft5n5dic3alawl',
+                    type: 'Article',
+                    name: 'Coming soon: Read.as for Android',
+                    summary:
+                        '<p>I&#39;ve been working on some Android apps <a href="https://example.com" rel="nofollow ugc">for WriteFreely</a> lately.</p>\n\n<p> [...]</p>',
+                    content: '<p>Full content</p>',
+                    url: 'https://write.as/matt/coming-soon-read-as-for-android',
+                    published: '2024-03-20T12:00:00Z',
+                    attachment: [],
+                    attributedTo: {
+                        id: 'https://write.as/api/collections/matt',
+                        name: 'Matt',
+                        preferredUsername: 'matt',
+                    },
+                },
+                actor: {
+                    id: 'https://write.as/api/collections/matt',
+                    name: 'Matt',
+                    preferredUsername: 'matt',
+                },
+            };
+
+            const result = view.mapActivityToPostDTO(activity);
+
+            expect(result.summary).toMatch(
+                /^I've been working on some Android apps for WriteFreely lately\.\s+\[\.\.\.\]$/,
+            );
+            expect(result.contentWarning).toBeNull();
         });
     });
 
