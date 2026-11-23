@@ -79,7 +79,7 @@
     "@logtape/logtape": "2.4.2",
     "@opentelemetry/api": "1.10.0",
     "@opentelemetry/core": "3.1.1",
-    "@sentry/node": "11.12.0",
+    "@sentry/node": "11.15.0",
     "awilix": "13.0.7",
     "es-toolkit": "1.53.2",
     "google-auth-library": "11.3.4",
