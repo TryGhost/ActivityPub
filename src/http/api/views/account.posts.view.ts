@@ -276,6 +276,7 @@ export class AccountPostsView {
                     OutboxType.Repost.toString(),
                 );
             })
+            // Both profile tabs need parent context: Posts can contain reposted replies.
             .leftJoin(
                 'posts as parent_post',
                 'parent_post.id',
