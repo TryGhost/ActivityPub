@@ -1,3 +1,3 @@
-FROM nginx:1.31.9@sha256:84f7876d21d154885f99554d7ae325d8c2213f9169726ea7ab60642f2573a787
+FROM nginx:1.31.10@sha256:6d326c42628881936d6885c547b3bc788458ea530e51d9ab46edb1b05c9272ba
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY server.conf /etc/nginx/conf.d/default.conf
