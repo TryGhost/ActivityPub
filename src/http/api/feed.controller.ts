@@ -11,6 +11,7 @@ import type {
 } from '@/feed/feed.service';
 import { normalizePlainText } from '@/helpers/html';
 import { requireParam } from '@/http/api/helpers/request';
+import type { PostDTO } from '@/http/api/types';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -154,8 +155,8 @@ export class FeedController {
     private mapFeedResultsToPostDTO(
         results: GetFeedDataResultRow[],
         myAccount: Account,
-    ) {
-        return results.map((result) => {
+    ): PostDTO[] {
+        return results.map((result): PostDTO => {
             return {
                 id: result.post_ap_id,
                 type: result.post_type,
@@ -211,6 +212,7 @@ export class FeedController {
                           followedByMe: result.reposter_followed_by_user === 1,
                       }
                     : null,
+                inReplyTo: null,
             };
         });
     }

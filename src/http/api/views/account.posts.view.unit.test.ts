@@ -132,6 +132,7 @@ describe('Account Posts View', () => {
                 repostCount: 0,
                 repostedByMe: false,
                 repostedBy: null,
+                inReplyTo: null,
             });
         });
 
@@ -236,6 +237,7 @@ describe('Account Posts View', () => {
                     avatarUrl: 'https://example.com/avatar2.jpg',
                     followedByMe: false,
                 },
+                inReplyTo: null,
             });
         });
 
@@ -304,6 +306,181 @@ describe('Account Posts View', () => {
                 summary: null,
                 contentWarning: 'Sensitive topic',
             });
+        });
+    });
+
+    describe('mapActivityToPostDTO inReplyTo', () => {
+        const baseActivity = (inReplyTo?: unknown) => ({
+            type: 'Create',
+            object: {
+                id: 'https://example.com/posts/2',
+                type: 'Note',
+                content: 'Reply',
+                url: 'https://example.com/posts/2',
+                published: '2024-03-20T12:00:00Z',
+                attachment: [],
+                inReplyTo,
+                attributedTo: {
+                    id: 'https://example.com/users/1',
+                    name: 'Test User',
+                    preferredUsername: 'testuser',
+                },
+            },
+            actor: {
+                id: 'https://example.com/users/1',
+                name: 'Test User',
+                preferredUsername: 'testuser',
+            },
+        });
+
+        it('is null when the activity is not a reply', () => {
+            expect(
+                view.mapActivityToPostDTO(baseActivity()).inReplyTo,
+            ).toBeNull();
+        });
+
+        it('emits { id, author: null } for a string inReplyTo', () => {
+            const result = view.mapActivityToPostDTO(
+                baseActivity('https://other.example/posts/1'),
+            );
+
+            expect(result.inReplyTo).toEqual({
+                id: 'https://other.example/posts/1',
+                author: null,
+            });
+        });
+
+        it('normalizes object and { id } shaped inReplyTo values', () => {
+            expect(
+                view.mapActivityToPostDTO(
+                    baseActivity({ id: 'https://other.example/posts/1' }),
+                ).inReplyTo,
+            ).toEqual({
+                id: 'https://other.example/posts/1',
+                author: null,
+            });
+
+            expect(
+                view.mapActivityToPostDTO(
+                    baseActivity({
+                        id: 'https://other.example/posts/1',
+                        type: 'Note',
+                        content: 'Parent content',
+                    }),
+                ).inReplyTo,
+            ).toEqual({
+                id: 'https://other.example/posts/1',
+                author: null,
+            });
+        });
+
+        it('is null when inReplyTo cannot be normalized to a URL', () => {
+            expect(
+                view.mapActivityToPostDTO(baseActivity('not a url')).inReplyTo,
+            ).toBeNull();
+            expect(
+                view.mapActivityToPostDTO(baseActivity({ type: 'Note' }))
+                    .inReplyTo,
+            ).toBeNull();
+        });
+
+        it('always leaves remote parent author null (no local enrichment)', () => {
+            expect(
+                view.mapActivityToPostDTO(
+                    baseActivity('https://other.example/posts/1'),
+                ).inReplyTo,
+            ).toEqual({
+                id: 'https://other.example/posts/1',
+                author: null,
+            });
+        });
+    });
+
+    describe('mapToPostDTO', () => {
+        const baseRow = {
+            post_id: 1,
+            post_type: PostType.Note,
+            post_title: null,
+            post_excerpt: null,
+            post_summary: null,
+            post_sensitive: 0 as const,
+            post_content_warning: null,
+            post_content: 'Liked post',
+            post_url: 'https://example.com/posts/1',
+            post_image_url: null,
+            post_published_at: new Date('2024-03-20T12:00:00Z'),
+            post_like_count: 0,
+            post_liked_by_current_user: 1 as const,
+            post_reply_count: 0,
+            post_reading_time_minutes: 0,
+            post_repost_count: 0,
+            post_reposted_by_current_user: 0 as const,
+            post_ap_id: 'https://example.com/posts/1',
+            post_attachments: [],
+            author_id: 1,
+            author_ap_id: 'https://example.com/users/author',
+            author_name: 'Author',
+            author_username: 'author',
+            author_url: 'https://example.com/users/author',
+            author_webfinger_host: null,
+            author_avatar_url: null,
+            author_followed_by_current_user: 0 as const,
+            reposter_id: null,
+            reposter_ap_id: null,
+            reposter_name: null,
+            reposter_username: null,
+            reposter_url: null,
+            reposter_webfinger_host: null,
+            reposter_avatar_url: null,
+            reposter_followed_by_current_user: 0 as const,
+        } satisfies Parameters<typeof view.mapToPostDTO>[0];
+
+        it('returns inReplyTo null when parent columns are absent', () => {
+            expect(view.mapToPostDTO(baseRow, 1).inReplyTo).toBeNull();
+            expect(
+                view.mapToPostDTO(
+                    { ...baseRow, parent_post_ap_id: 'https://x.example/p/1' },
+                    1,
+                ).inReplyTo,
+            ).toEqual({ id: 'https://x.example/p/1', author: null });
+        });
+
+        it('uses the same host helper for note and parent authors when profile and actor hosts differ', () => {
+            // Same author with differing profile URL vs actor AP ID hosts
+            const row: Parameters<typeof view.mapToPostDTO>[0] = {
+                ...baseRow,
+                post_ap_id: 'https://social.example/posts/2',
+                post_content: 'Self reply',
+                author_id: 42,
+                author_ap_id: 'https://social.example/users/alice',
+                author_name: 'Alice',
+                author_username: 'alice',
+                author_url: 'https://profile.example/@alice',
+                author_webfinger_host: null,
+                parent_post_ap_id: 'https://social.example/posts/1',
+                parent_author_ap_id: 'https://social.example/users/alice',
+                parent_author_name: 'Alice',
+                parent_author_username: 'alice',
+                parent_author_url: 'https://profile.example/@alice',
+                parent_author_webfinger_host: null,
+                reposter_id: 7,
+                reposter_ap_id: 'https://ghost.example/users/index',
+                reposter_name: 'Rita',
+                reposter_username: 'rita',
+                reposter_url: 'https://ghost.example/users/index',
+                reposter_webfinger_host: null,
+                reposter_avatar_url: null,
+                reposter_followed_by_current_user: 0,
+            };
+
+            const result = view.mapToPostDTO(row, 7);
+
+            expect(result.author.handle).toBe('@alice@social.example');
+            expect(result.inReplyTo?.author?.handle).toBe(
+                '@alice@social.example',
+            );
+            expect(result.author.handle).toBe(result.inReplyTo?.author?.handle);
+            expect(result.repostedBy?.handle).toBe('@rita@ghost.example');
         });
     });
 
@@ -641,6 +818,88 @@ describe('Account Posts View', () => {
                 'https://example.com/posts/2',
                 'https://example.com/posts/1',
             ]);
+        });
+
+        describe('inReplyTo', () => {
+            const parentUrl = 'https://other.example/posts/1';
+
+            const setupReplyPage = async () => {
+                const fedifyModule = await vi.importMock('@fedify/vocab');
+                const ActivityClass = (
+                    fedifyModule as { Activity: new () => unknown }
+                ).Activity;
+
+                const createActivity = (id: string, inReplyTo?: unknown) => {
+                    const activity = Object.create(ActivityClass.prototype);
+                    activity.getObject = vi.fn().mockResolvedValue({
+                        id: new URL(id),
+                        getAttribution: vi.fn().mockResolvedValue(mockActor),
+                    });
+                    activity.toJsonLd = vi.fn().mockResolvedValue({
+                        type: 'Create',
+                        object: {
+                            id,
+                            type: 'Note',
+                            content: 'Test post',
+                            attributedTo: 'https://example.com/users/profile',
+                            inReplyTo,
+                        },
+                        actor: {
+                            id: 'https://example.com/users/profile',
+                            preferredUsername: 'profile',
+                            name: 'Profile User',
+                        },
+                    });
+                    return activity;
+                };
+
+                mockPage.getItems.mockImplementation(async function* () {
+                    yield createActivity(
+                        'https://example.com/posts/2',
+                        parentUrl,
+                    );
+                    yield createActivity('https://example.com/posts/1');
+                });
+            };
+
+            const lookup = () =>
+                view.getPostsByRemoteLookUp(
+                    1,
+                    new URL('https://example.com/users/current'),
+                    new URL('https://example.com/users/profile'),
+                    null,
+                    null,
+                    true,
+                );
+
+            it('emits { id, author: null } for remote replies (no local enrichment)', async () => {
+                await setupReplyPage();
+
+                mockDb.mockReturnValue({
+                    select: vi.fn().mockReturnThis(),
+                    innerJoin: vi.fn().mockReturnThis(),
+                    whereRaw: vi.fn().mockReturnValue(
+                        Object.assign(Promise.resolve([]), {
+                            first: vi.fn().mockResolvedValue(null),
+                        }),
+                    ),
+                });
+
+                const result = await lookup();
+
+                if (isError(result)) {
+                    throw new Error('Expected remote lookup to succeed');
+                }
+                const posts = getValue(result).results;
+                expect(posts.map((post) => post.inReplyTo)).toEqual([
+                    { id: parentUrl, author: null },
+                    null,
+                ]);
+                expect(lookupObject).not.toHaveBeenCalledWith(
+                    new URL(parentUrl),
+                    expect.anything(),
+                );
+            });
         });
 
         it('should set followedByMe correctly for Announce activities when user follows the original author', async () => {

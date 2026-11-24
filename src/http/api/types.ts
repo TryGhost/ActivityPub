@@ -219,6 +219,11 @@ export interface PostDTO {
      * Account that reposted the post
      */
     repostedBy: AuthorDTO | null;
+    /** Parent reply context; `{ id, author: null }` when the parent author is unknown. */
+    inReplyTo: {
+        id: string;
+        author: Pick<AuthorDTO, 'name' | 'handle' | 'url'> | null;
+    } | null;
     /**
      * Metadata of the post, containing e.g. information about ghost authors
      */

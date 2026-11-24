@@ -304,6 +304,92 @@ describe('AccountPostsView', () => {
             }
         });
 
+        describe('inReplyTo', () => {
+            async function getOutbox(subject: Account) {
+                const result = await viewer.getPostsFromOutbox(
+                    subject,
+                    contextAccount.id,
+                    10,
+                    null,
+                    true,
+                );
+                expect(isError(result)).toBe(false);
+                return getValue(result as [null, AccountPosts]).results;
+            }
+
+            it('names the parent author when replying to another account', async () => {
+                const [parentAuthor] =
+                    await fixtureManager.createInternalAccount();
+                const parent = await fixtureManager.createPost(parentAuthor);
+                const reply = await fixtureManager.createReply(account, parent);
+
+                const [parentAsListed] = await getOutbox(parentAuthor);
+                const results = await getOutbox(account);
+
+                expect(results).toHaveLength(1);
+                expect(results[0].id).toBe(reply.apId.href);
+                expect(results[0].inReplyTo).toEqual({
+                    id: parent.apId.href,
+                    author: {
+                        name: parentAuthor.name,
+                        handle: parentAsListed.author.handle,
+                        url: parentAuthor.url.href,
+                    },
+                });
+                expect(results[0].inReplyTo?.author?.handle).not.toBe(
+                    results[0].author.handle,
+                );
+            });
+
+            it('gives the same handle for author and parent when replying to self', async () => {
+                const parent = await fixtureManager.createPost(account);
+                await fixtureManager.createReply(account, parent);
+
+                const results = await getOutbox(account);
+
+                expect(results).toHaveLength(2);
+                const [reply, original] = results;
+                expect(reply.inReplyTo).toMatchObject({
+                    id: parent.apId.href,
+                    author: { handle: reply.author.handle },
+                });
+                expect(reply.inReplyTo?.author?.handle).toBe(
+                    original.author.handle,
+                );
+            });
+
+            it('returns null for posts that are not replies', async () => {
+                await fixtureManager.createPost(account);
+
+                const results = await getOutbox(account);
+
+                expect(results).toHaveLength(1);
+                expect(results[0].inReplyTo).toBeNull();
+            });
+
+            it('still names the parent author when the parent is soft-deleted', async () => {
+                const [parentAuthor] =
+                    await fixtureManager.createInternalAccount();
+                const parent = await fixtureManager.createPost(parentAuthor);
+                await fixtureManager.createReply(account, parent);
+
+                await db('posts')
+                    .where({ id: parent.id })
+                    .update({ deleted_at: db.fn.now() });
+
+                const results = await getOutbox(account);
+
+                expect(results).toHaveLength(1);
+                expect(results[0].inReplyTo).toMatchObject({
+                    id: parent.apId.href,
+                    author: {
+                        name: parentAuthor.name,
+                        url: parentAuthor.url.href,
+                    },
+                });
+            });
+        });
+
         it('sets likedByMe and repostedByMe correctly', async () => {
             const post = await fixtureManager.createPost(account);
             await postRepository.save(post);
