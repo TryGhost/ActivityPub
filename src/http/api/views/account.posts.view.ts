@@ -955,7 +955,9 @@ export class AccountPostsView {
                       }
                     : null,
             // Remote parents: type unknown — client opens the current reply thread.
-            inReplyTo: parentId ? { id: parentId, type: null, author: null } : null,
+            inReplyTo: parentId
+                ? { id: parentId, type: null, author: null }
+                : null,
         };
     }
 
