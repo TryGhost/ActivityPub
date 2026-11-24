@@ -330,6 +330,7 @@ describe('AccountPostsView', () => {
                 expect(results[0].id).toBe(reply.apId.href);
                 expect(results[0].inReplyTo).toEqual({
                     id: parent.apId.href,
+                    type: parent.type,
                     author: {
                         name: parentAuthor.name,
                         handle: parentAsListed.author.handle,
@@ -382,6 +383,7 @@ describe('AccountPostsView', () => {
                 expect(results).toHaveLength(1);
                 expect(results[0].inReplyTo).toMatchObject({
                     id: parent.apId.href,
+                    type: PostType.Tombstone,
                     author: {
                         name: parentAuthor.name,
                         url: parentAuthor.url.href,

@@ -346,6 +346,7 @@ describe('Account Posts View', () => {
 
             expect(result.inReplyTo).toEqual({
                 id: 'https://other.example/posts/1',
+                type: null,
                 author: null,
             });
         });
@@ -357,6 +358,7 @@ describe('Account Posts View', () => {
                 ).inReplyTo,
             ).toEqual({
                 id: 'https://other.example/posts/1',
+                type: null,
                 author: null,
             });
 
@@ -370,6 +372,7 @@ describe('Account Posts View', () => {
                 ).inReplyTo,
             ).toEqual({
                 id: 'https://other.example/posts/1',
+                type: null,
                 author: null,
             });
         });
@@ -391,6 +394,7 @@ describe('Account Posts View', () => {
                 ).inReplyTo,
             ).toEqual({
                 id: 'https://other.example/posts/1',
+                type: null,
                 author: null,
             });
         });
@@ -442,7 +446,71 @@ describe('Account Posts View', () => {
                     { ...baseRow, parent_post_ap_id: 'https://x.example/p/1' },
                     1,
                 ).inReplyTo,
-            ).toEqual({ id: 'https://x.example/p/1', author: null });
+            ).toEqual({
+                id: 'https://x.example/p/1',
+                type: PostType.Note,
+                author: null,
+            });
+        });
+
+        it('defaults missing parent type to Note when the parent row is present', () => {
+            expect(
+                view.mapToPostDTO(
+                    {
+                        ...baseRow,
+                        parent_post_ap_id: 'https://x.example/p/1',
+                        parent_post_type: null,
+                        parent_post_deleted_at: null,
+                    },
+                    1,
+                ).inReplyTo,
+            ).toEqual({
+                id: 'https://x.example/p/1',
+                type: PostType.Note,
+                author: null,
+            });
+        });
+
+        it('uses the parent post type and marks soft-deleted parents as Tombstone', () => {
+            expect(
+                view.mapToPostDTO(
+                    {
+                        ...baseRow,
+                        parent_post_ap_id: 'https://x.example/articles/1',
+                        parent_post_type: PostType.Article,
+                        parent_post_deleted_at: null,
+                        parent_author_username: 'bob',
+                        parent_author_name: 'Bob',
+                        parent_author_ap_id: 'https://x.example/users/bob',
+                        parent_author_url: 'https://x.example/users/bob',
+                        parent_author_webfinger_host: 'x.example',
+                    },
+                    1,
+                ).inReplyTo,
+            ).toMatchObject({
+                id: 'https://x.example/articles/1',
+                type: PostType.Article,
+            });
+
+            expect(
+                view.mapToPostDTO(
+                    {
+                        ...baseRow,
+                        parent_post_ap_id: 'https://x.example/p/1',
+                        parent_post_type: PostType.Note,
+                        parent_post_deleted_at: new Date('2024-01-01'),
+                        parent_author_username: 'bob',
+                        parent_author_name: 'Bob',
+                        parent_author_ap_id: 'https://x.example/users/bob',
+                        parent_author_url: 'https://x.example/users/bob',
+                        parent_author_webfinger_host: 'x.example',
+                    },
+                    1,
+                ).inReplyTo,
+            ).toMatchObject({
+                id: 'https://x.example/p/1',
+                type: PostType.Tombstone,
+            });
         });
 
         it('uses the same host helper for note and parent authors when profile and actor hosts differ', () => {
@@ -892,7 +960,7 @@ describe('Account Posts View', () => {
                 }
                 const posts = getValue(result).results;
                 expect(posts.map((post) => post.inReplyTo)).toEqual([
-                    { id: parentUrl, author: null },
+                    { id: parentUrl, type: null, author: null },
                     null,
                 ]);
                 expect(lookupObject).not.toHaveBeenCalledWith(

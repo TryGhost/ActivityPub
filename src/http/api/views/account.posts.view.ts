@@ -58,6 +58,8 @@ interface BaseGetProfileDataResultRow {
     author_followed_by_current_user: 0 | 1;
     // Present only when the query joins the parent post
     parent_post_ap_id?: string | null;
+    parent_post_type?: PostType | null;
+    parent_post_deleted_at?: Date | string | null;
     parent_author_ap_id?: string | null;
     parent_author_name?: string | null;
     parent_author_username?: string | null;
@@ -250,6 +252,8 @@ export class AccountPostsView {
                 `),
                 // Parent (in-reply-to) fields
                 'parent_post.ap_id as parent_post_ap_id',
+                'parent_post.type as parent_post_type',
+                'parent_post.deleted_at as parent_post_deleted_at',
                 'parent_author.ap_id as parent_author_ap_id',
                 'parent_author.name as parent_author_name',
                 'parent_author.username as parent_author_username',
@@ -833,12 +837,18 @@ export class AccountPostsView {
             return null;
         }
 
+        const type =
+            result.parent_post_deleted_at != null
+                ? PostType.Tombstone
+                : (result.parent_post_type ?? PostType.Note);
+
         if (!result.parent_author_username) {
-            return { id: parentApId, author: null };
+            return { id: parentApId, type, author: null };
         }
 
         return {
             id: parentApId,
+            type,
             author: {
                 handle: getAccountHandle(
                     this.resolveHandleHost({
@@ -944,7 +954,8 @@ export class AccountPostsView {
                           followedByMe: actor.followedByMe || false,
                       }
                     : null,
-            inReplyTo: parentId ? { id: parentId, author: null } : null,
+            // Remote parents: type unknown — client opens the current reply thread.
+            inReplyTo: parentId ? { id: parentId, type: null, author: null } : null,
         };
     }
 
