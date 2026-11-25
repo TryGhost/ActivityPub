@@ -281,12 +281,19 @@ describe('BlueskyController', () => {
     });
 
     describe('handleCheckDomainHandle', () => {
-        it.each([true, false])(
-            'should return whether the domain is reachable: %s',
-            async (reachable) => {
+        it.each([
+            { domain: 'example.com', available: true, reason: null },
+            {
+                domain: 'example.com',
+                available: false,
+                reason: 'taken' as const,
+            },
+        ])(
+            'should return whether the domain can be used: $available',
+            async (check) => {
                 vi.mocked(
                     blueskyService.checkDomainHandleForAccount,
-                ).mockResolvedValue(ok({ domain: 'example.com', reachable }));
+                ).mockResolvedValue(ok(check));
 
                 const result = await controller.handleCheckDomainHandle(ctx);
 
@@ -294,10 +301,7 @@ describe('BlueskyController', () => {
                     blueskyService.checkDomainHandleForAccount,
                 ).toHaveBeenCalledWith(account);
                 expect(result.status).toBe(200);
-                expect(await result.json()).toEqual({
-                    domain: 'example.com',
-                    reachable,
-                });
+                expect(await result.json()).toEqual(check);
             },
         );
 

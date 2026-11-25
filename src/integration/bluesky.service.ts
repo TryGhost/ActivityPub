@@ -75,14 +75,18 @@ export interface DomainHandle {
 }
 
 /**
- * Whether a domain the account could use as its handle routes
+ * The domain a claim would use as the account's handle right now, so it's
+ * worth offering: nothing else claims it, and it routes
  * `/.well-known/atproto-did` to this service (or points at the account in
- * DNS), so it's worth offering. It doesn't say the domain is free: that is
- * only checked when the domain is claimed
+ * DNS)
+ *
+ * Without one, `domain` is the preferred domain and `reason` why it can't be
+ * used. Nothing is reserved: a claim checks again
  */
 export interface DomainHandleCheck {
     domain: string;
-    reachable: boolean;
+    available: boolean;
+    reason: DomainHandleReason | null;
 }
 
 export interface BlueskyIntegrationDetails {
@@ -92,6 +96,11 @@ export interface BlueskyIntegrationDetails {
 }
 
 type IntegrationNotEnabledError = { type: 'not-enabled' };
+type DomainUnavailableError = {
+    type: 'domain-unavailable';
+    domain: string;
+    reason: Extract<DomainHandleReason, 'dns_error' | 'taken'>;
+};
 type HandleNotConfirmedError = { type: 'not-confirmed' };
 
 interface IntegrationRow {
@@ -109,6 +118,15 @@ interface IntegrationRow {
      * when the publisher asks, as their handle may be shared elsewhere
      */
     domain_handle_automatic: boolean | number;
+}
+
+interface RefreshedHandle {
+    row: IntegrationRow;
+    /**
+     * Bluesky knows the account, but the handle it claims doesn't point back
+     * at it
+     */
+    handleInvalid: boolean;
 }
 
 type DomainHandleState = Pick<
@@ -309,7 +327,16 @@ export class BlueskyService {
             return refreshResult;
         }
 
-        const row = getValue(refreshResult);
+        const { row, handleInvalid } = getValue(refreshResult);
+
+        // Bridgy Fed keeps a domain handle through disabling and enabling
+        // Bluesky sharing again, while this service stops serving the DID for
+        // it. The handle can't be confirmed until the domain is claimed again
+        if (handleInvalid && row.did && this.shouldSetUpDomainHandle(row)) {
+            await this.claimDomainHandle(account, row.did, null, row, true);
+
+            return ok(toDetails((await this.getRow(account))!));
+        }
 
         if (!row.confirmed || !row.did || !row.handle) {
             return ok(toDetails(row));
@@ -357,7 +384,7 @@ export class BlueskyService {
             return refreshResult;
         }
 
-        const row = getValue(refreshResult);
+        const { row } = getValue(refreshResult);
 
         if (!row.confirmed || !row.did || !row.handle) {
             return error({ type: 'not-confirmed' });
@@ -369,9 +396,10 @@ export class BlueskyService {
     }
 
     /**
-     * Find out whether the account could use its domain as its handle, without
-     * changing anything: the first domain that reaches this service, or the
-     * preferred one if none does
+     * Find the domain a claim would use as the account's handle right now,
+     * without changing anything. Domains are tried in the same order and
+     * held to the same conditions as a claim, so what is offered is what a
+     * claim sets up
      *
      * Checked whenever the client is about to offer the domain, as the
      * outcome of an earlier claim says little about now - a proxy can start
@@ -404,7 +432,7 @@ export class BlueskyService {
                 return refreshResult;
             }
 
-            row = getValue(refreshResult);
+            row = getValue(refreshResult).row;
         }
 
         if (!row.confirmed || !row.did) {
@@ -413,13 +441,31 @@ export class BlueskyService {
 
         const candidates = getDomainHandleCandidates(account);
 
-        for (const domain of candidates) {
-            if (await this.isDomainHandleReachable(domain, row.did)) {
-                return ok({ domain, reachable: true });
-            }
+        // Nothing to offer: a claim would keep the domain already in use
+        const inUse = candidates.find((domain) => domain === row.handle);
+
+        if (inUse) {
+            return ok({ domain: inUse, available: false, reason: null });
         }
 
-        return ok({ domain: candidates[0], reachable: false });
+        let failure: { domain: string; reason: DomainHandleReason } | null =
+            null;
+
+        for (const domain of candidates) {
+            const reason = await this.getDomainHandleObstacle(domain, row.did);
+
+            if (reason === null) {
+                return ok({ domain, available: true, reason: null });
+            }
+
+            failure ??= { domain, reason };
+        }
+
+        return ok({
+            domain: failure?.domain ?? candidates[0],
+            available: false,
+            reason: failure?.reason ?? null,
+        });
     }
 
     /**
@@ -486,23 +532,81 @@ export class BlueskyService {
     }
 
     /**
-     * Whether `domain` would resolve to the account once claimed: it routes
-     * /.well-known/atproto-did to this service, or already points at the
-     * account in DNS, which is enough on its own
+     * Why a claim couldn't use `domain` as the handle right now, or null if
+     * it could
      */
-    private async isDomainHandleReachable(domain: string, did: string) {
+    private async getDomainHandleObstacle(
+        domain: string,
+        did: string,
+    ): Promise<DomainHandleReason | null> {
+        const claimsResult = await this.getDomainHandleClaims(domain, did);
+
+        if (isError(claimsResult)) {
+            return getError(claimsResult).reason;
+        }
+
+        // A DNS record for the account is enough on its own
+        if (getValue(claimsResult).includes(did)) {
+            return null;
+        }
+
         const servedDid = await this.atprotoHandleResolver.resolveHttps(
             domain,
             { check: true },
         );
 
-        if (servedDid === did) {
-            return true;
-        }
+        return servedDid === did ? null : 'not_reachable';
+    }
 
+    /**
+     * Get the DIDs `domain` publishes in DNS, unless it can't be used as the
+     * account's handle: its DNS couldn't be checked, or it already points at
+     * another account
+     *
+     * A domain is only used when nothing else claims it: DNS takes precedence
+     * over HTTPS in atproto handle resolution, so a domain that already points
+     * at another account (eg the publisher's own Bluesky account) must be
+     * left alone
+     */
+    private async getDomainHandleClaims(
+        domain: string,
+        did: string,
+    ): Promise<Result<string[], DomainUnavailableError>> {
         const dnsResult = await this.atprotoHandleResolver.resolveDns(domain);
 
-        return !isError(dnsResult) && getValue(dnsResult).includes(did);
+        if (isError(dnsResult)) {
+            return error({
+                type: 'domain-unavailable',
+                domain,
+                reason: 'dns_error',
+            });
+        }
+
+        const dnsDids = getValue(dnsResult);
+
+        const taken: DomainUnavailableError = {
+            type: 'domain-unavailable',
+            domain,
+            reason: 'taken',
+        };
+
+        if (dnsDids.some((dnsDid) => dnsDid !== did)) {
+            return error(taken);
+        }
+
+        // Anything served for the domain while this service isn't serving the
+        // DID for it comes from something else. It only matters without a DNS
+        // record, which takes precedence
+        if (dnsDids.length === 0) {
+            const existingDid =
+                await this.atprotoHandleResolver.resolveHttps(domain);
+
+            if (existingDid !== null && existingDid !== did) {
+                return error(taken);
+            }
+        }
+
+        return ok(dnsDids);
     }
 
     /**
@@ -522,7 +626,7 @@ export class BlueskyService {
     private async refreshHandle(
         account: Account,
         row: IntegrationRow,
-    ): Promise<Result<IntegrationRow, BlueskyApiError>> {
+    ): Promise<Result<RefreshedHandle, BlueskyApiError>> {
         let did = row.did;
 
         if (!did) {
@@ -539,7 +643,7 @@ export class BlueskyService {
                         { id: account.id },
                     );
 
-                    return ok(row);
+                    return ok({ row, handleInvalid: false });
                 }
 
                 this.logger.warn('Failed to get bridged DID for account {id}', {
@@ -568,7 +672,7 @@ export class BlueskyService {
                     { id: account.id, did },
                 );
 
-                return ok({ ...row, did });
+                return ok({ row: { ...row, did }, handleInvalid: false });
             }
 
             this.logger.warn('Failed to get Bluesky profile for account {id}', {
@@ -582,7 +686,7 @@ export class BlueskyService {
         const { handle } = getValue(profileResult);
 
         if (handle === 'handle.invalid') {
-            return ok({ ...row, did });
+            return ok({ row: { ...row, did }, handleInvalid: true });
         }
 
         if (row.handle !== handle || !row.confirmed) {
@@ -600,17 +704,18 @@ export class BlueskyService {
             });
         }
 
-        return ok({ ...row, did, handle, confirmed: true });
+        return ok({
+            row: { ...row, did, handle, confirmed: true },
+            handleInvalid: false,
+        });
     }
 
     /**
      * Point the first usable domain at the bridged account and ask Bridgy Fed
      * to use it as the handle
      *
-     * A domain is only used when nothing else claims it: DNS takes precedence
-     * over HTTPS in atproto handle resolution, so a domain that already points
-     * at another account (eg the publisher's own Bluesky account) must be
-     * left alone
+     * `currentHandle` is the account's handle, or null when Bluesky doesn't
+     * accept the one it claims
      *
      * `expected` is the domain handle state the caller read. Nothing is
      * changed if it has changed since, eg because an overlapping confirmation
@@ -621,7 +726,7 @@ export class BlueskyService {
     private async claimDomainHandle(
         account: Account,
         did: string,
-        currentHandle: string,
+        currentHandle: string | null,
         expected: DomainHandleState,
         automatic: boolean,
     ) {
@@ -689,29 +794,13 @@ export class BlueskyService {
         expected: DomainHandleState,
         automatic: boolean,
     ): Promise<DomainHandleReason | 'claimed' | 'superseded'> {
-        const dnsResult = await this.atprotoHandleResolver.resolveDns(domain);
+        const claimsResult = await this.getDomainHandleClaims(domain, did);
 
-        if (isError(dnsResult)) {
-            return 'dns_error';
+        if (isError(claimsResult)) {
+            return getError(claimsResult).reason;
         }
 
-        const dnsDids = getValue(dnsResult);
-
-        if (dnsDids.some((dnsDid) => dnsDid !== did)) {
-            return 'taken';
-        }
-
-        // We don't serve the DID for this domain yet, so anything served
-        // there comes from something else. It only matters without a DNS
-        // record, which takes precedence
-        if (dnsDids.length === 0) {
-            const existingDid =
-                await this.atprotoHandleResolver.resolveHttps(domain);
-
-            if (existingDid !== null && existingDid !== did) {
-                return 'taken';
-            }
-        }
+        const dnsDids = getValue(claimsResult);
 
         const claim: DomainHandleState = {
             domain_handle: domain,

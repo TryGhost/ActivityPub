@@ -128,6 +128,12 @@ A domain is an atproto handle for whichever account it points at, via a DNS
 4. Marks the domain handle `active` once the Bluesky profile uses it, or
    `unavailable` (`rejected`) if that hasn't happened after 10 minutes
 
+Bridgy Fed keeps a domain handle when Bluesky sharing is disabled and enabled
+again, while this service stops serving the DID for it. If Bluesky no longer
+accepts the handle by then (it reports `handle.invalid`), the handle can't be
+confirmed until the domain resolves again, so the domain is claimed right away
+rather than after confirming the handle
+
 Requests for `/.well-known/atproto-did` only follow redirects to HTTPS URLs on
 public addresses, as the domain is set by whoever runs the site.
 
@@ -173,8 +179,9 @@ an earlier claim found
 
 ### Checking the domain first
 
-Before offering the domain to the publisher, the client can find out whether
-it could work, without changing anything, by making an empty POST request to:
+Before offering the domain to the publisher, the client can find out which
+domain a claim would use right now, without changing anything, by making an
+empty POST request to:
 
 ```
 /.ghost/activitypub/v2/actions/bluesky/domain-handle/check
@@ -185,13 +192,21 @@ This will return a `200 OK` response with the following body:
 ```json
 {
     "domain": "example.com",
-    "reachable": true
+    "available": true,
+    "reason": null
 }
 ```
 
-`reachable` is whether the domain routes `/.well-known/atproto-did` to this
-service (or points at the bridged account in DNS). `domain` is the first of the
-domains to try that does, or the preferred one if none does. It returns a
+The domains are tried in the same order and held to the same conditions as a
+claim, so the domain that is offered is the one a claim sets up: `domain` is
+the first one that no other account uses and that routes
+`/.well-known/atproto-did` to this service (or points at the bridged account in
+DNS). For a site on `www.` whose root domain is taken, that is the `www.` host.
+
+When no domain can be used, `available` is `false`, `domain` is the preferred
+domain and `reason` is why it can't be used (`taken`, `dns_error` or
+`not_reachable`). `available` is also `false`, without a reason, when the
+account already uses one of its domains as its handle. It returns a
 `400 Bad Request` if the integration is not enabled or the handle is not
 confirmed yet.
 
@@ -202,8 +217,7 @@ atproto resolvers, which never send the parameter. This matters because serving
 the DID for real before a claim could break the handle of another account that
 uses the domain through DNS, with resolvers that prefer HTTPS.
 
-The check doesn't say the domain is free: whether another account uses it is
-only found out when the domain is claimed
+Nothing is reserved by the check: a claim checks the domain again
 
 ### Using the domain later
 
