@@ -32,7 +32,6 @@ jobs:
     secrets: inherit
 
   test:
-    needs: build
     permissions:
       contents: read
     uses: ./.github/workflows/test.yml
