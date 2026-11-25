@@ -14,6 +14,7 @@ import { ModerationService } from '@/moderation/moderation.service';
 import { Post } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
+import type { TagPageService } from '@/post/tag-page.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -82,6 +83,7 @@ describe('GhostPostService', () => {
             imageStorageService,
             moderationService,
             logger,
+            {} as TagPageService,
         );
 
         ghostPostService = new GhostPostService(

@@ -1,13 +1,17 @@
 Feature: Hashtags
 
-  Scenario: Hashtags in a created note are linked and tagged
+  Scenario: Hashtags in a created note are tagged and linked to existing tag pages
     Given we are followed by "Alice"
+    And the site has a tag page for "ghost"
     When we create a note "Note" with the content
       """
-      Hello #Ghost
+      Hello #Ghost and #coffee
       """
-    Then "Note" is sent to "Alice" with the hashtag "#Ghost" linking to "https://self.test/tag/ghost/"
-    And "Note" has the content "<p>Hello <a href=\"https://self.test/tag/ghost/\" class=\"mention hashtag\" rel=\"tag\">#<span>Ghost</span></a></p>"
+    Then "Note" is sent to "Alice" with the hashtags
+      | name    | href                         |
+      | #Ghost  | https://self.test/tag/ghost/ |
+      | #coffee |                              |
+    And "Note" has the content "<p>Hello <a href=\"https://self.test/tag/ghost/\" class=\"mention hashtag\" rel=\"tag\">#<span>Ghost</span></a> and #coffee</p>"
 
   Scenario: Incoming notes are listed under their hashtags
     Given we are following "Alice"

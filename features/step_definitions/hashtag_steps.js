@@ -6,6 +6,14 @@ import { waitForAPObjectInFeed } from '../support/feed.js';
 import { createActivity, createObject } from '../support/fixtures.js';
 import { waitForRequest } from '../support/request.js';
 import { parseActivityString } from '../support/steps.js';
+import { getGhostWiremock } from '../support/wiremock.js';
+
+Given('the site has a tag page for {string}', async (tag) => {
+    await getGhostWiremock().register(
+        { method: 'HEAD', endpoint: `/tag/${tag}/` },
+        { status: 200 },
+    );
+});
 
 Given(
     'a {string} Activity {string} by {string} with the hashtag {string}',
@@ -39,8 +47,8 @@ Given(
 );
 
 Then(
-    '{string} is sent to {string} with the hashtag {string} linking to {string}',
-    async function (objectName, actorName, hashtag, href) {
+    '{string} is sent to {string} with the hashtags',
+    async function (objectName, actorName, table) {
         const object = this.objects[objectName];
         const inbox = new URL(this.actors[actorName].inbox);
 
@@ -54,14 +62,11 @@ Then(
             ? sentObject.tag
             : [sentObject.tag];
 
-        assert(
-            tags.some(
-                (tag) =>
-                    tag?.type === 'Hashtag' &&
-                    tag.name === hashtag &&
-                    tag.href === href,
-            ),
-            `Expected hashtag ${hashtag} linking to ${href} in ${JSON.stringify(sentObject.tag)}`,
+        assert.deepStrictEqual(
+            tags
+                .filter((tag) => tag?.type === 'Hashtag')
+                .map((tag) => ({ name: tag.name, href: tag.href ?? '' })),
+            table.hashes(),
         );
     },
 );

@@ -405,41 +405,58 @@ describe('ContentPreparer', () => {
             const siteUrl = new URL('https://example.com');
 
             // Matches how notes are prepared
-            const prepareNote = (content: string, url = siteUrl) =>
+            const prepareNote = (
+                content: string,
+                linkedHashtags: string[],
+                url = siteUrl,
+            ) =>
                 preparer.prepare(content, {
                     ...allOptionsDisabled,
                     escapeHtml: true,
                     extractLinks: true,
-                    addHashtags: { siteUrl: url },
+                    addHashtags: {
+                        siteUrl: url,
+                        linkedHashtags: new Set(linkedHashtags),
+                    },
                 });
 
-            it('should link hashtags to the site tag archive', () => {
-                expect(prepareNote('Hello #world')).toEqual(
+            it('should link hashtags to the site tag page', () => {
+                expect(prepareNote('Hello #world', ['world'])).toEqual(
                     'Hello <a href="https://example.com/tag/world/" class="mention hashtag" rel="tag">#<span>world</span></a>',
                 );
             });
 
+            it('should leave hashtags without a tag page as text', () => {
+                expect(prepareNote('#world and #coffee', ['world'])).toEqual(
+                    '<a href="https://example.com/tag/world/" class="mention hashtag" rel="tag">#<span>world</span></a> and #coffee',
+                );
+            });
+
             it('should keep the case of the hashtag but lowercase the link', () => {
-                expect(prepareNote('#GhostCMS')).toEqual(
+                expect(prepareNote('#GhostCMS', ['ghostcms'])).toEqual(
                     '<a href="https://example.com/tag/ghostcms/" class="mention hashtag" rel="tag">#<span>GhostCMS</span></a>',
                 );
             });
 
             it('should link non-latin hashtags', () => {
-                expect(prepareNote('#café')).toEqual(
+                expect(prepareNote('#café', ['café'])).toEqual(
                     '<a href="https://example.com/tag/caf%C3%A9/" class="mention hashtag" rel="tag">#<span>café</span></a>',
                 );
             });
 
-            it('should link hashtags to the archive of their normalized name', () => {
-                expect(prepareNote('#ＧＨＯＳＴ')).toEqual(
+            it('should link hashtags to the page of their normalized name', () => {
+                expect(prepareNote('#ＧＨＯＳＴ', ['ghost'])).toEqual(
                     '<a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>ＧＨＯＳＴ</span></a>',
                 );
             });
 
             it('should link tags relative to a site in a subdirectory', () => {
                 expect(
-                    prepareNote('#world', new URL('https://example.com/blog')),
+                    prepareNote(
+                        '#world',
+                        ['world'],
+                        new URL('https://example.com/blog'),
+                    ),
                 ).toEqual(
                     '<a href="https://example.com/blog/tag/world/" class="mention hashtag" rel="tag">#<span>world</span></a>',
                 );
@@ -456,7 +473,14 @@ describe('ContentPreparer', () => {
                 ];
 
                 for (const content of cases) {
-                    expect(prepareNote(content)).not.toContain('rel="tag"');
+                    expect(
+                        prepareNote(content, [
+                            'sharp',
+                            'anchor',
+                            'tag',
+                            'double',
+                        ]),
+                    ).not.toContain('rel="tag"');
                 }
             });
 
@@ -464,7 +488,10 @@ describe('ContentPreparer', () => {
                 const options = {
                     ...allOptionsDisabled,
                     escapeHtml: true,
-                    addHashtags: { siteUrl },
+                    addHashtags: {
+                        siteUrl,
+                        linkedHashtags: new Set(['fine', 'anchor', 'tag']),
+                    },
                 };
 
                 expect(preparer.prepare("It's #fine", options)).toEqual(
@@ -478,10 +505,11 @@ describe('ContentPreparer', () => {
             it('should not link hashtags inside links', () => {
                 const result = prepareNote(
                     'See https://example.com/page#section and #news',
+                    ['section', 'news'],
                 );
 
                 expect(
-                    ContentPreparer.parseHashtagLinks(result).map(
+                    ContentPreparer.parseHashtags(result).map(
                         (hashtag) => hashtag.name,
                     ),
                 ).toEqual(['news']);
@@ -496,14 +524,20 @@ describe('ContentPreparer', () => {
                     escapeHtml: true,
                     convertLineBreaks: true,
                     wrapInParagraph: true,
-                    addHashtags: { siteUrl },
+                    addHashtags: {
+                        siteUrl,
+                        linkedHashtags: new Set(['one', 'two']),
+                    },
                 });
 
                 expect(
-                    ContentPreparer.parseHashtagLinks(result).map(
-                        (hashtag) => hashtag.name,
+                    ContentPreparer.parseHashtags(result).map(
+                        (hashtag) => hashtag.href?.href,
                     ),
-                ).toEqual(['one', 'two']);
+                ).toEqual([
+                    'https://example.com/tag/one/',
+                    'https://example.com/tag/two/',
+                ]);
             });
         });
     });
@@ -973,9 +1007,19 @@ describe('ContentPreparer', () => {
         });
     });
 
-    describe('parseHashtagLinks', () => {
+    describe('findHashtagsInText', () => {
+        it('should return the hashtags outside of links once, as written', () => {
+            const result = ContentPreparer.findHashtagsInText(
+                '<p>#Coffee and #coffee, <a href="https://example.com/#tea">#tea</a> and #café</p>',
+            );
+
+            expect(result).toEqual(['Coffee', 'café']);
+        });
+    });
+
+    describe('parseHashtags', () => {
         it('should return hashtag links', () => {
-            const result = ContentPreparer.parseHashtagLinks(
+            const result = ContentPreparer.parseHashtags(
                 '<p><a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and <a href="https://mastodon.example/tags/news" rel="tag ugc">#news</a></p>',
             );
 
@@ -991,8 +1035,22 @@ describe('ContentPreparer', () => {
             ]);
         });
 
+        it('should return hashtags in the text without a link', () => {
+            const result = ContentPreparer.parseHashtags(
+                '<p><a href="https://example.com/tag/ghost/" rel="tag">#Ghost</a> about #coffee and #ghost</p>',
+            );
+
+            expect(result).toEqual([
+                {
+                    name: 'Ghost',
+                    href: new URL('https://example.com/tag/ghost/'),
+                },
+                { name: 'coffee', href: null },
+            ]);
+        });
+
         it('should only return each hashtag once', () => {
-            const result = ContentPreparer.parseHashtagLinks(
+            const result = ContentPreparer.parseHashtags(
                 '<a href="https://example.com/tag/ghost/" rel="tag">#Ghost</a> <a href="https://example.com/tag/ghost/" rel="tag">#ghost</a>',
             );
 
@@ -1005,7 +1063,7 @@ describe('ContentPreparer', () => {
         });
 
         it('should ignore links that are not hashtags', () => {
-            const result = ContentPreparer.parseHashtagLinks(
+            const result = ContentPreparer.parseHashtags(
                 '<a href="https://example.com/#ghost">#ghost</a> <a href="https://example.com/tag/ghost/" rel="tag">Ghost</a> <a href="https://example.xyz/@user" class="mention">@user</a>',
             );
 

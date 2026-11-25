@@ -230,7 +230,7 @@ describe('Build activity', () => {
             post.author = author;
             post.type = PostType.Note;
             post.content =
-                '<p>Hello <a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a></p>';
+                '<p>Hello <a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and #coffee</p>';
             post.apId = new URL('https://example.com/note/post-123');
             post.mentions = [];
             post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
@@ -244,11 +244,14 @@ describe('Build activity', () => {
             const noteJsonLd = (await result.fedifyObject.toJsonLd()) as {
                 tag: unknown;
             };
-            expect(noteJsonLd.tag).toEqual({
-                type: 'Hashtag',
-                href: 'https://example.com/tag/ghost/',
-                name: '#Ghost',
-            });
+            expect(noteJsonLd.tag).toEqual([
+                {
+                    type: 'Hashtag',
+                    href: 'https://example.com/tag/ghost/',
+                    name: '#Ghost',
+                },
+                { type: 'Hashtag', name: '#coffee' },
+            ]);
         });
 
         it('should throw an error for unsupported post types', async () => {

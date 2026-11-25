@@ -8,14 +8,17 @@
  */
 
 /**
- * A hashtag together with the URL it links to
+ * A hashtag a post is published with
  */
-export interface HashtagLink {
+export interface PublishedHashtag {
     /**
      * Hashtag name, without the leading `#`
      */
     name: string;
-    href: URL;
+    /**
+     * URL the hashtag links to in the content, or null if it isn't linked
+     */
+    href: URL | null;
 }
 
 /**

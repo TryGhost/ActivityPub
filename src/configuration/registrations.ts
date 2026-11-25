@@ -92,6 +92,7 @@ import { NotificationEventService } from '@/notification/notification-event.serv
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { TagPageService } from '@/post/tag-page.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
@@ -382,6 +383,7 @@ export function registerDependencies(
         asClass(AccountMoveService).singleton(),
     );
     container.register('postService', asClass(PostService).singleton());
+    container.register('tagPageService', asClass(TagPageService).singleton());
     container.register('userService', asClass(UserService).singleton());
     container.register(
         'ghostPostService',

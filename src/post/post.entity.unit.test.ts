@@ -826,7 +826,7 @@ describe('Post', () => {
             expect(post.getChangedHashtags()).toBeNull();
         });
 
-        it('should link and use the hashtags in the content of a note', async () => {
+        it('should publish the hashtags in a note, linking the given ones', async () => {
             const account = await createTestInternalAccount(123, {
                 host: new URL('https://foobar.com'),
                 username: 'foobar',
@@ -837,14 +837,24 @@ describe('Post', () => {
                 bannerImageUrl: null,
                 customFields: null,
             });
-            const post = Post.createNote(account, 'Hello #Ghost and #news');
+            const post = Post.createNote(
+                account,
+                'Hello #Ghost and #news',
+                undefined,
+                [],
+                new Set(['ghost']),
+            );
 
             expect(post.content).toEqual(
-                '<p>Hello <a href="https://foobar.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and <a href="https://foobar.com/tag/news/" class="mention hashtag" rel="tag">#<span>news</span></a></p>',
+                '<p>Hello <a href="https://foobar.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and #news</p>',
             );
-            expect(
-                getPublishedHashtags(post).map((hashtag) => hashtag.name),
-            ).toEqual(['Ghost', 'news']);
+            expect(getPublishedHashtags(post)).toEqual([
+                {
+                    name: 'Ghost',
+                    href: new URL('https://foobar.com/tag/ghost/'),
+                },
+                { name: 'news', href: null },
+            ]);
             expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
         });
 

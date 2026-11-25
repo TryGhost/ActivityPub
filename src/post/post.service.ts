@@ -39,6 +39,7 @@ import {
     type PostUpdateParams,
 } from '@/post/post.entity';
 import type { KnexPostRepository, Outbox } from '@/post/post.repository.knex';
+import type { TagPageService } from '@/post/tag-page.service';
 import type { VerificationError } from '@/storage/adapters/storage-adapter';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 
@@ -68,6 +69,7 @@ export class PostService {
         private readonly imageStorageService: ImageStorageService,
         private readonly moderationService: ModerationService,
         private readonly logger: Logger,
+        private readonly tagPageService: TagPageService,
     ) {}
 
     /**
@@ -342,6 +344,17 @@ export class PostService {
         return processedMentions;
     }
 
+    /**
+     * Get the hashtags in a note's content that have a tag page on the
+     * account's site, so they can be linked to it
+     */
+    private getLinkedHashtags(account: Account, content: string) {
+        return this.tagPageService.getHashtagsWithTagPage(
+            account.url,
+            Post.getNoteHashtags(content),
+        );
+    }
+
     async createNote(
         account: Account,
         content: string,
@@ -356,9 +369,18 @@ export class PostService {
             }
         }
 
-        const mentions = await this.getMentionsFromContent(content);
+        const [mentions, linkedHashtags] = await Promise.all([
+            this.getMentionsFromContent(content),
+            this.getLinkedHashtags(account, content),
+        ]);
 
-        const post = Post.createNote(account, content, image, mentions);
+        const post = Post.createNote(
+            account,
+            content,
+            image,
+            mentions,
+            linkedHashtags,
+        );
 
         await this.postRepository.save(post);
 
@@ -382,7 +404,10 @@ export class PostService {
             }
         }
 
-        const mentions = await this.getMentionsFromContent(content);
+        const [mentions, linkedHashtags] = await Promise.all([
+            this.getMentionsFromContent(content),
+            this.getLinkedHashtags(account, content),
+        ]);
 
         const inReplyToResult = await this.getByApId(inReplyToId);
 
@@ -407,6 +432,7 @@ export class PostService {
             inReplyTo,
             image,
             mentions,
+            linkedHashtags,
         );
 
         await this.postRepository.save(post);

@@ -40,6 +40,7 @@ import {
 } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
+import type { TagPageService } from '@/post/tag-page.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -80,6 +81,7 @@ describe('PostService', () => {
     let account: Account;
     let events: AsyncEvents;
     let logger: Logger;
+    let tagPageService: TagPageService;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -93,6 +95,15 @@ describe('PostService', () => {
             warn: vi.fn(),
             debug: vi.fn(),
         } as unknown as Logger;
+        tagPageService = {
+            getHashtagsWithTagPage: vi
+                .fn()
+                .mockImplementation(async (_siteUrl, hashtags: string[]) => {
+                    return new Set(
+                        hashtags.filter((hashtag) => hashtag === 'coffee'),
+                    );
+                }),
+        } as unknown as TagPageService;
         postRepository = new KnexPostRepository(db, events, logger);
         accountRepository = new KnexAccountRepository(db, events);
         fixtureManager = createFixtureManager(db, events);
@@ -134,6 +145,7 @@ describe('PostService', () => {
             imageStorageService,
             moderationService,
             logger,
+            tagPageService,
         );
 
         // Reset the database before each test
@@ -228,6 +240,7 @@ describe('PostService', () => {
                 failingStorageService,
                 moderationService,
                 logger,
+                tagPageService,
             );
 
             const content = 'This is a test note';
@@ -282,6 +295,34 @@ describe('PostService', () => {
             expect(mentionInDb).not.toBeNull();
             expect(mentionInDb.post_id).toBe(post.id);
             expect(mentionInDb.account_id).toBe(mentionedAccount.id);
+        });
+
+        it('should only link hashtags that have a tag page', async () => {
+            const result = await postService.createNote(
+                account,
+                'Morning #Coffee and #tea',
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+
+            expect(tagPageService.getHashtagsWithTagPage).toHaveBeenCalledWith(
+                account.url,
+                ['coffee', 'tea'],
+            );
+            expect(post.content).toBe(
+                `<p>Morning <a href="${account.url.origin}/tag/coffee/" class="mention hashtag" rel="tag">#<span>Coffee</span></a> and #tea</p>`,
+            );
+
+            const savedHashtags = await db('post_hashtags')
+                .join('hashtags', 'hashtags.id', 'post_hashtags.hashtag_id')
+                .where('post_hashtags.post_id', post.id)
+                .orderBy('hashtags.name')
+                .pluck('hashtags.name');
+            expect(savedHashtags).toEqual(['coffee', 'tea']);
         });
     });
 

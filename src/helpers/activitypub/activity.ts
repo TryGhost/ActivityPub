@@ -22,7 +22,7 @@ export function getHashtagsForPost(post: Post): Hashtag[] {
         (hashtag) =>
             new Hashtag({
                 name: `#${hashtag.name}`,
-                href: hashtag.href,
+                href: hashtag.href ?? undefined,
             }),
     );
 }
