@@ -39,6 +39,7 @@ describe('FediverseBridge', () => {
         events = new EventEmitter();
         accountService = {
             getAccountById: vi.fn(),
+            isRelaySharingEnabled: vi.fn().mockResolvedValue(true),
         } as unknown as AccountService;
         postRepository = {
             getById: vi.fn(),
@@ -782,6 +783,29 @@ describe('FediverseBridge', () => {
             expect(sendActivity.mock.calls[1][2]).toBe(
                 sendActivity.mock.calls[0][2],
             );
+        });
+
+        it('should not send posts of sites without relay sharing to the relays', async () => {
+            const sendActivity = vi.spyOn(context, 'sendActivity');
+            const post = getPost(Audience.Public, null);
+
+            vi.mocked(accountService.isRelaySharingEnabled).mockResolvedValue(
+                false,
+            );
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+            await handle(PostCreatedEvent.getName(), new PostCreatedEvent(456));
+            await handle(PostUpdatedEvent.getName(), new PostUpdatedEvent(456));
+            await handlePostDeleted(post);
+
+            expect(accountService.isRelaySharingEnabled).toHaveBeenCalledWith(
+                123,
+            );
+            expect(sendActivity.mock.calls.map((call) => call[1])).toEqual([
+                'followers',
+                'followers',
+                'followers',
+            ]);
         });
 
         it('should not send followers-only posts to the relays', async () => {

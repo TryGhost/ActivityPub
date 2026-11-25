@@ -317,6 +317,34 @@ describe('KnexAccountRepository', () => {
         expect(aliases).toEqual([]);
     });
 
+    it('turns relay sharing on and off on save', async () => {
+        const [[account], [otherAccount]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        expect(await accountRepository.isRelaySharingEnabled(account.id)).toBe(
+            false,
+        );
+
+        await accountRepository.save(account.enableRelaySharing());
+        await accountRepository.save(account.enableRelaySharing());
+        await accountRepository.save(otherAccount.enableRelaySharing());
+
+        expect(await accountRepository.isRelaySharingEnabled(account.id)).toBe(
+            true,
+        );
+
+        await accountRepository.save(account.disableRelaySharing());
+
+        expect(await accountRepository.isRelaySharingEnabled(account.id)).toBe(
+            false,
+        );
+        expect(
+            await accountRepository.isRelaySharingEnabled(otherAccount.id),
+        ).toBe(true);
+    });
+
     it('reserves a single Move and persists the destination after delivery', async () => {
         const [account] = await fixtureManager.createInternalAccount();
         const target = new URL('https://mastodon.social/users/new');

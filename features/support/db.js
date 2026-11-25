@@ -41,6 +41,7 @@ export async function reset() {
         'notifications',
         'outboxes',
         'posts',
+        'relay_sharing_accounts',
         'reposts',
         'sites',
         'users',

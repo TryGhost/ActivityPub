@@ -17,6 +17,8 @@ import {
     AccountUnfollowedEvent,
     DomainBlockedEvent,
     DomainUnblockedEvent,
+    RelaySharingDisabledEvent,
+    RelaySharingEnabledEvent,
 } from '@/account/events';
 import type { AsyncEvents } from '@/core/events';
 import { parseURL } from '@/core/url';
@@ -144,6 +146,15 @@ export class KnexAccountRepository {
                         .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
                             event.getAliasApId().href,
                         ])
+                        .delete();
+                } else if (event instanceof RelaySharingEnabledEvent) {
+                    await transaction('relay_sharing_accounts')
+                        .insert({ account_id: event.getAccountId() })
+                        .onConflict(['account_id'])
+                        .ignore();
+                } else if (event instanceof RelaySharingDisabledEvent) {
+                    await transaction('relay_sharing_accounts')
+                        .where('account_id', event.getAccountId())
                         .delete();
                 } else if (event instanceof AccountBlockedEvent) {
                     await transaction('blocks')
@@ -445,6 +456,13 @@ export class KnexAccountRepository {
             .orderBy('id')
             .select('ap_id');
         return rows.map((row) => new URL(row.ap_id));
+    }
+
+    async isRelaySharingEnabled(accountId: number): Promise<boolean> {
+        const row = await this.db('relay_sharing_accounts')
+            .where('account_id', accountId)
+            .first('id');
+        return row !== undefined;
     }
 
     async getMove(

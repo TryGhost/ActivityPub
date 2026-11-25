@@ -282,6 +282,18 @@ export class AccountService {
         return this.accountRepository.getAliases(accountId);
     }
 
+    async setRelaySharing(account: Account, enabled: boolean): Promise<void> {
+        await this.accountRepository.save(
+            enabled
+                ? account.enableRelaySharing()
+                : account.disableRelaySharing(),
+        );
+    }
+
+    async isRelaySharingEnabled(accountId: number): Promise<boolean> {
+        return this.accountRepository.isRelaySharingEnabled(accountId);
+    }
+
     async validateWebfingerHost(
         account: Account,
         host: string,

@@ -91,14 +91,16 @@ export class FediverseBridge {
 
     /**
      * Send an activity about a public post to the configured relays, which
-     * pass it on to the servers that subscribe to them
+     * pass it on to the servers that subscribe to them, if the post's site
+     * has turned on relay sharing
      */
     private async sendActivityToRelays(post: Post, activity: Activity) {
         // Replies aren't sent, as they are created outside of the bridge
         if (
             this.relayInboxes.length === 0 ||
             !isPublicPost(post) ||
-            post.inReplyTo !== null
+            post.inReplyTo !== null ||
+            !(await this.accountService.isRelaySharingEnabled(post.author.id))
         ) {
             return;
         }
