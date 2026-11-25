@@ -21,23 +21,6 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      - name: Download ActivityPub image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-amd64
-          path: /tmp
-
-      - name: Download Migrations image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-migrations-amd64
-          path: /tmp
-
-      - name: Load Docker images
-        run: |
-          docker load < /tmp/activitypub-amd64.tar
-          docker load < /tmp/activitypub-migrations-amd64.tar
-
       - name: Run Tests
         run: docker compose run --rm migrate-testing up && pnpm test:all
 
@@ -52,23 +35,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Download ActivityPub image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-amd64
-          path: /tmp
-
-      - name: Download Migrations image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-migrations-amd64
-          path: /tmp
-
-      - name: Load Docker images
-        run: |
-          docker load < /tmp/activitypub-amd64.tar
-          docker load < /tmp/activitypub-migrations-amd64.tar
 
       - name: Run E2E Tests
         run: |
