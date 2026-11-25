@@ -48,7 +48,7 @@ jobs:
 
       - name: Prepare test environment
         run: |
-          docker compose build activitypub-testing cucumber-tests migrate-testing fake-gcs &
+          docker compose build activitypub-testing migrate-testing fake-gcs &
           build=$!
           docker compose pull --quiet redis-testing pubsub-testing caddy-testing ghost-wiremock external-wiremock &
           pull=$!
