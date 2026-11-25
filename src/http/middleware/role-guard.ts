@@ -31,6 +31,11 @@ export enum GhostRole {
 const TOKEN_ALGORITHM = 'RS256';
 
 /**
+ * The audience required for identity tokens issued for ActivityPub
+ */
+const TOKEN_AUDIENCE = 'activitypub';
+
+/**
  * How long a site's key set is cached for before it is fetched again
  */
 const DEFAULT_KEY_SET_TTL = Temporal.Duration.from({ hours: 1 });
@@ -194,6 +199,17 @@ function verifyToken(
             // `exp` when it is present
             if (typeof claims === 'string' || typeof claims.exp !== 'number') {
                 throw new Error('Token has no expiry');
+            }
+
+            // Tokens without `aud` are accepted because older versions of
+            // Ghost don't set one
+            if (
+                claims.aud !== undefined &&
+                ![claims.aud].flat().includes(TOKEN_AUDIENCE)
+            ) {
+                throw new Error(
+                    'Token audience does not include "activitypub"',
+                );
             }
 
             return ok(claims);
