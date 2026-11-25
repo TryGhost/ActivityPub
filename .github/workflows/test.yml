@@ -21,8 +21,18 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
+      - name: Prepare test environment
+        run: |
+          docker compose build activitypub-testing migrate-testing fake-gcs &
+          build=$!
+          docker compose pull --quiet redis-testing pubsub-testing &
+          pull=$!
+          docker compose up -d mysql-testing
+          wait $build
+          wait $pull
+
       - name: Run Tests
-        run: docker compose run --rm migrate-testing up && pnpm test:all
+        run: pnpm test:all
 
   e2e-shard:
     name: E2E (${{ matrix.shard }}/3)
@@ -36,9 +46,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Prepare test environment
+        run: |
+          docker compose build activitypub-testing cucumber-tests migrate-testing fake-gcs &
+          build=$!
+          docker compose pull --quiet redis-testing pubsub-testing caddy-testing ghost-wiremock external-wiremock &
+          pull=$!
+          docker compose up -d mysql-testing
+          wait $build
+          wait $pull
+
       - name: Run E2E Tests
         run: |
-          docker compose run --rm migrate-testing up
           docker compose run --rm cucumber-tests \
             /opt/activitypub/node_modules/.bin/cucumber-js --shard ${{ matrix.shard }}/3
 
