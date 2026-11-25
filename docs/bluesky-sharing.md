@@ -239,8 +239,10 @@ handle is not confirmed yet. Keep confirming the handle while the status is
 When a site moves to a new domain, it registers as a new site with a new
 ActivityPub account, so Bluesky sharing starts out disabled for it. The previous
 site's account stops serving its DID (`released`), so the old domain stops
-resolving to the old Bluesky account. If the publication moves back, the
-publisher can use the domain again (see
+resolving to the old Bluesky account over HTTPS. A DNS `_atproto` record isn't
+affected: if the publisher added one for the old account, the domain keeps
+resolving to it until they change the record. If the publication moves back,
+the publisher can use the domain again (see
 [Using the domain later](#using-the-domain-later))
 
 If the old account is moved to the new one (see `/v1/migration`), Bridgy Fed
