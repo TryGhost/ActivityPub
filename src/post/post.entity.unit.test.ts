@@ -802,86 +802,28 @@ describe('Post', () => {
     });
 
     describe('hashtags', () => {
-        const ghostPost = {
-            uuid: '550e8400-e29b-41d4-a716-446655440000',
-            title: 'Title of my post',
-            html: '<p>Welcome!</p>',
-            excerpt: 'Welcome!',
-            custom_excerpt: null,
-            feature_image: null,
-            published_at: '2020-01-01',
-            url: 'https://ghost.org/post',
-            visibility: 'public',
-            authors: [],
-            tags: [
-                {
-                    name: 'Getting Started',
-                    url: 'https://ghost.org/tag/getting-started/',
-                    visibility: 'public',
-                },
-                {
-                    name: '#internal',
-                    url: 'https://ghost.org/404/',
-                    visibility: 'internal',
-                },
-                {
-                    name: '2024',
-                    url: 'https://ghost.org/tag/2024/',
-                    visibility: 'public',
-                },
-            ],
-        };
-
-        it('should use the public Ghost tags of an article as hashtags', async () => {
+        it('should not publish hashtags for an article', async () => {
             const post = getValue(
                 (await Post.createArticleFromGhostPost(
                     await internalAccount(),
-                    ghostPost,
+                    {
+                        uuid: '550e8400-e29b-41d4-a716-446655440000',
+                        title: 'Title of my post',
+                        html: '<p>Brewing #coffee at home</p>',
+                        excerpt: 'Brewing #coffee at home',
+                        custom_excerpt: null,
+                        feature_image: null,
+                        published_at: '2020-01-01',
+                        url: 'https://ghost.org/post',
+                        visibility: 'public',
+                        authors: [],
+                    },
                 )) as Ok<Post>,
             );
 
-            expect(post.metadata?.ghostTags).toEqual([
-                {
-                    name: 'Getting Started',
-                    url: 'https://ghost.org/tag/getting-started/',
-                },
-                { name: '2024', url: 'https://ghost.org/tag/2024/' },
-            ]);
-            expect(getPublishedHashtags(post)).toEqual([
-                {
-                    name: 'GettingStarted',
-                    href: new URL('https://ghost.org/tag/getting-started/'),
-                },
-            ]);
-            expect(post.getChangedHashtags()).toEqual(['gettingstarted']);
-        });
-
-        it('should replace the hashtags of an article when it is updated', async () => {
-            const author = await internalAccount();
-            const post = getValue(
-                (await Post.createArticleFromGhostPost(
-                    author,
-                    ghostPost,
-                )) as Ok<Post>,
-            );
-            post.getChangedHashtags();
-
-            post.update(author, {
-                title: post.title,
-                content: post.content,
-                excerpt: post.excerpt,
-                summary: post.summary,
-                imageUrl: post.imageUrl,
-                url: post.url,
-                metadata: {
-                    ghostAuthors: [],
-                    ghostTags: [
-                        { name: 'News', url: 'https://ghost.org/tag/news/' },
-                    ],
-                },
-            });
-
-            expect(post.getChangedHashtags()).toEqual(['news']);
+            expect(post.content).toEqual('<p>Brewing #coffee at home</p>');
+            expect(getPublishedHashtags(post)).toEqual([]);
+            expect(post.getChangedHashtags()).toBeNull();
         });
 
         it('should link and use the hashtags in the content of a note', async () => {

@@ -1,5 +1,3 @@
-import { parseURL } from '@/core/url';
-
 /**
  * Helpers for ActivityStreams `Hashtag` tags.
  *
@@ -21,14 +19,6 @@ export interface HashtagLink {
 }
 
 /**
- * A Ghost tag, as included in Ghost's post webhooks
- */
-export interface GhostTag {
-    name: string;
-    url: string;
-}
-
-/**
  * Maximum length of a hashtag name, in code points. Matches the size of the
  * `hashtags.name` column.
  */
@@ -36,7 +26,6 @@ const MAX_HASHTAG_LENGTH = 255;
 
 const HASHTAG_NAME_REGEX = /^[\p{L}\p{M}\p{N}_]+$/u;
 const HASHTAG_LETTER_REGEX = /\p{L}/u;
-const NON_WORD_REGEX = /[^\p{L}\p{M}\p{N}_]+/u;
 
 /**
  * Normalize a hashtag name for storage and lookups.
@@ -94,63 +83,6 @@ export function normalizeHashtags(names: string[]): string[] {
     }
 
     return [...normalized];
-}
-
-/**
- * Convert a Ghost tag name into a hashtag name.
- *
- * Ghost tag names may contain spaces and punctuation, which hashtags can't.
- * Multi-word names are joined in CamelCase so they stay readable, e.g.
- * "Getting Started" becomes "GettingStarted". Returns `null` if the tag name
- * does not produce a valid hashtag name.
- *
- * @param tagName Ghost tag name
- */
-export function getHashtagNameFromGhostTag(tagName: string): string | null {
-    const words = tagName
-        .normalize('NFKC')
-        .split(NON_WORD_REGEX)
-        .filter(Boolean);
-
-    const name =
-        words.length === 1
-            ? words[0]
-            : words
-                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join('');
-
-    if (!isValidHashtagName(name ?? '')) {
-        return null;
-    }
-
-    return name;
-}
-
-/**
- * Get the hashtags for a Ghost post's tags. Tags that don't produce a valid
- * hashtag name or have an invalid URL are skipped, as are duplicates.
- *
- * @param tags Public tags of the Ghost post
- */
-export function getHashtagLinksFromGhostTags(tags: GhostTag[]): HashtagLink[] {
-    const hashtagLinks = new Map<string, HashtagLink>();
-
-    for (const tag of tags) {
-        const name = getHashtagNameFromGhostTag(tag.name);
-        const href = parseURL(tag.url);
-
-        if (name === null || href === null) {
-            continue;
-        }
-
-        const normalized = normalizeHashtag(name);
-
-        if (normalized !== null && !hashtagLinks.has(normalized)) {
-            hashtagLinks.set(normalized, { name, href });
-        }
-    }
-
-    return [...hashtagLinks.values()];
 }
 
 /**

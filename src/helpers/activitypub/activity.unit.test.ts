@@ -251,58 +251,6 @@ describe('Build activity', () => {
             });
         });
 
-        it('should include the public Ghost tags as hashtags in the Article object', async () => {
-            const author = Object.create(AccountEntity);
-            author.id = 123;
-            author.username = 'testuser';
-            author.apId = new URL('https://example.com/user/foo');
-            author.apFollowers = new URL(
-                'https://example.com/user/foo/followers',
-            );
-
-            const post = Object.create(Post);
-            post.id = 'post-123';
-            post.author = author;
-            post.type = PostType.Article;
-            post.title = 'Post title';
-            post.content = 'Post content';
-            post.metadata = {
-                ghostAuthors: [],
-                ghostTags: [
-                    {
-                        name: 'Getting Started',
-                        url: 'https://example.com/tag/getting-started/',
-                    },
-                    { name: 'News', url: 'https://example.com/tag/news/' },
-                ],
-            };
-            post.publishedAt = new Date('2025-01-12T10:30:00Z');
-            post.url = new URL('https://example.com/post/post-123');
-            post.apId = new URL('https://example.com/article/post-123');
-            post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
-
-            const result = await buildCreateActivityAndObjectFromPost(
-                post,
-                context,
-            );
-
-            const articleJsonLd = (await result.fedifyObject.toJsonLd()) as {
-                tag: unknown;
-            };
-            expect(articleJsonLd.tag).toEqual([
-                {
-                    type: 'Hashtag',
-                    href: 'https://example.com/tag/getting-started/',
-                    name: '#GettingStarted',
-                },
-                {
-                    type: 'Hashtag',
-                    href: 'https://example.com/tag/news/',
-                    name: '#News',
-                },
-            ]);
-        });
-
         it('should throw an error for unsupported post types', async () => {
             const author = Object.create(AccountEntity);
             author.id = 123;

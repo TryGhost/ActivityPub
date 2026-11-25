@@ -8,12 +8,7 @@ import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
 import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
-import {
-    type GhostTag,
-    getHashtagLinksFromGhostTags,
-    type HashtagLink,
-    normalizeHashtags,
-} from '@/post/hashtag';
+import { type HashtagLink, normalizeHashtags } from '@/post/hashtag';
 
 /** @see PostSummary.parse to get a branded PostSummary */
 export type PostSummary = string & { readonly __brand: unique symbol };
@@ -86,10 +81,6 @@ type GhostAuthor = {
 
 export type Metadata = {
     ghostAuthors: GhostAuthor[];
-    /**
-     * Public tags of the Ghost post, used to publish the post's hashtags
-     */
-    ghostTags?: GhostTag[];
 } & Record<string, unknown>;
 
 // TODO Deduplicate this with the webhook handler
@@ -104,7 +95,6 @@ export interface GhostPost {
     url: string;
     visibility: string;
     authors?: GhostAuthor[] | null;
-    tags?: (GhostTag & { visibility: string })[] | null;
 }
 
 export interface PostUpdateParams {
@@ -180,19 +170,16 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
 }
 
 /**
- * Get the hashtags an internal post is published with. Articles use the
- * post's Ghost tags, notes use the hashtag links in their content.
+ * Get the hashtags an internal post is published with: the hashtag links in a
+ * note's content. Articles are published without hashtags, as Ghost tags are
+ * often used to organise a site rather than to label posts for discovery.
  *
  * External posts declare their hashtags in their `tag` property instead,
  * which is not kept on the post.
  */
 export function getPublishedHashtags(
-    post: Pick<Post, 'type' | 'content' | 'metadata'>,
+    post: Pick<Post, 'type' | 'content'>,
 ): HashtagLink[] {
-    if (post.type === PostType.Article) {
-        return getHashtagLinksFromGhostTags(post.metadata?.ghostTags ?? []);
-    }
-
     if (post.type === PostType.Note && post.content) {
         return ContentPreparer.parseHashtagLinks(post.content);
     }
@@ -360,7 +347,6 @@ export class Post extends BaseEntity {
         this._imageUrl = params.imageUrl;
         this._url = params.url;
         this._metadata = params.metadata;
-        this.hashtagsToSave = this.getHashtagNames();
     }
 
     private static normalizeTitle(title: string | null): PostTitle | null {
@@ -587,29 +573,25 @@ export class Post extends BaseEntity {
             ? PostSummary.parse(ghostPost.custom_excerpt)
             : null;
 
-        const post = new Post(
-            null,
-            randomUUID(),
-            account,
-            PostType.Article,
-            Audience.Public,
-            ghostPost.title,
-            excerpt,
-            summary,
-            content,
-            new URL(ghostPost.url),
-            parseURL(ghostPost.feature_image),
-            new Date(ghostPost.published_at),
-            {
-                ghostAuthors: ghostPost.authors ?? [],
-                ghostTags: (ghostPost.tags ?? [])
-                    .filter((tag) => tag.visibility === 'public')
-                    .map((tag) => ({ name: tag.name, url: tag.url })),
-            },
+        return ok(
+            new Post(
+                null,
+                randomUUID(),
+                account,
+                PostType.Article,
+                Audience.Public,
+                ghostPost.title,
+                excerpt,
+                summary,
+                content,
+                new URL(ghostPost.url),
+                parseURL(ghostPost.feature_image),
+                new Date(ghostPost.published_at),
+                {
+                    ghostAuthors: ghostPost.authors ?? [],
+                },
+            ),
         );
-        post.hashtagsToSave = post.getHashtagNames();
-
-        return ok(post);
     }
 
     static createFromData(account: Account, data: PostData): Post {

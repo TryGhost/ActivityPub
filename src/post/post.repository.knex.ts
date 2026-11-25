@@ -358,17 +358,6 @@ export class KnexPostRepository {
                             : null,
                     })
                     .where({ id: post.id });
-
-                if (hashtagsToSave !== null) {
-                    await transaction('post_hashtags')
-                        .where({ post_id: post.id })
-                        .del();
-                    await this.insertHashtags(
-                        post,
-                        hashtagsToSave,
-                        transaction,
-                    );
-                }
                 wasUpdated = true;
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {

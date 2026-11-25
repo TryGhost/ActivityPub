@@ -356,13 +356,15 @@ describe('GhostPostService', () => {
             const apId = new URL(apIdForPost.ap_id);
             const updatedPost = await postRepository.getByApId(apId);
             expect(updatedPost).not.toBeNull();
-            expect(updatedPost!.metadata?.ghostAuthors).toEqual([
-                {
-                    name: 'John Doe',
-                    profile_image: 'https://example.com/john.jpg',
-                },
-                { name: 'Jane Smith', profile_image: null },
-            ]);
+            expect(updatedPost!.metadata).toEqual({
+                ghostAuthors: [
+                    {
+                        name: 'John Doe',
+                        profile_image: 'https://example.com/john.jpg',
+                    },
+                    { name: 'Jane Smith', profile_image: null },
+                ],
+            });
         });
     });
 

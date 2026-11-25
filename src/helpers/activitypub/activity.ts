@@ -91,7 +91,6 @@ async function getFedifyObjectForPost(
             updated: updatedAt,
             preview,
             url: post.url,
-            tags: getHashtagsForPost(post),
             to: PUBLIC_COLLECTION,
             ccs: ccs,
         });
