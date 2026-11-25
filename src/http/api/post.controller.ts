@@ -195,7 +195,7 @@ export class PostController {
             logger.error('Error deleting post - {error}', {
                 error: err,
             });
-            return new Response(JSON.stringify(err), { status: 500 });
+            return new Response(null, { status: 500 });
         }
     }
 

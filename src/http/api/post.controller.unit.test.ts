@@ -19,6 +19,10 @@ import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
 import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
 
+vi.mock('@/db', () => ({
+    getRelatedActivities: vi.fn().mockResolvedValue([{ id: 'activity-1' }]),
+}));
+
 describe('Post API', () => {
     let site: Site;
     let account: AccountEntity;
@@ -265,5 +269,58 @@ describe('Post API', () => {
         const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(404);
+    });
+
+    describe('handleDeletePost', () => {
+        function getMockDeleteContext(postApId: string, globaldb: unknown) {
+            return {
+                req: {
+                    param: (key: string) => (key === 'id' ? postApId : null),
+                },
+                get: (key: string) => {
+                    if (key === 'account') {
+                        return account;
+                    }
+                    if (key === 'logger') {
+                        return { info: vi.fn(), error: vi.fn() };
+                    }
+                    if (key === 'globaldb') {
+                        return globaldb;
+                    }
+                },
+            } as unknown as AppContext;
+        }
+
+        it('should return 204 when the post and its activities are deleted', async () => {
+            const globaldb = { delete: vi.fn().mockResolvedValue(undefined) };
+            const ctx = getMockDeleteContext(
+                `https://${site.host}/posts/1`,
+                globaldb,
+            );
+
+            postService.deleteByApId = vi.fn().mockResolvedValue(ok(true));
+
+            const response = await postController.handleDeletePost(ctx);
+
+            expect(response.status).toBe(204);
+            expect(globaldb.delete).toHaveBeenCalledWith(['activity-1']);
+        });
+
+        it('should return 500 with an empty body when removing activities fails', async () => {
+            const globaldb = {
+                delete: vi.fn().mockRejectedValue(new Error('kv failure')),
+            };
+            const ctx = getMockDeleteContext(
+                `https://${site.host}/posts/1`,
+                globaldb,
+            );
+
+            postService.deleteByApId = vi.fn().mockResolvedValue(ok(true));
+
+            const response = await postController.handleDeletePost(ctx);
+
+            expect(response.status).toBe(500);
+            expect(await response.text()).toBe('');
+        });
     });
 });

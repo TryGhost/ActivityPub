@@ -156,6 +156,39 @@ describe('GCloudPubSubPushMessageQueue', () => {
             });
         });
 
+        it('should not log sensitive message data', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const keys = [
+                {
+                    keyId: 'https://alice.test/.ghost/activitypub/users/index#main-key',
+                    privateKey: { kty: 'RSA', d: 'secret' },
+                },
+            ];
+            const message = {
+                id: 'abc123',
+                keys,
+            };
+
+            await mq.enqueue(message);
+
+            expect(mockTopic.publishMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    json: expect.objectContaining({ keys }),
+                }),
+            );
+
+            const [, properties] = (mockLogger.info as Mock).mock.calls[0];
+
+            expect(properties.mq_message.id).toBe(message.id);
+            expect(properties.mq_message).not.toHaveProperty('keys');
+        });
+
         it('should handle an error if message publishing fails', async () => {
             const error = new Error('Failed to publish message');
 

@@ -327,6 +327,7 @@ export function createFixtureManager(
             }),
         },
         logger,
+        events,
     );
     const postRepository = new KnexPostRepository(db, events, logger);
 

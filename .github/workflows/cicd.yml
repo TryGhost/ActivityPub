@@ -32,7 +32,6 @@ jobs:
     secrets: inherit
 
   test:
-    needs: build
     permissions:
       contents: read
     uses: ./.github/workflows/test.yml
@@ -81,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - uses: tryghost/actions/actions/slack-build@35c321c5dede55ff3d02ea89a2a494cbc13a468b # main
+      - uses: tryghost/actions/actions/slack-build@fba0696d9d263d21a6d684f1532eeecb8492f724 # main
         if: contains(needs.*.result, 'failure') && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           status: failure

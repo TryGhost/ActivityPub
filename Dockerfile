@@ -1,16 +1,24 @@
-FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS base
+
+WORKDIR /opt/activitypub
+
+# Node 25+ images no longer ship corepack, so npm installs pnpm at the version
+# packageManager names in package.json. That keeps a single pnpm pin for
+# Renovate to move.
+# A separate stage keeps the binary out of the production image.
+FROM base AS pnpm
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-WORKDIR /opt/activitypub
-
-RUN corepack enable
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    npm install --global --ignore-scripts \
+    "$(node -p "require('/tmp/package.json').packageManager")"
 
 # All dependencies (prod + dev). Shared by the dev/test image and the build.
 # pnpm-workspace.yaml holds the allowBuilds and minimumReleaseAgeExclude
 # settings, so pnpm needs it present to resolve the lockfile.
-FROM base AS deps
+FROM pnpm AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
@@ -18,7 +26,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 # Production-only dependencies, for the runtime image.
-FROM base AS prod-deps
+FROM pnpm AS prod-deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 

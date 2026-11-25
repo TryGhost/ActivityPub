@@ -155,6 +155,10 @@ Domain-Driven, CQRS-inspired. Full rationale in `/adr`; the non-obvious rules:
   in any field and hides bugs.
 - When adding a table, also add it to `FixtureManager.reset()` so integration
   tests stay isolated.
+- When adding a service to the test stack in `docker-compose.yml` (the services
+  on `test_network`), also add it to the "Prepare test environment" steps in
+  `.github/workflows/test.yml`, which build and pull the test stack in
+  parallel. A missing entry still works, just slower.
 - **e2e step definitions** are grouped by feature (e.g. all reposting steps in
   `features/step_definitions/repost_steps.js`), not 1:1 with feature files.
 

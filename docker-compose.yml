@@ -72,7 +72,7 @@ services:
 
   mysql-schema:
     profiles: [schema]
-    image: mysql:8.4.11@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
+    image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -96,7 +96,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.11@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
+    image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -110,7 +110,7 @@ services:
       retries: 120
 
   redis:
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -122,7 +122,7 @@ services:
       retries: 120
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:589.0.0-emulators@sha256:dff831e11d4013af597446d43e1222a9196d9b2b0c8180606bb2e35bf1ea6e03
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:594.0.1-emulators@sha256:17b4e7f940db19984c051a321c32f57bf679cb7148835fd16ddc7ce2908a70d8
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -243,12 +243,14 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.11@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
+    image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
+    tmpfs:
+      - /var/lib/mysql
     healthcheck:
       test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
@@ -257,7 +259,7 @@ services:
   redis-testing:
     networks:
       - test_network
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     volumes:
       - ./dev/redis/start.sh:/usr/local/bin/start.sh
     command: /usr/local/bin/start.sh
@@ -269,7 +271,7 @@ services:
   pubsub-testing:
     networks:
       - test_network
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:589.0.0-emulators@sha256:dff831e11d4013af597446d43e1222a9196d9b2b0c8180606bb2e35bf1ea6e03
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:594.0.1-emulators@sha256:17b4e7f940db19984c051a321c32f57bf679cb7148835fd16ddc7ce2908a70d8
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -299,7 +301,7 @@ services:
           - bob.test
           - charlie.test
           - fake-external-activitypub.test
-    image: caddy:2@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
+    image: caddy:2@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
     ports:
       - "444:443"
     volumes:

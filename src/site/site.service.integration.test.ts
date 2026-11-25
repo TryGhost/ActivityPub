@@ -9,6 +9,7 @@ import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
 import { type IGhostService, SiteService } from '@/site/site.service';
+import { SiteCreatedEvent } from '@/site/site-created.event';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 
@@ -31,6 +32,7 @@ describe('SiteService', () => {
     let accountService: AccountService;
     let ghostService: IGhostService;
     let db: Knex;
+    let events: AsyncEvents;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -45,7 +47,7 @@ describe('SiteService', () => {
         await db('bluesky_integration_account_handles').truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-        const events = new AsyncEvents();
+        events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
         const fedifyContextFactory = new FedifyContextFactory();
         accountService = new AccountService(
@@ -75,6 +77,7 @@ describe('SiteService', () => {
             accountService,
             ghostService,
             getLogger(['test', 'site-service']),
+            events,
         );
     });
 
@@ -88,6 +91,8 @@ describe('SiteService', () => {
             'createInternalAccount',
         );
 
+        const emitSpy = vi.spyOn(events, 'emitAsync');
+
         const site = await service.initialiseSiteForHost('hostname.tld');
 
         expect(site.host).toBe('hostname.tld');
@@ -96,6 +101,13 @@ describe('SiteService', () => {
         expect(site.ghost_uuid).toBeDefined();
 
         expect(createInternalAccount.mock.calls).toHaveLength(1);
+        expect(emitSpy).toHaveBeenCalledWith(
+            SiteCreatedEvent.getName(),
+            expect.any(SiteCreatedEvent),
+        );
+        expect(
+            (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),
+        ).toBe(site.host);
 
         const siteRows = await db('sites').select('*');
 
@@ -108,9 +120,12 @@ describe('SiteService', () => {
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
 
+        emitSpy.mockClear();
+
         const siteTwo = await service.initialiseSiteForHost('hostname.tld');
 
         expect(siteTwo).toMatchObject(site);
+        expect(emitSpy).not.toHaveBeenCalled();
 
         const siteRowsAfterSecondInit = await db('sites').select('*');
 
@@ -189,6 +204,8 @@ describe('SiteService', () => {
             ghost_uuid: 'some-uuid',
         });
 
+        const emitSpy = vi.spyOn(events, 'emitAsync');
+
         const site = await service.initialiseSiteForHost('hostname.tld');
 
         // Verify account was created with settings from Ghost
@@ -199,6 +216,13 @@ describe('SiteService', () => {
 
         expect(account).toBeDefined();
         expect(account.name).toBe('Default Title');
+        expect(emitSpy).toHaveBeenCalledWith(
+            SiteCreatedEvent.getName(),
+            expect.any(SiteCreatedEvent),
+        );
+        expect(
+            (emitSpy.mock.calls[0][1] as SiteCreatedEvent).getSiteHost(),
+        ).toBe(site.host);
     });
 
     it('Handles duplicate ghost_uuid when a site changes domains', async () => {

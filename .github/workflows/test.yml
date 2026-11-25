@@ -18,56 +18,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      - name: Download ActivityPub image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-amd64
-          path: /tmp
-
-      - name: Download Migrations image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-migrations-amd64
-          path: /tmp
-
-      - name: Load Docker images
+      - name: Prepare test environment
         run: |
-          docker load < /tmp/activitypub-amd64.tar
-          docker load < /tmp/activitypub-migrations-amd64.tar
+          docker compose build activitypub-testing migrate-testing fake-gcs &
+          build=$!
+          docker compose pull --quiet redis-testing pubsub-testing &
+          pull=$!
+          docker compose up -d mysql-testing
+          wait $build
+          wait $pull
 
       - name: Run Tests
-        run: docker compose run --rm migrate-testing up && pnpm test:all
+        run: pnpm test:all
 
-  e2e:
-    name: E2E
+  e2e-shard:
+    name: E2E (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     if: ${{ !inputs.skip-tests }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Download ActivityPub image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-amd64
-          path: /tmp
-
-      - name: Download Migrations image
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: activitypub-migrations-amd64
-          path: /tmp
-
-      - name: Load Docker images
+      - name: Prepare test environment
         run: |
-          docker load < /tmp/activitypub-amd64.tar
-          docker load < /tmp/activitypub-migrations-amd64.tar
+          docker compose build activitypub-testing migrate-testing fake-gcs &
+          build=$!
+          docker compose pull --quiet redis-testing pubsub-testing caddy-testing ghost-wiremock external-wiremock &
+          pull=$!
+          docker compose up -d mysql-testing
+          wait $build
+          wait $pull
 
       - name: Run E2E Tests
-        run: pnpm test:cucumber
+        run: |
+          docker compose run --rm cucumber-tests \
+            /opt/activitypub/node_modules/.bin/cucumber-js --shard ${{ matrix.shard }}/3
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: e2e-shard
+    if: ${{ !cancelled() && !inputs.skip-tests }}
+    steps:
+      - name: Check E2E shards passed
+        if: needs.e2e-shard.result != 'success'
+        run: |
+          echo "::error::E2E shards finished with result: ${{ needs.e2e-shard.result }}"
+          exit 1

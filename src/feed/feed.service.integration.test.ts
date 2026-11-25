@@ -186,6 +186,7 @@ describe('FeedService', () => {
                 },
             },
             logger,
+            events,
         );
         postRepository = new KnexPostRepository(client, events, logger);
         moderationService = new ModerationService(client);

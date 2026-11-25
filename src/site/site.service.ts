@@ -5,8 +5,11 @@ import type { Knex } from 'knex';
 
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
+import type { AsyncEvents } from '@/core/events';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
 import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
+import { SiteCreatedEvent } from '@/site/site-created.event';
+import { SiteDisablingEvent } from '@/site/site-disabling.event';
 
 export type Site = {
     id: number;
@@ -25,6 +28,7 @@ export class SiteService {
         private accountService: AccountService,
         private ghostService: IGhostService,
         private logger: Logger,
+        private events: AsyncEvents,
     ) {}
 
     private async createSite(
@@ -168,15 +172,33 @@ export class SiteService {
                 site,
                 internalAccountData,
             );
+
+            await this.events.emitAsync(
+                SiteCreatedEvent.getName(),
+                new SiteCreatedEvent(site.host),
+            );
         }
 
         return site;
     }
 
     public async disableSiteForHost(host: string): Promise<boolean> {
-        const result = await this.client.delete().from('sites').where({ host });
+        const site = await this.getSiteByHost(host);
 
-        return result === 1;
+        if (!site) {
+            return false;
+        }
+
+        await this.events.emitAsync(
+            SiteDisablingEvent.getName(),
+            new SiteDisablingEvent(site.host),
+        );
+
+        const deleted = await this.client('sites')
+            .where('id', site.id)
+            .delete();
+
+        return deleted === 1;
     }
 
     private async verifyUUIDReleased(

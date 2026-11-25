@@ -84,6 +84,7 @@ import { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { AtprotoHandleResolver } from '@/integration/atproto-handle.resolver';
 import { BlueskyService } from '@/integration/bluesky.service';
 import { BlueskyApiClient } from '@/integration/bluesky-api.client';
+import { BlueskyEventService } from '@/integration/bluesky-event.service';
 import { BridgyFedClient } from '@/integration/bridgy-fed.client';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
@@ -433,6 +434,10 @@ export function registerDependencies(
         asClass(AtprotoHandleResolver).singleton(),
     );
     container.register('blueskyService', asClass(BlueskyService).singleton());
+    container.register(
+        'blueskyEventService',
+        asClass(BlueskyEventService).singleton(),
+    );
 
     container.register('accountView', asClass(AccountView).singleton());
     container.register(
