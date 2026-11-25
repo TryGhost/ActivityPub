@@ -249,6 +249,8 @@ services:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
+    tmpfs:
+      - /var/lib/mysql
     healthcheck:
       test: "mysql -h 127.0.0.1 -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
