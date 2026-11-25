@@ -1498,6 +1498,31 @@ describe('BlueskyService', () => {
             expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
         });
 
+        it.each([
+            'confirmHandleForAccount',
+            'useDomainHandleForAccount',
+        ] as const)(
+            'should report that sharing is not enabled when it is disabled during %s',
+            async (method) => {
+                vi.mocked(atprotoHandleResolver.resolveDns).mockImplementation(
+                    async () => {
+                        await client('bluesky_integration_account_handles')
+                            .where('account_id', account.id)
+                            .delete();
+
+                        return ok([]);
+                    },
+                );
+
+                const result = await blueskyService[method](account);
+
+                expect(getError(result as ResultError<unknown>)).toEqual({
+                    type: 'not-enabled',
+                });
+                expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            },
+        );
+
         it('should not claim the domain when another request claimed it first', async () => {
             const otherClaimAt = new Date('2026-01-01T00:00:00.000Z');
 

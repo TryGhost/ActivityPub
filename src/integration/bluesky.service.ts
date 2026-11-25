@@ -335,7 +335,7 @@ export class BlueskyService {
         if (handleInvalid && row.did && this.shouldSetUpDomainHandle(row)) {
             await this.claimDomainHandle(account, row.did, null, row, true);
 
-            return ok(toDetails((await this.getRow(account))!));
+            return this.getCurrentDetails(account);
         }
 
         if (!row.confirmed || !row.did || !row.handle) {
@@ -354,7 +354,7 @@ export class BlueskyService {
             await this.checkDomainHandleClaim(account, row);
         }
 
-        return ok(toDetails((await this.getRow(account))!));
+        return this.getCurrentDetails(account);
     }
 
     /**
@@ -392,12 +392,12 @@ export class BlueskyService {
 
         await this.claimDomainHandle(account, row.did, row.handle, row, false);
 
-        return ok(toDetails((await this.getRow(account))!));
+        return this.getCurrentDetails(account);
     }
 
     /**
      * Find the domain a claim would use as the account's handle right now,
-     * without changing anything. Domains are tried in the same order and
+     * without claiming it. Domains are tried in the same order and
      * held to the same conditions as a claim, so what is offered is what a
      * claim sets up
      *
@@ -916,6 +916,17 @@ export class BlueskyService {
             },
             create,
         );
+    }
+
+    /**
+     * Bluesky sharing can be disabled while a claim waits on DNS or HTTPS
+     */
+    private async getCurrentDetails(
+        account: Account,
+    ): Promise<Result<BlueskyIntegrationDetails, IntegrationNotEnabledError>> {
+        const row = await this.getRow(account);
+
+        return row ? ok(toDetails(row)) : error({ type: 'not-enabled' });
     }
 
     private async getRow(account: Account): Promise<IntegrationRow | null> {
