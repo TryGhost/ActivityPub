@@ -32,6 +32,11 @@ This ActivityPub service uses a variety of environment variables to configure it
   - Only used in `production` environments with a CDN (i.e Fastly)
   - Example: `max-age=60, stale-while-revalidate=300, stale-if-error=0`
 - `FORCE_INTERNAL_ACTIVITY_DELIVERY` - Set to `true` to force internal activities to be delivered via the Fediverse
+- `RELAY_INBOXES` - Comma separated inbox URLs of relays that sites can send their public posts to, like the [tags.pub](https://tags.pub) relay
+  - Each site turns this on under "Relay sharing" in its social web preferences; it's off by default
+  - Covers the creation, update and deletion of public posts, but not replies
+  - Example: `https://tags.pub/user/_____relay_____/inbox`
+  - If not set, posts are only sent to followers and the preference isn't shown
 
 ## Database Configuration
 

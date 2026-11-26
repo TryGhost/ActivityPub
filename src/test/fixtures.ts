@@ -278,6 +278,7 @@ export class FixtureManager {
             this.db('outboxes').truncate(),
             this.db('mentions').truncate(),
             this.db('bluesky_integration_account_handles').truncate(),
+            this.db('relay_sharing_accounts').truncate(),
             this.db('account_topics').truncate(),
             this.db('topics').truncate(),
         ]);

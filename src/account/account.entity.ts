@@ -11,6 +11,8 @@ import {
     DomainBlockedEvent,
     DomainUnblockedEvent,
     NotificationsReadEvent,
+    RelaySharingDisabledEvent,
+    RelaySharingEnabledEvent,
 } from '@/account/events';
 import { type CreatePostType, PostType } from '@/post/post.entity';
 
@@ -46,6 +48,11 @@ export interface Account {
     setWebfingerHost(webfingerHost: string | null): Account;
     addAlias(alias: URL): Account;
     removeAlias(alias: URL): Account;
+    /**
+     * Send this account's public posts to the configured relays
+     */
+    enableRelaySharing(): Account;
+    disableRelaySharing(): Account;
     /**
      * @deprecated
      */
@@ -266,6 +273,20 @@ export class AccountEntity implements Account {
                 new AccountUnaliasedEvent(this.id, alias),
                 new AccountUpdatedEvent(this.id),
             ),
+        );
+    }
+
+    enableRelaySharing(): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new RelaySharingEnabledEvent(this.id)),
+        );
+    }
+
+    disableRelaySharing(): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new RelaySharingDisabledEvent(this.id)),
         );
     }
 

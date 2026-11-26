@@ -86,7 +86,8 @@ export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
 }
 
 /**
- * Account returned by the API with Bluesky integration details included
+ * Account returned by the API with Bluesky integration and relay sharing
+ * details included
  */
 export interface AccountDTOWithBluesky extends AccountDTO {
     /**
@@ -101,6 +102,15 @@ export interface AccountDTOWithBluesky extends AccountDTO {
      * Whether the Bluesky handle has been confirmed via Bluesky API
      */
     blueskyHandleConfirmed: boolean;
+    /**
+     * Whether the account's public posts are sent to the server's relays,
+     * only set if the server has relays
+     */
+    relaySharingEnabled?: boolean;
+    /**
+     * Hostnames of the server's relays, only set if the server has relays
+     */
+    relayHosts?: string[];
 }
 
 export type AuthorDTO = Pick<

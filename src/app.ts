@@ -118,6 +118,7 @@ import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
 import { PreferencesController } from '@/http/api/preferences.controller';
 import { RecommendationsController } from '@/http/api/recommendations.controller';
+import { RelayController } from '@/http/api/relay.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
@@ -1000,6 +1001,7 @@ routeRegistry.registerController(
     ClientConfigController,
 );
 routeRegistry.registerController('blueskyController', BlueskyController);
+routeRegistry.registerController('relayController', RelayController);
 routeRegistry.registerController('exploreController', ExploreController);
 routeRegistry.registerController('topicController', TopicController);
 routeRegistry.registerController(

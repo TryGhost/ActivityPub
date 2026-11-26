@@ -64,6 +64,7 @@ import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
 import { PreferencesController } from '@/http/api/preferences.controller';
 import { RecommendationsController } from '@/http/api/recommendations.controller';
+import { RelayController } from '@/http/api/relay.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import { SiteController } from '@/http/api/site.controller';
@@ -399,6 +400,16 @@ export function registerDependencies(
     );
     container.register('siteService', asClass(SiteService).singleton());
     container.register('feedService', asClass(FeedService).singleton());
+    container.register(
+        'relayInboxes',
+        asValue(
+            (process.env.RELAY_INBOXES ?? '')
+                .split(',')
+                .map((inbox) => inbox.trim())
+                .filter((inbox) => inbox !== '')
+                .map((inbox) => new URL(inbox)),
+        ),
+    );
     container.register('fediverseBridge', asClass(FediverseBridge).singleton());
 
     container.register(
@@ -604,6 +615,7 @@ export function registerDependencies(
         'blueskyController',
         asClass(BlueskyController).singleton(),
     );
+    container.register('relayController', asClass(RelayController).singleton());
 
     container.register('exploreView', asClass(ExploreView).singleton());
     container.register(

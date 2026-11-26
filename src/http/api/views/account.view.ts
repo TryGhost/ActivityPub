@@ -31,6 +31,7 @@ export class AccountView {
     constructor(
         private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly relayInboxes: URL[],
     ) {}
 
     /**
@@ -111,6 +112,7 @@ export class AccountView {
                       blueskyEnabled,
                       blueskyHandle,
                       blueskyHandleConfirmed,
+                      ...(await this.getRelaySharingData(accountData.id)),
                   }
                 : {}),
         };
@@ -421,6 +423,27 @@ export class AccountView {
             blueskyEnabled: !!row,
             blueskyHandle: row?.handle || null,
             blueskyHandleConfirmed: !!row?.confirmed,
+        };
+    }
+
+    /**
+     * Without relays there's nothing to share with, so the setting is left
+     * out and clients don't offer it
+     */
+    private async getRelaySharingData(accountId: number) {
+        if (this.relayInboxes.length === 0) {
+            return {};
+        }
+
+        const row = await this.db('relay_sharing_accounts')
+            .where('account_id', accountId)
+            .first('id');
+
+        return {
+            relaySharingEnabled: row !== undefined,
+            relayHosts: [
+                ...new Set(this.relayInboxes.map((inbox) => inbox.hostname)),
+            ],
         };
     }
 

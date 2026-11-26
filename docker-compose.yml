@@ -180,6 +180,8 @@ services:
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
       - JWKS_REFETCH_COOLDOWN_MS=0
+      # Sites only send posts here after turning on relay sharing
+      - RELAY_INBOXES=https://fake-external-activitypub.test/relay/inbox
     command: pnpm build:watch
     depends_on:
       migrate-testing:

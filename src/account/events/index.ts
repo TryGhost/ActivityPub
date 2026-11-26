@@ -8,3 +8,5 @@ export { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 export { DomainBlockedEvent } from '@/account/events/domain-blocked.event';
 export { DomainUnblockedEvent } from '@/account/events/domain-unblocked.event';
 export { NotificationsReadEvent } from '@/account/events/notifications-read-event';
+export { RelaySharingDisabledEvent } from '@/account/events/relay-sharing-disabled.event';
+export { RelaySharingEnabledEvent } from '@/account/events/relay-sharing-enabled.event';

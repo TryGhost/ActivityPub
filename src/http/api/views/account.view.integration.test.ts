@@ -51,7 +51,7 @@ describe('AccountView', () => {
 
         postRepository = new KnexPostRepository(db, events, logger);
 
-        accountView = new AccountView(db, fedifyContextFactory);
+        accountView = new AccountView(db, fedifyContextFactory, []);
 
         fixtureManager = createFixtureManager(db);
     });
@@ -329,6 +329,58 @@ describe('AccountView', () => {
             expect('blueskyEnabled' in view!).toBe(false);
             expect('blueskyHandle' in view!).toBe(false);
             expect('blueskyHandleConfirmed' in view!).toBe(false);
+        });
+
+        it('should include the relay sharing setting for the request user when the server has relays', async () => {
+            const [[enabledAccount], [disabledAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await db('relay_sharing_accounts').insert({
+                account_id: enabledAccount.id,
+            });
+
+            const relayAccountView = new AccountView(
+                db,
+                {} as FedifyContextFactory,
+                [
+                    new URL('https://tags.pub/user/_____relay_____/inbox'),
+                    new URL('https://tags.pub/relay/inbox'),
+                    new URL('https://relay.example/inbox'),
+                ],
+            );
+
+            const [enabledView, disabledView] = (await Promise.all([
+                relayAccountView.viewById(enabledAccount.id, {
+                    requestUserAccount: enabledAccount,
+                }),
+                relayAccountView.viewById(disabledAccount.id, {
+                    requestUserAccount: disabledAccount,
+                }),
+            ])) as AccountDTOWithBluesky[];
+
+            expect(enabledView.relaySharingEnabled).toBe(true);
+            expect(enabledView.relayHosts).toEqual([
+                'tags.pub',
+                'relay.example',
+            ]);
+            expect(disabledView.relaySharingEnabled).toBe(false);
+        });
+
+        it('should not include the relay sharing setting when the server has no relays', async () => {
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+
+            await db('relay_sharing_accounts').insert({
+                account_id: siteAccount.id,
+            });
+
+            const view = (await accountView.viewById(siteAccount.id, {
+                requestUserAccount: siteAccount,
+            })) as AccountDTOWithBluesky;
+
+            expect('relaySharingEnabled' in view).toBe(false);
+            expect('relayHosts' in view).toBe(false);
         });
     });
 

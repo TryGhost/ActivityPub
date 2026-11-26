@@ -18,7 +18,7 @@ import {
     buildCreateActivityAndObjectFromPost,
     buildUpdateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
-import { PostType } from '@/post/post.entity';
+import { isPublicPost, type Post, PostType } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
@@ -30,6 +30,7 @@ export class FediverseBridge {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
         private readonly postRepository: KnexPostRepository,
+        private readonly relayInboxes: URL[],
     ) {}
 
     async init() {
@@ -88,6 +89,33 @@ export class FediverseBridge {
         );
     }
 
+    /**
+     * Send an activity about a public post to the configured relays, which
+     * pass it on to the servers that subscribe to them, if the post's site
+     * has turned on relay sharing
+     */
+    private async sendActivityToRelays(post: Post, activity: Activity) {
+        // Replies aren't sent, as they are created outside of the bridge
+        if (
+            this.relayInboxes.length === 0 ||
+            !isPublicPost(post) ||
+            post.inReplyTo !== null ||
+            !(await this.accountService.isRelaySharingEnabled(post.author.id))
+        ) {
+            return;
+        }
+
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: post.author.username },
+            // Relays are only known by their inbox, which also stands in for
+            // their id, as Fedify skips recipients without one
+            this.relayInboxes.map((inbox) => ({ id: inbox, inboxId: inbox })),
+            activity,
+        );
+    }
+
     private async handlePostCreated(event: PostCreatedEvent) {
         const post = await this.postRepository.getById(event.getPostId());
         if (!post) {
@@ -119,6 +147,7 @@ export class FediverseBridge {
         );
 
         await this.sendActivityToFollowers(post.author, createActivity);
+        await this.sendActivityToRelays(post, createActivity);
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
@@ -149,6 +178,16 @@ export class FediverseBridge {
         );
 
         await this.sendActivityToFollowers(account, deleteActivity);
+
+        if (this.relayInboxes.length > 0) {
+            // Deleted posts are kept, so it can be checked whether the post
+            // was sent to the relays
+            const post = await this.postRepository.getById(event.getPostId());
+
+            if (post) {
+                await this.sendActivityToRelays(post, deleteActivity);
+            }
+        }
     }
 
     private async handlePostUpdated(event: PostUpdatedEvent) {
@@ -173,6 +212,7 @@ export class FediverseBridge {
         );
 
         await this.sendActivityToFollowers(post.author, updateActivity);
+        await this.sendActivityToRelays(post, updateActivity);
     }
 
     private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {
