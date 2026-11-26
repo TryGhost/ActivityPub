@@ -49,16 +49,62 @@ interface BaseGetProfileDataResultRow {
         url: string;
     }[];
     author_id: number;
+    author_ap_id?: string | null;
     author_name: string | null;
     author_username: string;
     author_url: string | null;
     author_webfinger_host: string | null;
     author_avatar_url: string | null;
     author_followed_by_current_user: 0 | 1;
+    // Present only when the query joins the parent post
+    parent_post_ap_id?: string | null;
+    parent_post_type?: PostType | null;
+    parent_post_deleted_at?: Date | string | null;
+    parent_author_ap_id?: string | null;
+    parent_author_name?: string | null;
+    parent_author_username?: string | null;
+    parent_author_url?: string | null;
+    parent_author_webfinger_host?: string | null;
+}
+
+/** Normalize AP inReplyTo (string | {id} | object | array) to a URL, else null. */
+function normalizeInReplyToId(value: unknown): string | null {
+    let candidate: unknown = value;
+
+    if (Array.isArray(candidate)) {
+        candidate = candidate[0];
+    }
+
+    if (
+        candidate !== null &&
+        typeof candidate === 'object' &&
+        'id' in candidate
+    ) {
+        candidate = (candidate as { id: unknown }).id;
+    }
+
+    if (candidate instanceof URL) {
+        return candidate.href;
+    }
+
+    if (typeof candidate !== 'string') {
+        return null;
+    }
+
+    const trimmed = candidate.trim();
+
+    try {
+        new URL(trimmed);
+    } catch (_err) {
+        return null;
+    }
+
+    return trimmed;
 }
 
 interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
     reposter_id: number;
+    reposter_ap_id?: string | null;
     reposter_name: string | null;
     reposter_username: string;
     reposter_url: string | null;
@@ -70,6 +116,7 @@ interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
 interface GetProfileDataResultRowWithoutReposted
     extends BaseGetProfileDataResultRow {
     reposter_id: null;
+    reposter_ap_id?: null;
     reposter_name: null;
     reposter_username: null;
     reposter_url: null;
@@ -101,6 +148,7 @@ export class AccountPostsView {
         currentContextAccount: Account,
         limit: number,
         cursor: string | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
@@ -109,6 +157,7 @@ export class AccountPostsView {
                 currentContextAccount.id,
                 limit,
                 cursor,
+                includeReplies,
             );
             if (isError(result)) {
                 throw new Error(
@@ -126,6 +175,7 @@ export class AccountPostsView {
             apId,
             cursor,
             account,
+            includeReplies,
         );
     }
 
@@ -134,6 +184,7 @@ export class AccountPostsView {
         contextAccountId: number,
         limit: number,
         cursor: string | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsFromOutboxError>> {
         if (!account.isInternal) {
             return error('not-internal-account');
@@ -173,6 +224,7 @@ export class AccountPostsView {
                 'posts.ap_id as post_ap_id',
                 // Author fields
                 'author_account.id as author_id',
+                'author_account.ap_id as author_ap_id',
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
@@ -186,6 +238,7 @@ export class AccountPostsView {
                 `),
                 // Reposter fields
                 'reposter_account.id as reposter_id',
+                'reposter_account.ap_id as reposter_ap_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
@@ -197,6 +250,15 @@ export class AccountPostsView {
                         ELSE 0
                     END AS reposter_followed_by_current_user
                 `),
+                // Parent (in-reply-to) fields
+                'parent_post.ap_id as parent_post_ap_id',
+                'parent_post.type as parent_post_type',
+                'parent_post.deleted_at as parent_post_deleted_at',
+                'parent_author.ap_id as parent_author_ap_id',
+                'parent_author.name as parent_author_name',
+                'parent_author.username as parent_author_username',
+                'parent_author.url as parent_author_url',
+                'parent_author.webfinger_host as parent_author_webfinger_host',
                 // Outbox fields
                 'outboxes.published_at as outbox_published_at',
                 'outboxes.outbox_type as outbox_type',
@@ -218,6 +280,17 @@ export class AccountPostsView {
                     OutboxType.Repost.toString(),
                 );
             })
+            // Both profile tabs need parent context: Posts can contain reposted replies.
+            .leftJoin(
+                'posts as parent_post',
+                'parent_post.id',
+                'posts.in_reply_to',
+            )
+            .leftJoin(
+                'accounts as parent_author',
+                'parent_author.id',
+                'parent_post.author_id',
+            )
             .leftJoin('follows as follows_author', function () {
                 this.on(
                     'follows_author.following_id',
@@ -253,7 +326,11 @@ export class AccountPostsView {
                 );
             })
             .where('outboxes.account_id', account.id)
-            .whereNot('outboxes.outbox_type', OutboxType.Reply)
+            .modify((query) => {
+                if (!includeReplies) {
+                    query.whereNot('outboxes.outbox_type', OutboxType.Reply);
+                }
+            })
             .modify((query) => {
                 if (cursor) {
                     query.where('outboxes.published_at', '<', cursor);
@@ -284,6 +361,7 @@ export class AccountPostsView {
         apId: URL,
         cursor: string | null,
         account?: Account | null,
+        includeReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
@@ -354,7 +432,6 @@ export class AccountPostsView {
             return error('no-page-found');
         }
 
-        // Return result
         for await (const item of page.getItems()) {
             try {
                 if (!(item instanceof Activity)) {
@@ -428,7 +505,7 @@ export class AccountPostsView {
                     };
                 };
 
-                if (activity.object.inReplyTo) {
+                if (activity.object.inReplyTo && !includeReplies) {
                     continue;
                 }
 
@@ -603,6 +680,7 @@ export class AccountPostsView {
                 'posts.ap_id as post_ap_id',
                 // Author fields
                 'author_account.id as author_id',
+                'author_account.ap_id as author_ap_id',
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
@@ -616,6 +694,7 @@ export class AccountPostsView {
                 `),
                 // Reposter fields
                 'reposter_account.id as reposter_id',
+                'reposter_account.ap_id as reposter_ap_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
@@ -712,10 +791,11 @@ export class AccountPostsView {
             author: {
                 id: result.author_id.toString(),
                 handle: getAccountHandle(
-                    result.author_webfinger_host ??
-                        (result.author_url
-                            ? new URL(result.author_url).host
-                            : ''),
+                    this.resolveHandleHost({
+                        webfingerHost: result.author_webfinger_host,
+                        apId: result.author_ap_id,
+                        url: result.author_url,
+                    }),
                     result.author_username,
                 ),
                 name: result.author_name ?? '',
@@ -730,10 +810,11 @@ export class AccountPostsView {
                 ? {
                       id: result.reposter_id.toString(),
                       handle: getAccountHandle(
-                          result.reposter_webfinger_host ??
-                              (result.reposter_url
-                                  ? new URL(result.reposter_url).host
-                                  : ''),
+                          this.resolveHandleHost({
+                              webfingerHost: result.reposter_webfinger_host,
+                              apId: result.reposter_ap_id,
+                              url: result.reposter_url,
+                          }),
                           result.reposter_username,
                       ),
                       name: result.reposter_name ?? '',
@@ -743,15 +824,82 @@ export class AccountPostsView {
                           result.reposter_followed_by_current_user === 1,
                   }
                 : null,
+            inReplyTo: this.mapInReplyTo(result),
         };
     }
 
+    private mapInReplyTo(
+        result: GetProfileDataResultRow,
+    ): PostDTO['inReplyTo'] {
+        const parentApId = result.parent_post_ap_id;
+
+        if (!parentApId) {
+            return null;
+        }
+
+        const type =
+            result.parent_post_deleted_at != null
+                ? PostType.Tombstone
+                : (result.parent_post_type ?? PostType.Note);
+
+        if (!result.parent_author_username) {
+            return { id: parentApId, type, author: null };
+        }
+
+        return {
+            id: parentApId,
+            type,
+            author: {
+                handle: getAccountHandle(
+                    this.resolveHandleHost({
+                        webfingerHost: result.parent_author_webfinger_host,
+                        apId: result.parent_author_ap_id,
+                        url: result.parent_author_url,
+                    }),
+                    result.parent_author_username,
+                ),
+                name: result.parent_author_name ?? '',
+                url:
+                    result.parent_author_url ||
+                    result.parent_author_ap_id ||
+                    '',
+            },
+        };
+    }
+
+    /** Host order: webfinger → actor AP ID → profile URL. */
+    private resolveHandleHost(account: {
+        webfingerHost?: string | null;
+        apId?: string | null;
+        url?: string | null;
+    }): string {
+        if (account.webfingerHost) {
+            return account.webfingerHost.replace(/^www\./, '');
+        }
+
+        for (const candidate of [account.apId, account.url]) {
+            if (!candidate) {
+                continue;
+            }
+            try {
+                return new URL(candidate).host.replace(/^www\./, '');
+            } catch {
+                // ignore invalid URL
+            }
+        }
+
+        return '';
+    }
+
     // TODO: Clean up the any type
-    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-    mapActivityToPostDTO(activity: any): PostDTO {
+    mapActivityToPostDTO(
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+        activity: any,
+    ): PostDTO {
         const object = activity.object;
         const actor = activity.actor;
         const attributedTo = object.attributedTo;
+        const parentId = normalizeInReplyToId(object.inReplyTo);
 
         const sensitive = object.sensitive === true;
         const { summary, contentWarning } = classifySummary(
@@ -806,6 +954,10 @@ export class AccountPostsView {
                           followedByMe: actor.followedByMe || false,
                       }
                     : null,
+            // Remote parents: type unknown — client opens the current reply thread.
+            inReplyTo: parentId
+                ? { id: parentId, type: null, author: null }
+                : null,
         };
     }
 
