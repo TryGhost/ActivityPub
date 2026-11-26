@@ -54,13 +54,18 @@ function signToken(
         kid = key.kid,
         algorithm = 'RS256',
         expiresIn = 300,
+        aud,
     }: {
         kid?: string | null;
         algorithm?: jwt.Algorithm;
         expiresIn?: number | null;
+        aud?: unknown;
     } = {},
 ) {
-    return jwt.sign({ role: 'Owner' }, key.privateKey, {
+    const payload =
+        aud === undefined ? { role: 'Owner' } : { role: 'Owner', aud };
+
+    return jwt.sign(payload, key.privateKey, {
         algorithm,
         // jsonwebtoken refuses to sign with keys smaller than 2048 bits
         allowInsecureKeySizes: true,
@@ -318,6 +323,39 @@ describe('createRoleMiddleware', () => {
 
     it('rejects a token without an expiry', async () => {
         const token = signToken(oldKey, { expiresIn: null });
+
+        expect(await getRole(token)).toBe('Anonymous');
+    });
+
+    it('accepts a token whose audience is activitypub', async () => {
+        expect(await getRole(signToken(oldKey, { aud: 'activitypub' }))).toBe(
+            'Owner',
+        );
+        expect(
+            await getRole(
+                signToken(oldKey, { aud: ['other-service', 'activitypub'] }),
+            ),
+        ).toBe('Owner');
+    });
+
+    it('rejects a token issued for another audience', async () => {
+        for (const aud of [
+            'other-service',
+            'ActivityPub',
+            'activitypub ',
+            ['other-service'],
+            [],
+            '',
+            null,
+        ]) {
+            expect(await getRole(signToken(oldKey, { aud }))).toBe('Anonymous');
+        }
+    });
+
+    it('rejects a token without a kid issued for another audience', async () => {
+        servedKeys = [oldKey.jwk, newKey.jwk];
+
+        const token = signToken(newKey, { kid: null, aud: 'other-service' });
 
         expect(await getRole(token)).toBe('Anonymous');
     });
