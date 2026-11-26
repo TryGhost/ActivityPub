@@ -218,8 +218,8 @@ importers:
         specifier: 11.16.0
         version: 11.16.0
       awilix:
-        specifier: 13.0.7
-        version: 13.0.7
+        specifier: 14.0.0
+        version: 14.0.0
       es-toolkit:
         specifier: 1.53.2
         version: 1.53.2
@@ -1986,8 +1986,8 @@ packages:
     resolution: {integrity: sha512-zJAaP9zxTcvTHRlejau3ZOY4V7SRpiByf3/dxx2uyKxxor19tpmpV2QRsTKikckwhaPmr2dVpxxMr7jOCYVp5g==}
     engines: {node: '>=6.0.0'}
 
-  awilix@13.0.7:
-    resolution: {integrity: sha512-M7B1oVIyWrkY7RmQgczsdqpCI+j0+t0UjL5h1G/qqr4fRFo+zxI5E/0QUuOc5zdPg740BpUv4V+QSXNNBQlonQ==}
+  awilix@14.0.0:
+    resolution: {integrity: sha512-YoTSDD1k/GpyD0V9qt3IYAwXS0QM/GO5qdEBi/bZEys3LBR2hjSon8G/TseFrfA1vvDDa6VBqHNCo7hiPnKvOQ==}
     engines: {node: '>=20.0.0'}
 
   aws-ssl-profiles@1.1.2:
@@ -5432,7 +5432,7 @@ snapshots:
 
   await-to-js@3.0.0: {}
 
-  awilix@13.0.7:
+  awilix@14.0.0:
     dependencies:
       fast-glob: 3.3.3
 
