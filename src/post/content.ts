@@ -258,19 +258,43 @@ export class ContentPreparer {
     }
 
     /**
-     * Replace the hashtags in the text of HTML content, outside of links
+     * Replace the hashtags in the text of HTML content, outside of links.
+     *
+     * Text right after a link continues the link's text, so linking `#Coffee`
+     * in `#Coffee#tea` doesn't turn `#tea` into a hashtag.
      */
     private replaceHashtagsInText(
         html: string,
         replace: (match: string, prefix: string, name: string) => string,
     ): string {
-        return html
-            .split(ANCHOR_OR_TAG_REGEX)
-            .map((segment) =>
-                segment.startsWith('<')
-                    ? segment
-                    : segment.replace(HASHTAG_IN_TEXT_REGEX, replace),
-            )
+        const segments = html.split(ANCHOR_OR_TAG_REGEX);
+
+        return segments
+            .map((segment, index) => {
+                if (segment.startsWith('<')) {
+                    return segment;
+                }
+
+                const previous = segments[index - 1] ?? '';
+                const linkText = /^<a\b/i.test(previous)
+                    ? previous.replace(/<[^>]+>/g, '')
+                    : '';
+
+                return (linkText + segment)
+                    .replace(
+                        HASHTAG_IN_TEXT_REGEX,
+                        (
+                            match,
+                            prefix: string,
+                            name: string,
+                            offset: number,
+                        ) =>
+                            offset + prefix.length < linkText.length
+                                ? match
+                                : replace(match, prefix, name),
+                    )
+                    .slice(linkText.length);
+            })
             .join('');
     }
 

@@ -858,6 +858,22 @@ describe('Post', () => {
             expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
         });
 
+        it.each([[[]], [['coffee']]])(
+            'should publish the same hashtags when linking %j',
+            async (linked) => {
+                const post = Post.createNote(
+                    await internalAccount(),
+                    '#Coffee#tea',
+                    undefined,
+                    [],
+                    new Set(linked),
+                );
+
+                expect(Post.getNoteHashtags('#Coffee#tea')).toEqual(['coffee']);
+                expect(post.getChangedHashtags()).toEqual(['coffee']);
+            },
+        );
+
         it('should use the given hashtags of an external post', async () => {
             const post = Post.createFromData(await externalAccount(), {
                 type: PostType.Note,
