@@ -1,3 +1,4 @@
+import { UrlError, validatePublicUrl } from '@fedify/vocab-runtime';
 import type { Logger } from '@logtape/logtape';
 
 import { getHashtagUrl } from '@/post/hashtag';
@@ -11,9 +12,13 @@ const CACHE_MAX_ENTRIES = 10_000;
  * links a hashtag to a page that exists.
  *
  * Results are cached per tag page, as a site tends to reuse its hashtags.
- * Concurrent checks of the same page share one request. A failed request is
- * not cached, so a slow or unreachable site doesn't leave hashtags unlinked
- * for longer than one note.
+ * Concurrent checks of the same page share one request. A request that fails,
+ * is rate limited or gets a server error is not cached, so a slow or
+ * struggling site doesn't leave hashtags unlinked for longer than one note.
+ *
+ * The site controls where its tag pages point, so the check refuses private
+ * addresses and doesn't follow redirects. Otherwise a site could make the
+ * server send requests to internal addresses.
  */
 export class TagPageService {
     private readonly cache = new Map<
@@ -21,7 +26,10 @@ export class TagPageService {
         { exists: Promise<boolean>; expiresAt: number }
     >();
 
-    constructor(private readonly logging: Logger) {}
+    constructor(
+        private readonly logging: Logger,
+        private readonly allowPrivateAddress: boolean,
+    ) {}
 
     /**
      * Get the hashtags that have a tag page on a site
@@ -82,19 +90,42 @@ export class TagPageService {
     }
 
     /**
-     * Request a tag page, returning whether it exists or null if the site
-     * could not be reached
+     * Request a tag page, returning whether it exists or null if the answer
+     * may change soon
      */
     private async requestTagPage(url: URL): Promise<boolean | null> {
         try {
+            if (!this.allowPrivateAddress) {
+                await validatePublicUrl(url.href);
+            }
+
+            // Ghost serves a tag page at the URL with the trailing slash, so
+            // a redirect means the page is missing or somewhere else
             const response = await fetch(url, {
                 method: 'HEAD',
-                redirect: 'follow',
+                redirect: 'manual',
                 signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
             });
 
-            return response.ok;
+            if (response.ok) {
+                return true;
+            }
+
+            const isRedirect = response.status >= 300 && response.status < 400;
+            const isMissing =
+                response.status === 404 || response.status === 410;
+
+            return isRedirect || isMissing ? false : null;
         } catch (err) {
+            if (err instanceof UrlError && err.reason === 'disallowed') {
+                this.logging.warn('Refused to check tag page {url}', {
+                    url: url.href,
+                    error: err,
+                });
+
+                return false;
+            }
+
             this.logging.warn('Failed to check tag page {url}', {
                 url: url.href,
                 error: err,

@@ -8,9 +8,20 @@ import {
     vi,
 } from 'vitest';
 
+import type * as VocabRuntime from '@fedify/vocab-runtime';
+import { UrlError, validatePublicUrl } from '@fedify/vocab-runtime';
 import type { Logger } from '@logtape/logtape';
 
 import { TagPageService } from '@/post/tag-page.service';
+
+vi.mock('@fedify/vocab-runtime', async (importOriginal) => {
+    const original = await importOriginal<typeof VocabRuntime>();
+
+    return {
+        ...original,
+        validatePublicUrl: vi.fn(),
+    };
+});
 
 describe('TagPageService', () => {
     const siteUrl = new URL('https://example.com/blog/');
@@ -24,8 +35,12 @@ describe('TagPageService', () => {
             return new Response(null, { status });
         });
         vi.stubGlobal('fetch', fetchMock);
+        vi.mocked(validatePublicUrl).mockResolvedValue(undefined);
 
-        service = new TagPageService({ warn: vi.fn() } as unknown as Logger);
+        service = new TagPageService(
+            { warn: vi.fn() } as unknown as Logger,
+            false,
+        );
     });
 
     afterEach(() => {
@@ -91,5 +106,58 @@ describe('TagPageService', () => {
         expect(failed).toEqual(new Set());
         expect(retried).toEqual(new Set(['coffee']));
         expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([429, 503])(
+        'does not cache a tag page that answered with %i',
+        async (status) => {
+            fetchMock.mockResolvedValueOnce(new Response(null, { status }));
+
+            const failed = await service.getHashtagsWithTagPage(siteUrl, [
+                'coffee',
+            ]);
+            const retried = await service.getHashtagsWithTagPage(siteUrl, [
+                'coffee',
+            ]);
+
+            expect(failed).toEqual(new Set());
+            expect(retried).toEqual(new Set(['coffee']));
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        },
+    );
+
+    it('does not link a tag page that redirects', async () => {
+        fetchMock.mockResolvedValueOnce(
+            new Response(null, {
+                status: 301,
+                headers: { Location: 'http://10.0.0.1/' },
+            }),
+        );
+
+        const result = await service.getHashtagsWithTagPage(siteUrl, [
+            'coffee',
+        ]);
+
+        expect(result).toEqual(new Set());
+        expect(fetchMock).toHaveBeenCalledWith(
+            new URL('https://example.com/blog/tag/coffee/'),
+            expect.objectContaining({ redirect: 'manual' }),
+        );
+    });
+
+    it('does not request a tag page at a private address', async () => {
+        vi.mocked(validatePublicUrl).mockRejectedValueOnce(
+            new UrlError('Invalid or private address: 10.0.0.1'),
+        );
+
+        const result = await service.getHashtagsWithTagPage(siteUrl, [
+            'coffee',
+        ]);
+
+        expect(result).toEqual(new Set());
+        expect(validatePublicUrl).toHaveBeenCalledWith(
+            'https://example.com/blog/tag/coffee/',
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });

@@ -383,7 +383,17 @@ export function registerDependencies(
         asClass(AccountMoveService).singleton(),
     );
     container.register('postService', asClass(PostService).singleton());
-    container.register('tagPageService', asClass(TagPageService).singleton());
+    container.register(
+        'tagPageService',
+        asFunction(
+            (logging: Logger) =>
+                new TagPageService(
+                    logging,
+                    process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                        isLocalEnvironment(process.env.NODE_ENV),
+                ),
+        ).singleton(),
+    );
     container.register('userService', asClass(UserService).singleton());
     container.register(
         'ghostPostService',
