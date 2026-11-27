@@ -220,6 +220,17 @@ export interface PostDTO {
      */
     repostedBy: AuthorDTO | null;
     /**
+     * Parent reply context. `author: null` when the parent author is unknown.
+     * `type` is Tombstone when the parent is soft-deleted, and `null` when the
+     * parent type is unknown (e.g. remote). In both cases the client should
+     * open the current reply's thread instead of the parent id.
+     */
+    inReplyTo: {
+        id: string;
+        type: PostType | null;
+        author: Pick<AuthorDTO, 'name' | 'handle' | 'url'> | null;
+    } | null;
+    /**
      * Metadata of the post, containing e.g. information about ghost authors
      */
     metadata?: Metadata | null;

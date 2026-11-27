@@ -111,6 +111,7 @@ export class ReplyChainView {
                 repostCount: result.post_repost_count,
                 repostedByMe: false,
                 repostedBy: null,
+                inReplyTo: null,
             };
         }
 
@@ -156,6 +157,7 @@ export class ReplyChainView {
             repostCount: result.post_repost_count,
             repostedByMe: result.post_reposted_by_current_user === 1,
             repostedBy: null,
+            inReplyTo: null,
         };
     }
 
