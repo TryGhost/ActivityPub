@@ -536,18 +536,19 @@ export class Post extends BaseEntity {
     /**
      * Get the part of a Ghost post's content that is visible to everyone,
      * and an excerpt that does not reveal anything beyond it
+     *
+     * The excerpt is not validated here: an Article validates it as its
+     * excerpt, while a Note only uses a shortened copy of it.
      */
     private static getPublicGhostPostContent(ghostPost: GhostPost): {
         content: string;
-        excerpt: PostSummary | null;
+        excerpt: string | null;
     } {
         let content = ContentPreparer.prepare(ghostPost.html ?? '', {
             ...NO_CONTENT_PREPARATION,
             removeGatedContent: true,
         });
-        let excerpt = ghostPost.excerpt
-            ? PostSummary.parse(ghostPost.excerpt)
-            : null;
+        let excerpt: string | null = ghostPost.excerpt || null;
 
         if (ghostPost.visibility !== 'public') {
             content = ContentPreparer.prepare(content, {
@@ -578,7 +579,10 @@ export class Post extends BaseEntity {
         }
 
         const publicContent = Post.getPublicGhostPostContent(ghostPost);
-        const excerpt = publicContent.excerpt;
+        const excerpt =
+            publicContent.excerpt === null
+                ? null
+                : PostSummary.parse(publicContent.excerpt);
         let content = publicContent.content;
 
         if (ghostPost.visibility !== 'public') {
@@ -630,6 +634,12 @@ export class Post extends BaseEntity {
      *
      * Only the public part of the post is used for the excerpt, so a
      * members-only post can be shared without revealing its content.
+     *
+     * The link is never shortened. In the unlikely case that the post's URL
+     * alone is close to GHOST_POST_NOTE_MAX_LENGTH, the Note is only the link
+     * and can be longer than the limit. The limit matches the one of the
+     * Social Web note composer; it is not a limit of ActivityPub, and other
+     * servers accept longer Notes.
      */
     static createNoteFromGhostPost(account: Account, ghostPost: GhostPost) {
         const paragraphs = Post.getGhostPostNoteParagraphs(ghostPost);

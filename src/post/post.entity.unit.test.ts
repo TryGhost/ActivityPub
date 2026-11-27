@@ -609,6 +609,23 @@ describe('Post', () => {
             );
         });
 
+        it('shortens an excerpt that is longer than an article excerpt can be', async () => {
+            const account = await internalAccount();
+            const excerpt = 'a'.repeat(600);
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ excerpt }),
+            );
+
+            expect(note.content).toMatch(
+                /^<p>Title of my post<\/p><p>a+\.\.\.<\/p>/,
+            );
+            expect(plainTextLength(note.content ?? '')).toBe(
+                GHOST_POST_NOTE_MAX_LENGTH,
+            );
+        });
+
         it('collapses whitespace in the excerpt', async () => {
             const account = await internalAccount();
 
@@ -760,6 +777,20 @@ describe('Post', () => {
             );
             expect(plainTextLength(note.content ?? '')).toBe(
                 GHOST_POST_NOTE_MAX_LENGTH,
+            );
+        });
+
+        it('never shortens the link, even when it leaves no room for text', async () => {
+            const account = await internalAccount();
+            const longUrl = `https://example.com/${'a'.repeat(490)}/`;
+
+            const note = Post.createNoteFromGhostPost(
+                account,
+                ghostPost({ url: longUrl, social_web_note: 'New post' }),
+            );
+
+            expect(note.content).toBe(
+                `<p><a href="${longUrl}">${longUrl}</a></p>`,
             );
         });
     });
