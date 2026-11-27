@@ -1493,6 +1493,108 @@ describe('KnexPostRepository', () => {
         );
     });
 
+    describe('Hashtags', () => {
+        const getHashtagNamesForPost = async (post: Post) =>
+            (
+                await client('post_hashtags')
+                    .join('hashtags', 'hashtags.id', 'post_hashtags.hashtag_id')
+                    .where('post_hashtags.post_id', post.id)
+                    .orderBy('hashtags.name')
+                    .select('hashtags.name')
+            ).map((row: { name: string }) => row.name);
+
+        it('saves the hashtags of a new post', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = Post.createNote(account, 'Hello #News and #ghost');
+
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([
+                'ghost',
+                'news',
+            ]);
+
+            const row = await client('post_hashtags')
+                .where('post_id', post.id)
+                .first();
+            expect(new Date(row.published_at)).toEqual(post.publishedAt);
+        });
+
+        it('reuses existing hashtags', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+
+            await postRepository.save(Post.createNote(account, '#news'));
+            await postRepository.save(Post.createNote(account, '#News'));
+
+            expect(
+                await client('hashtags').where('name', 'news').count('* as c'),
+            ).toEqual([{ c: 1 }]);
+            expect(await client('post_hashtags').count('* as c')).toEqual([
+                { c: 2 },
+            ]);
+        });
+
+        it('does not save hashtags for an article', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = getValue(
+                (await Post.createArticleFromGhostPost(account, {
+                    title: 'Title',
+                    uuid: randomUUID(),
+                    html: '<p>Brewing #coffee at home</p>',
+                    excerpt: 'Brewing #coffee at home',
+                    custom_excerpt: null,
+                    feature_image: null,
+                    url: `https://testing-hashtags.com/${randomUUID()}`,
+                    published_at: '2025-04-01T00:00:00.000Z',
+                    visibility: 'public',
+                    authors: [],
+                })) as Ok<Post>,
+            ) as Post;
+
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([]);
+        });
+
+        it('removes the hashtags of a deleted post', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-hashtags.com',
+            );
+            const account = await getAccountForSite(site);
+            const post = Post.createNote(account, '#news');
+            await postRepository.save(post);
+
+            post.delete(account);
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([]);
+        });
+
+        it('does not save the hashtags of a post that is not public', async () => {
+            const account = await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                audience: Audience.FollowersOnly,
+                content: '<p>Hello</p>',
+                apId: new URL(`https://example.com/note/${randomUUID()}`),
+                hashtags: ['news'],
+            });
+
+            await postRepository.save(post);
+
+            expect(await getHashtagNamesForPost(post)).toEqual([]);
+        });
+    });
+
     it('Handles mentions of a new post', async () => {
         const accounts = await Promise.all(
             [

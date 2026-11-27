@@ -4,6 +4,7 @@ import { getValue, isError, type Ok } from '@/core/result';
 import {
     Audience,
     classifySummary,
+    getPublishedHashtags,
     Post,
     type PostData,
     PostSummary,
@@ -764,18 +765,16 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.metadata).toEqual({
-            ghostAuthors: [
-                {
-                    name: 'Author 1',
-                    profile_image: 'https://image.com/author1.jpg',
-                },
-                {
-                    name: 'Author 2',
-                    profile_image: null,
-                },
-            ],
-        });
+        expect(post.metadata?.ghostAuthors).toEqual([
+            {
+                name: 'Author 1',
+                profile_image: 'https://image.com/author1.jpg',
+            },
+            {
+                name: 'Author 2',
+                profile_image: null,
+            },
+        ]);
     });
 
     it('should handle an empty array of ghost authors', async () => {
@@ -799,8 +798,98 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.metadata).toEqual({
-            ghostAuthors: [],
+        expect(post.metadata?.ghostAuthors).toEqual([]);
+    });
+
+    describe('hashtags', () => {
+        it('should not publish hashtags for an article', async () => {
+            const post = getValue(
+                (await Post.createArticleFromGhostPost(
+                    await internalAccount(),
+                    {
+                        uuid: '550e8400-e29b-41d4-a716-446655440000',
+                        title: 'Title of my post',
+                        html: '<p>Brewing #coffee at home</p>',
+                        excerpt: 'Brewing #coffee at home',
+                        custom_excerpt: null,
+                        feature_image: null,
+                        published_at: '2020-01-01',
+                        url: 'https://ghost.org/post',
+                        visibility: 'public',
+                        authors: [],
+                    },
+                )) as Ok<Post>,
+            );
+
+            expect(post.content).toEqual('<p>Brewing #coffee at home</p>');
+            expect(getPublishedHashtags(post)).toEqual([]);
+            expect(post.getChangedHashtags()).toBeNull();
+        });
+
+        it('should publish the hashtags in a note, linking the given ones', async () => {
+            const account = await createTestInternalAccount(123, {
+                host: new URL('https://foobar.com'),
+                username: 'foobar',
+                name: 'Foo Bar',
+                bio: null,
+                url: new URL('https://foobar.com'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+            const post = Post.createNote(
+                account,
+                'Hello #Ghost and #news',
+                undefined,
+                [],
+                new Set(['ghost']),
+            );
+
+            expect(post.content).toEqual(
+                '<p>Hello <a href="https://foobar.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and #news</p>',
+            );
+            expect(getPublishedHashtags(post)).toEqual([
+                {
+                    name: 'Ghost',
+                    href: new URL('https://foobar.com/tag/ghost/'),
+                },
+                { name: 'news', href: null },
+            ]);
+            expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
+        });
+
+        it.each([[[]], [['coffee']]])(
+            'should publish the same hashtags when linking %j',
+            async (linked) => {
+                const post = Post.createNote(
+                    await internalAccount(),
+                    '#Coffee#tea',
+                    undefined,
+                    [],
+                    new Set(linked),
+                );
+
+                expect(Post.getNoteHashtags('#Coffee#tea')).toEqual(['coffee']);
+                expect(post.getChangedHashtags()).toEqual(['coffee']);
+            },
+        );
+
+        it('should use the given hashtags of an external post', async () => {
+            const post = Post.createFromData(await externalAccount(), {
+                type: PostType.Note,
+                content: '<p>Hello</p>',
+                apId: new URL('https://foobar.com/note/1'),
+                hashtags: ['#Ghost', 'ghost', '#2024', '#News'],
+            });
+
+            expect(post.getChangedHashtags()).toEqual(['ghost', 'news']);
+        });
+
+        it('should only return changed hashtags once', async () => {
+            const post = Post.createNote(await internalAccount(), '#Ghost');
+
+            expect(post.getChangedHashtags()).toEqual(['ghost']);
+            expect(post.getChangedHashtags()).toBeNull();
         });
     });
 

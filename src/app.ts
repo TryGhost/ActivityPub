@@ -141,6 +141,8 @@ import {
     type GCloudPubSubPushMessageQueue,
 } from '@/mq/gcloud-pubsub-push/mq';
 import type { NotificationEventService } from '@/notification/notification-event.service';
+import type { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
+import { HashtagPostsImportRequestedEvent } from '@/post/hashtag-posts-import-requested.event';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
@@ -270,6 +272,9 @@ container.resolve<GhostPostService>('ghostPostService').init();
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
+container
+    .resolve<HashtagPostsImportService>('hashtagPostsImportService')
+    .init();
 container.resolve<BlueskyEventService>('blueskyEventService').init();
 
 // Register all events with the event serializer
@@ -284,6 +289,7 @@ for (const event of [
     AccountUpdatedEvent,
     DomainBlockedEvent,
     DomainUnblockedEvent,
+    HashtagPostsImportRequestedEvent,
     NotificationsReadEvent,
     PostCreatedEvent,
     PostDeletedEvent,

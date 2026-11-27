@@ -74,6 +74,7 @@ import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
+import { HashtagSearchView } from '@/http/api/views/hashtag.search.view';
 import { RecommendationsView } from '@/http/api/views/recommendations.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { TopicView } from '@/http/api/views/topic.view';
@@ -88,9 +89,11 @@ import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
 import { NotificationService } from '@/notification/notification.service';
 import { NotificationEventService } from '@/notification/notification-event.service';
+import { HashtagPostsImportService } from '@/post/hashtag-posts-import.service';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { TagPageService } from '@/post/tag-page.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
@@ -381,6 +384,17 @@ export function registerDependencies(
         asClass(AccountMoveService).singleton(),
     );
     container.register('postService', asClass(PostService).singleton());
+    container.register(
+        'tagPageService',
+        asFunction(
+            (logging: Logger) =>
+                new TagPageService(
+                    logging,
+                    process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                        isLocalEnvironment(process.env.NODE_ENV),
+                ),
+        ).singleton(),
+    );
     container.register('userService', asClass(UserService).singleton());
     container.register(
         'ghostPostService',
@@ -389,6 +403,15 @@ export function registerDependencies(
     container.register(
         'postInteractionCountsService',
         asClass(PostInteractionCountsService).singleton(),
+    );
+    // Unset means tags.pub, an empty value turns the import off
+    container.register(
+        'hashtagServiceDomain',
+        asValue((process.env.HASHTAG_SERVICE_DOMAIN ?? 'tags.pub') || null),
+    );
+    container.register(
+        'hashtagPostsImportService',
+        asClass(HashtagPostsImportService).singleton(),
     );
     container.register('nodeInfoService', asClass(NodeInfoService).singleton());
     container.register(
@@ -443,6 +466,10 @@ export function registerDependencies(
     container.register(
         'accountSearchView',
         asClass(AccountSearchView).singleton(),
+    );
+    container.register(
+        'hashtagSearchView',
+        asClass(HashtagSearchView).singleton(),
     );
     container.register('blocksView', asClass(BlocksView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());

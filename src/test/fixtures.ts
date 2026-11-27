@@ -277,6 +277,8 @@ export class FixtureManager {
             this.db('sites').truncate(),
             this.db('outboxes').truncate(),
             this.db('mentions').truncate(),
+            this.db('post_hashtags').truncate(),
+            this.db('hashtags').truncate(),
             this.db('bluesky_integration_account_handles').truncate(),
             this.db('account_topics').truncate(),
             this.db('topics').truncate(),
