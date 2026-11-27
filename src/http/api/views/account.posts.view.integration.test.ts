@@ -374,6 +374,24 @@ describe('AccountPostsView', () => {
                 expect(results[0].inReplyTo).toBeNull();
             });
 
+            it('leaves out the parent of a reposted reply on the posts list', async () => {
+                const [otherAccount] =
+                    await fixtureManager.createInternalAccount();
+                const parent = await fixtureManager.createPost(otherAccount);
+                const otherReply = await fixtureManager.createReply(
+                    otherAccount,
+                    parent,
+                );
+                otherReply.addRepost(account);
+                await postRepository.save(otherReply);
+
+                const results = await getOutbox(account, false);
+
+                expect(results).toHaveLength(1);
+                expect(results[0].id).toBe(otherReply.apId.href);
+                expect(results[0].inReplyTo).toBeNull();
+            });
+
             it('still names the parent author when the parent is soft-deleted', async () => {
                 const [parentAuthor] =
                     await fixtureManager.createInternalAccount();

@@ -250,15 +250,6 @@ export class AccountPostsView {
                         ELSE 0
                     END AS reposter_followed_by_current_user
                 `),
-                // Parent (in-reply-to) fields
-                'parent_post.ap_id as parent_post_ap_id',
-                'parent_post.type as parent_post_type',
-                'parent_post.deleted_at as parent_post_deleted_at',
-                'parent_author.ap_id as parent_author_ap_id',
-                'parent_author.name as parent_author_name',
-                'parent_author.username as parent_author_username',
-                'parent_author.url as parent_author_url',
-                'parent_author.webfinger_host as parent_author_webfinger_host',
                 // Outbox fields
                 'outboxes.published_at as outbox_published_at',
                 'outboxes.outbox_type as outbox_type',
@@ -280,17 +271,6 @@ export class AccountPostsView {
                     OutboxType.Repost.toString(),
                 );
             })
-            // Both profile tabs need parent context: Posts can contain reposted replies.
-            .leftJoin(
-                'posts as parent_post',
-                'parent_post.id',
-                'posts.in_reply_to',
-            )
-            .leftJoin(
-                'accounts as parent_author',
-                'parent_author.id',
-                'parent_post.author_id',
-            )
             .leftJoin('follows as follows_author', function () {
                 this.on(
                     'follows_author.following_id',
@@ -328,7 +308,28 @@ export class AccountPostsView {
             .where('outboxes.account_id', account.id)
             .modify((query) => {
                 if (onlyReplies) {
-                    query.where('outboxes.outbox_type', OutboxType.Reply);
+                    query
+                        .where('outboxes.outbox_type', OutboxType.Reply)
+                        .select(
+                            'parent_post.ap_id as parent_post_ap_id',
+                            'parent_post.type as parent_post_type',
+                            'parent_post.deleted_at as parent_post_deleted_at',
+                            'parent_author.ap_id as parent_author_ap_id',
+                            'parent_author.name as parent_author_name',
+                            'parent_author.username as parent_author_username',
+                            'parent_author.url as parent_author_url',
+                            'parent_author.webfinger_host as parent_author_webfinger_host',
+                        )
+                        .leftJoin(
+                            'posts as parent_post',
+                            'parent_post.id',
+                            'posts.in_reply_to',
+                        )
+                        .leftJoin(
+                            'accounts as parent_author',
+                            'parent_author.id',
+                            'parent_post.author_id',
+                        );
                 } else {
                     query.whereNot('outboxes.outbox_type', OutboxType.Reply);
                 }
