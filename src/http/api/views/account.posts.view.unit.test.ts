@@ -84,6 +84,7 @@ describe('Account Posts View', () => {
                     image: 'https://example.com/image.jpg',
                     published: '2024-03-20T12:00:00Z',
                     liked: true,
+                    likeCount: 7,
                     replyCount: 5,
                     attachment: [],
                     authored: true,
@@ -121,7 +122,7 @@ describe('Account Posts View', () => {
                 url: 'https://example.com/posts/123',
                 featureImageUrl: 'https://example.com/image.jpg',
                 publishedAt: new Date('2024-03-20T12:00:00Z'),
-                likeCount: 0,
+                likeCount: 7,
                 likedByMe: true,
                 replyCount: 5,
                 readingTimeMinutes: 0,
@@ -614,6 +615,80 @@ describe('Account Posts View', () => {
                     followedByMe: true,
                 }),
             });
+        });
+
+        it('should include the counts we have stored for posts in our database', async () => {
+            const currentContextAccountId = 1;
+            const currentContextAccountApId = new URL(
+                'https://example.com/users/current',
+            );
+            const profileApId = new URL('https://example.com/users/profile');
+            const profileAccount = { id: 2 } as Partial<Account>;
+
+            const rowsByTable: Record<string, unknown> = {
+                follows: undefined,
+                posts: {
+                    id: 10,
+                    like_count: 7,
+                    reply_count: 2,
+                    repost_count: 3,
+                },
+                likes: { post_id: 10, account_id: 1 },
+                reposts: undefined,
+            };
+            mockDb.mockImplementation((table: string) => ({
+                where: vi.fn().mockReturnThis(),
+                select: vi.fn().mockReturnThis(),
+                whereRaw: vi.fn().mockReturnThis(),
+                first: vi.fn().mockResolvedValue(rowsByTable[table]),
+            }));
+
+            const testObject = {
+                id: new URL('https://example.com/posts/1'),
+                getAttribution: vi.fn().mockResolvedValue(mockActor),
+            };
+
+            const fedifyModule = await vi.importMock('@fedify/vocab');
+            const ActivityClass = (
+                fedifyModule as { Activity: new () => unknown }
+            ).Activity;
+            const testActivity = Object.create(ActivityClass.prototype);
+            testActivity.getObject = vi.fn().mockResolvedValue(testObject);
+            testActivity.toJsonLd = vi.fn().mockResolvedValue({
+                type: 'Create',
+                object: {
+                    id: 'https://example.com/posts/1',
+                    type: 'Note',
+                    content: 'Test post',
+                    attributedTo: 'https://example.com/users/profile',
+                },
+                actor: {
+                    id: 'https://example.com/users/profile',
+                    preferredUsername: 'profile',
+                    name: 'Profile User',
+                },
+            });
+
+            mockPage.getItems.mockImplementation(async function* () {
+                yield testActivity;
+            });
+
+            const result = await view.getPostsByRemoteLookUp(
+                currentContextAccountId,
+                currentContextAccountApId,
+                profileApId,
+                null,
+                profileAccount as Account | null,
+            );
+
+            expect(result[0]).toBeNull();
+            expect(result[1]?.results).toHaveLength(1);
+            const post = result[1]?.results[0];
+            expect(post?.likeCount).toEqual(7);
+            expect(post?.likedByMe).toEqual(true);
+            expect(post?.replyCount).toEqual(2);
+            expect(post?.repostCount).toEqual(3);
+            expect(post?.repostedByMe).toEqual(false);
         });
 
         it('should set followedByMe to false when current user does not follow the profile account', async () => {

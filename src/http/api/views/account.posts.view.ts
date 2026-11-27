@@ -409,6 +409,7 @@ export class AccountPostsView {
                         image?: string | null;
                         published?: string;
                         liked?: boolean;
+                        likeCount?: number;
                         replyCount?: number;
                         attachment?: Array<{
                             type?: string;
@@ -456,6 +457,7 @@ export class AccountPostsView {
                     currentContextAccountApId.toString() === activity.actor.id;
 
                 // Add counters & flags to the object
+                activity.object.likeCount = 0;
                 activity.object.replyCount = 0;
                 activity.object.repostCount = 0;
                 activity.object.liked = false;
@@ -464,6 +466,7 @@ export class AccountPostsView {
                 if (object?.id) {
                     const post = await this.getByApId(object.id);
 
+                    activity.object.likeCount = post ? post.like_count : 0;
                     activity.object.replyCount = post ? post.reply_count : 0;
                     activity.object.repostCount = post ? post.repost_count : 0;
 
@@ -796,7 +799,7 @@ export class AccountPostsView {
             url: object.url || '',
             featureImageUrl: object.image || null,
             publishedAt: new Date(object.published || ''),
-            likeCount: 0,
+            likeCount: object.likeCount || 0,
             likedByMe: object.liked || false,
             replyCount: object.replyCount || 0,
             readingTimeMinutes: 0,
@@ -856,7 +859,7 @@ export class AccountPostsView {
 
     private async getByApId(apId: URL) {
         const result = await this.db('posts')
-            .select('id', 'reply_count', 'repost_count')
+            .select('id', 'like_count', 'reply_count', 'repost_count')
             .whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
             .first();
 
