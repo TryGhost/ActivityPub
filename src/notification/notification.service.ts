@@ -37,6 +37,7 @@ interface BaseGetNotificationsDataResultRow {
     actor_name: string;
     actor_username: string;
     actor_url: string;
+    actor_ap_id: string;
     actor_webfinger_host: string | null;
     actor_avatar_url: string;
     actor_followed_by_user: 0 | 1;
@@ -112,6 +113,7 @@ export class NotificationService {
                 'actor_account.name as actor_name',
                 'actor_account.username as actor_username',
                 'actor_account.url as actor_url',
+                'actor_account.ap_id as actor_ap_id',
                 'actor_account.webfinger_host as actor_webfinger_host',
                 'actor_account.avatar_url as actor_avatar_url',
                 this.db.raw(`

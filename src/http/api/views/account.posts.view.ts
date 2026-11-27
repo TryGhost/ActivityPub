@@ -2,7 +2,7 @@ import { Activity, CollectionPage, isActor, lookupObject } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getStoredAccountHandleHost } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
@@ -52,6 +52,7 @@ interface BaseGetProfileDataResultRow {
     author_name: string | null;
     author_username: string;
     author_url: string | null;
+    author_ap_id: string;
     author_webfinger_host: string | null;
     author_avatar_url: string | null;
     author_followed_by_current_user: 0 | 1;
@@ -62,6 +63,7 @@ interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
     reposter_name: string | null;
     reposter_username: string;
     reposter_url: string | null;
+    reposter_ap_id: string;
     reposter_webfinger_host: string | null;
     reposter_avatar_url: string | null;
     reposter_followed_by_current_user: 0 | 1;
@@ -73,6 +75,7 @@ interface GetProfileDataResultRowWithoutReposted
     reposter_name: null;
     reposter_username: null;
     reposter_url: null;
+    reposter_ap_id: null;
     reposter_webfinger_host: null;
     reposter_avatar_url: null;
     reposter_followed_by_current_user: 0;
@@ -176,6 +179,7 @@ export class AccountPostsView {
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
+                'author_account.ap_id as author_ap_id',
                 'author_account.webfinger_host as author_webfinger_host',
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
@@ -189,6 +193,7 @@ export class AccountPostsView {
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
+                'reposter_account.ap_id as reposter_ap_id',
                 'reposter_account.webfinger_host as reposter_webfinger_host',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 this.db.raw(`
@@ -606,6 +611,7 @@ export class AccountPostsView {
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
+                'author_account.ap_id as author_ap_id',
                 'author_account.webfinger_host as author_webfinger_host',
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
@@ -619,6 +625,7 @@ export class AccountPostsView {
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
+                'reposter_account.ap_id as reposter_ap_id',
                 'reposter_account.webfinger_host as reposter_webfinger_host',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 this.db.raw('0 as reposter_followed_by_current_user'),
@@ -712,10 +719,11 @@ export class AccountPostsView {
             author: {
                 id: result.author_id.toString(),
                 handle: getAccountHandle(
-                    result.author_webfinger_host ??
-                        (result.author_url
-                            ? new URL(result.author_url).host
-                            : ''),
+                    getStoredAccountHandleHost({
+                        webfingerHost: result.author_webfinger_host,
+                        url: result.author_url,
+                        apId: result.author_ap_id,
+                    }),
                     result.author_username,
                 ),
                 name: result.author_name ?? '',
@@ -730,10 +738,11 @@ export class AccountPostsView {
                 ? {
                       id: result.reposter_id.toString(),
                       handle: getAccountHandle(
-                          result.reposter_webfinger_host ??
-                              (result.reposter_url
-                                  ? new URL(result.reposter_url).host
-                                  : ''),
+                          getStoredAccountHandleHost({
+                              webfingerHost: result.reposter_webfinger_host,
+                              url: result.reposter_url,
+                              apId: result.reposter_ap_id,
+                          }),
                           result.reposter_username,
                       ),
                       name: result.reposter_name ?? '',

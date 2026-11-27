@@ -1,5 +1,5 @@
 import type { AccountService } from '@/account/account.service';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getStoredAccountHandleHost } from '@/account/utils';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { normalizePlainText } from '@/helpers/html';
@@ -68,10 +68,11 @@ export class NotificationController {
                     name: result.actor_name,
                     url: result.actor_url,
                     handle: getAccountHandle(
-                        result.actor_webfinger_host ??
-                            (result.actor_url
-                                ? new URL(result.actor_url).host
-                                : ''),
+                        getStoredAccountHandleHost({
+                            webfingerHost: result.actor_webfinger_host,
+                            url: result.actor_url,
+                            apId: result.actor_ap_id,
+                        }),
                         result.actor_username,
                     ),
                     avatarUrl: result.actor_avatar_url,
