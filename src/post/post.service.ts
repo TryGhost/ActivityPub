@@ -322,9 +322,9 @@ export class PostService {
     async createNote(
         account: Account,
         content: string,
-        image?: ImageAttachment,
+        images: ImageAttachment[] = [],
     ): Promise<Result<Post, VerificationError>> {
-        if (image) {
+        for (const image of images) {
             const result = await this.imageStorageService.verifyFileUrl(
                 image.url,
             );
@@ -335,7 +335,7 @@ export class PostService {
 
         const mentions = await this.getMentionsFromContent(content);
 
-        const post = Post.createNote(account, content, image, mentions);
+        const post = Post.createNote(account, content, images, mentions);
 
         await this.postRepository.save(post);
 
@@ -346,11 +346,11 @@ export class PostService {
         account: Account,
         content: string,
         inReplyToId: URL,
-        image?: ImageAttachment,
+        images: ImageAttachment[] = [],
     ): Promise<
         Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
-        if (image) {
+        for (const image of images) {
             const result = await this.imageStorageService.verifyFileUrl(
                 image.url,
             );
@@ -382,7 +382,7 @@ export class PostService {
             account,
             content,
             inReplyTo,
-            image,
+            images,
             mentions,
         );
 

@@ -384,6 +384,35 @@ Then(
 );
 
 Then(
+    'Activity with object {string} sent to followers has the images',
+    async function (objectName, table) {
+        const object = this.objects[objectName];
+        const expected = table.hashes().map(({ url, altText }) => ({
+            type: 'Image',
+            url,
+            name: altText || undefined,
+        }));
+
+        for (const follower of await getFollowers()) {
+            const call = await waitForRequest(
+                'POST',
+                follower.inbox.pathname,
+                (request) =>
+                    JSON.parse(request.request.body).object.id === object.id,
+            );
+            const attachments = [
+                JSON.parse(call.request.body).object.attachment,
+            ].flat();
+
+            assert.deepStrictEqual(
+                attachments.map(({ type, url, name }) => ({ type, url, name })),
+                expected,
+            );
+        }
+    },
+);
+
+Then(
     'a {string} activity is sent to {string}',
     async function (activityString, actorName) {
         const { activity: activityType, object: objectNameOrType } =

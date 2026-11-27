@@ -208,3 +208,34 @@ When(
         }
     },
 );
+
+When(
+    'we reply {string} to {string} with the images',
+    async function (replyName, objectName, table) {
+        const object = this.objects[objectName];
+
+        this.response = await fetchActivityPub(
+            `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: 'This is a great article!',
+                    images: table.hashes().map(({ url, altText }) => ({
+                        url,
+                        altText: altText || undefined,
+                    })),
+                }),
+            },
+        );
+
+        if (this.response.ok) {
+            const activity = await this.response.clone().json();
+
+            this.activities[replyName] = activity;
+            this.objects[replyName] = activity.object;
+        }
+    },
+);
