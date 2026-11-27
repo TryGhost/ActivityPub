@@ -33,14 +33,21 @@ vi.mock('@/helpers/html', () => ({
     normalizePlainText: vi.fn((content: string) => content),
 }));
 
-vi.mock('@/post/content', () => ({
-    ContentPreparer: {
-        updateMentions: vi.fn(
-            (content: string) => `${content} [mentions updated]`,
-        ),
-        regenerateContentWarning: vi.fn((html: string) => html),
-    },
-}));
+vi.mock('@/post/content', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/post/content')>();
+
+    return {
+        ContentPreparer: {
+            updateMentions: vi.fn(
+                (content: string) => `${content} [mentions updated]`,
+            ),
+            regenerateContentWarning: vi.fn((html: string) => html),
+            regenerateExcerpt: vi.fn((html: string) =>
+                actual.ContentPreparer.regenerateExcerpt(html),
+            ),
+        },
+    };
+});
 
 describe('Account Posts View', () => {
     let view: AccountPostsView;
@@ -302,6 +309,132 @@ describe('Account Posts View', () => {
                 sensitive: true,
                 summary: null,
                 contentWarning: 'Sensitive topic',
+            });
+        });
+        it('should map the HTML summary of a remote post to plain text', () => {
+            const activity = {
+                type: 'Create',
+                object: {
+                    id: 'https://write.as/api/posts/o4ft5n5dic3alawl',
+                    type: 'Article',
+                    name: 'Coming soon: Read.as for Android',
+                    summary:
+                        '<p>I&#39;ve been working on some Android apps <a href="https://example.com" rel="nofollow ugc">for WriteFreely</a> lately.</p>\n\n<p> [...]</p>',
+                    content: '<p>Full content</p>',
+                    url: 'https://write.as/matt/coming-soon-read-as-for-android',
+                    published: '2024-03-20T12:00:00Z',
+                    attachment: [],
+                    attributedTo: {
+                        id: 'https://write.as/api/collections/matt',
+                        name: 'Matt',
+                        preferredUsername: 'matt',
+                    },
+                },
+                actor: {
+                    id: 'https://write.as/api/collections/matt',
+                    name: 'Matt',
+                    preferredUsername: 'matt',
+                },
+            };
+
+            const result = view.mapActivityToPostDTO(activity);
+
+            expect(result.summary).toMatch(
+                /^I've been working on some Android apps for WriteFreely lately\.\s+\[\.\.\.\]$/,
+            );
+            expect(result.contentWarning).toBeNull();
+        });
+
+        describe('remote summaries and previews', () => {
+            const mapRemoteArticle = (object: Record<string, unknown>) =>
+                view.mapActivityToPostDTO({
+                    type: 'Create',
+                    object: {
+                        id: 'https://example.com/posts/123',
+                        type: 'Article',
+                        name: 'Test Article',
+                        content: '<p>Full content</p>',
+                        url: 'https://example.com/posts/123',
+                        published: '2024-03-20T12:00:00Z',
+                        attachment: [],
+                        attributedTo: {
+                            id: 'https://example.com/users/1',
+                            name: 'Test User',
+                            preferredUsername: 'testuser',
+                        },
+                        ...object,
+                    },
+                    actor: {
+                        id: 'https://example.com/users/1',
+                        name: 'Test User',
+                        preferredUsername: 'testuser',
+                    },
+                });
+
+            it('should use the first value of a summary with several values', () => {
+                const result = mapRemoteArticle({
+                    summary: ['<p>First summary</p>', '<p>Second summary</p>'],
+                });
+
+                expect(result.summary).toBe('First summary');
+            });
+
+            it('should use the first value of a content warning with several values', () => {
+                const result = mapRemoteArticle({
+                    sensitive: true,
+                    summary: ['First warning', 'Second warning'],
+                });
+
+                expect(result.summary).toBeNull();
+                expect(result.contentWarning).toBe('First warning');
+            });
+
+            it('should map a summary that is not a string to null', () => {
+                const result = mapRemoteArticle({
+                    summary: { '@value': '<p>Summary</p>', '@language': 'en' },
+                });
+
+                expect(result.summary).toBeNull();
+            });
+
+            it('should map a summary without any text to null', () => {
+                const result = mapRemoteArticle({
+                    summary: '<p><img src="https://example.com/image.jpg"></p>',
+                });
+
+                expect(result.summary).toBeNull();
+            });
+
+            it('should map the HTML preview of a remote post to a plain text excerpt', () => {
+                const result = mapRemoteArticle({
+                    preview: {
+                        type: 'Note',
+                        content:
+                            '<p>Tom &amp; Jerry <a href="https://example.com">return</a></p>',
+                    },
+                });
+
+                expect(result.excerpt).toBe('Tom & Jerry return');
+            });
+
+            it('should use the first value of a preview with several values', () => {
+                const result = mapRemoteArticle({
+                    preview: {
+                        type: 'Note',
+                        content: [
+                            '<p>First preview</p>',
+                            '<p>Second preview</p>',
+                        ],
+                    },
+                });
+
+                expect(result.excerpt).toBe('First preview');
+            });
+
+            it('should map a missing preview to an empty excerpt', () => {
+                const result = mapRemoteArticle({});
+
+                expect(result.excerpt).toBe('');
             });
         });
     });
