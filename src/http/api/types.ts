@@ -1,3 +1,4 @@
+import type { DomainHandle } from '@/integration/bluesky.service';
 import type { Metadata, PostType } from '@/post/post.entity';
 
 /**
@@ -101,6 +102,11 @@ export interface AccountDTOWithBluesky extends AccountDTO {
      * Whether the Bluesky handle has been confirmed via Bluesky API
      */
     blueskyHandleConfirmed: boolean;
+    /**
+     * Whether the site's domain is (or is becoming) the Bluesky handle, or why
+     * it can't be
+     */
+    blueskyDomainHandle: DomainHandle | null;
 }
 
 export type AuthorDTO = Pick<
