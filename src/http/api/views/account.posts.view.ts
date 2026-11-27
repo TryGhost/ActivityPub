@@ -23,6 +23,15 @@ type GetPostsError =
 
 type GetPostsFromOutboxError = 'not-internal-account';
 
+// A JSON-LD property with several values is compacted to an array
+function firstStringValue(value: unknown): string | null {
+    const first = Array.isArray(value)
+        ? value.find((item) => typeof item === 'string')
+        : value;
+
+    return typeof first === 'string' ? first : null;
+}
+
 interface BaseGetProfileDataResultRow {
     post_id: number;
     post_type: PostType;
@@ -756,19 +765,20 @@ export class AccountPostsView {
         const sensitive = object.sensitive === true;
         const { summary, contentWarning } = classifySummary(
             sensitive,
-            object.summary || null,
+            firstStringValue(object.summary),
         );
+        const excerpt = firstStringValue(object.preview?.content);
 
         return {
             id: object.id,
             type: object.type === 'Article' ? PostType.Article : PostType.Note,
             title: normalizePlainText(object.name || ''),
-            excerpt: object.preview?.content || '',
-            // Summaries are HTML in ActivityPub, but plain text in our API: posts
-            // stored from incoming activities go through the same conversion
-            summary: summary
-                ? ContentPreparer.regenerateExcerpt(summary)
-                : null,
+            // Previews and summaries are HTML in ActivityPub, but plain text in
+            // our API: posts stored from incoming activities go through the same
+            // conversion
+            excerpt: excerpt ? ContentPreparer.regenerateExcerpt(excerpt) : '',
+            summary:
+                (summary && ContentPreparer.regenerateExcerpt(summary)) || null,
             sensitive,
             contentWarning: contentWarning
                 ? ContentPreparer.regenerateContentWarning(contentWarning)

@@ -344,6 +344,99 @@ describe('Account Posts View', () => {
             );
             expect(result.contentWarning).toBeNull();
         });
+
+        describe('remote summaries and previews', () => {
+            const mapRemoteArticle = (object: Record<string, unknown>) =>
+                view.mapActivityToPostDTO({
+                    type: 'Create',
+                    object: {
+                        id: 'https://example.com/posts/123',
+                        type: 'Article',
+                        name: 'Test Article',
+                        content: '<p>Full content</p>',
+                        url: 'https://example.com/posts/123',
+                        published: '2024-03-20T12:00:00Z',
+                        attachment: [],
+                        attributedTo: {
+                            id: 'https://example.com/users/1',
+                            name: 'Test User',
+                            preferredUsername: 'testuser',
+                        },
+                        ...object,
+                    },
+                    actor: {
+                        id: 'https://example.com/users/1',
+                        name: 'Test User',
+                        preferredUsername: 'testuser',
+                    },
+                });
+
+            it('should use the first value of a summary with several values', () => {
+                const result = mapRemoteArticle({
+                    summary: ['<p>First summary</p>', '<p>Second summary</p>'],
+                });
+
+                expect(result.summary).toBe('First summary');
+            });
+
+            it('should use the first value of a content warning with several values', () => {
+                const result = mapRemoteArticle({
+                    sensitive: true,
+                    summary: ['First warning', 'Second warning'],
+                });
+
+                expect(result.summary).toBeNull();
+                expect(result.contentWarning).toBe('First warning');
+            });
+
+            it('should map a summary that is not a string to null', () => {
+                const result = mapRemoteArticle({
+                    summary: { '@value': '<p>Summary</p>', '@language': 'en' },
+                });
+
+                expect(result.summary).toBeNull();
+            });
+
+            it('should map a summary without any text to null', () => {
+                const result = mapRemoteArticle({
+                    summary: '<p><img src="https://example.com/image.jpg"></p>',
+                });
+
+                expect(result.summary).toBeNull();
+            });
+
+            it('should map the HTML preview of a remote post to a plain text excerpt', () => {
+                const result = mapRemoteArticle({
+                    preview: {
+                        type: 'Note',
+                        content:
+                            '<p>Tom &amp; Jerry <a href="https://example.com">return</a></p>',
+                    },
+                });
+
+                expect(result.excerpt).toBe('Tom & Jerry return');
+            });
+
+            it('should use the first value of a preview with several values', () => {
+                const result = mapRemoteArticle({
+                    preview: {
+                        type: 'Note',
+                        content: [
+                            '<p>First preview</p>',
+                            '<p>Second preview</p>',
+                        ],
+                    },
+                });
+
+                expect(result.excerpt).toBe('First preview');
+            });
+
+            it('should map a missing preview to an empty excerpt', () => {
+                const result = mapRemoteArticle({});
+
+                expect(result.excerpt).toBe('');
+            });
+        });
     });
 
     describe('getPostsByRemoteLookUp', () => {
