@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Logger } from '@logtape/logtape';
 
 import type { AppContext } from '@/app';
+import { error } from '@/core/result';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { WebhookController } from '@/http/api/webhook.controller';
 
@@ -46,7 +47,7 @@ describe('WebhookController', () => {
     beforeEach(() => {
         ghostPostService = {
             createGhostPost: vi.fn(),
-            updateArticleFromGhostPost: vi.fn(),
+            updateGhostPost: vi.fn(),
             deleteGhostPost: vi.fn(),
         } as unknown as GhostPostService;
 
@@ -103,6 +104,97 @@ describe('WebhookController', () => {
             expect(response.status).toBe(400);
             expect(ghostPostService.createGhostPost).not.toHaveBeenCalled();
         });
+
+        it('passes the share settings of the post to the service', async () => {
+            vi.mocked(ghostPostService.createGhostPost).mockResolvedValue(
+                error('not-shared'),
+            );
+            const ctx = getMockAppContext({
+                post: {
+                    current: createValidPostPayload({
+                        social_web_share: 'note',
+                        social_web_note: 'Read my new post',
+                    }),
+                },
+            });
+
+            await controller.handlePostPublished(ctx);
+
+            expect(ghostPostService.createGhostPost).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    social_web_share: 'note',
+                    social_web_note: 'Read my new post',
+                }),
+            );
+        });
+
+        it('returns 400 when the share setting is not recognised', async () => {
+            const ctx = getMockAppContext({
+                post: {
+                    current: createValidPostPayload({
+                        social_web_share: 'everywhere',
+                    }),
+                },
+            });
+
+            const response = await controller.handlePostPublished(ctx);
+
+            expect(response.status).toBe(400);
+            expect(ghostPostService.createGhostPost).not.toHaveBeenCalled();
+        });
+
+        it('returns 200 without a body when the post is not shared', async () => {
+            vi.mocked(ghostPostService.createGhostPost).mockResolvedValue(
+                error('not-shared'),
+            );
+            const ctx = getMockAppContext({
+                post: {
+                    current: createValidPostPayload({
+                        social_web_share: 'none',
+                    }),
+                },
+            });
+
+            const response = await controller.handlePostPublished(ctx);
+
+            expect(response.status).toBe(200);
+            expect(await response.text()).toBe('');
+            expect(logger.error).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('handlePostUnpublished', () => {
+        it('returns 200 when the post was never shared', async () => {
+            vi.mocked(ghostPostService.deleteGhostPost).mockResolvedValue(
+                error('post-not-found'),
+            );
+            const ctx = getMockAppContext({
+                post: {
+                    current: { uuid: '259e92cb-5ac2-4d62-910f-ddea29b2cf55' },
+                },
+            });
+
+            const response = await controller.handlePostUnpublished(ctx);
+
+            expect(response.status).toBe(200);
+            expect(logger.error).not.toHaveBeenCalled();
+        });
+
+        it('returns 403 when the post belongs to another account', async () => {
+            vi.mocked(ghostPostService.deleteGhostPost).mockResolvedValue(
+                error('not-author'),
+            );
+            const ctx = getMockAppContext({
+                post: {
+                    current: { uuid: '259e92cb-5ac2-4d62-910f-ddea29b2cf55' },
+                },
+            });
+
+            const response = await controller.handlePostUnpublished(ctx);
+
+            expect(response.status).toBe(403);
+        });
     });
 
     describe('handlePostUpdated', () => {
@@ -118,9 +210,7 @@ describe('WebhookController', () => {
             const response = await controller.handlePostUpdated(ctx);
 
             expect(response.status).toBe(400);
-            expect(
-                ghostPostService.updateArticleFromGhostPost,
-            ).not.toHaveBeenCalled();
+            expect(ghostPostService.updateGhostPost).not.toHaveBeenCalled();
         });
     });
 });

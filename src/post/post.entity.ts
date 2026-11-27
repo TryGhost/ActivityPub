@@ -94,6 +94,68 @@ export interface GhostPost {
     url: string;
     visibility: string;
     authors?: GhostAuthor[] | null;
+    social_web_share?: GhostPostShareMode | null;
+    social_web_note?: string | null;
+}
+
+/**
+ * How a Ghost post is shared to the Fediverse when it is published
+ *
+ * - `article`: the full post as an Article (default)
+ * - `note`: a short Note with the title, excerpt (or custom text) and a link
+ * - `none`: the post is not shared
+ */
+export type GhostPostShareMode = 'article' | 'note' | 'none';
+
+/**
+ * Maximum length of the plain text of a Note created from a Ghost post
+ */
+export const GHOST_POST_NOTE_MAX_LENGTH = 500;
+
+const GHOST_POST_NOTE_SEPARATOR = '\n\n';
+const GHOST_POST_NOTE_MIN_EXCERPT_LENGTH = 20;
+
+const NO_CONTENT_PREPARATION: PrepareContentOptions = {
+    removeGatedContent: false,
+    removeMemberContent: false,
+    escapeHtml: false,
+    convertLineBreaks: false,
+    wrapInParagraph: false,
+    extractLinks: false,
+    addPaidContentMessage: false,
+    addMentions: false,
+};
+
+/**
+ * Length of a string in characters (not UTF-16 code units)
+ */
+function textLength(text: string) {
+    return Array.from(text).length;
+}
+
+/**
+ * Shorten text to at most `maxLength` characters, ending it with "..."
+ * when it is cut
+ */
+function truncateText(text: string, maxLength: number) {
+    const characters = Array.from(text);
+
+    if (characters.length <= maxLength) {
+        return text;
+    }
+
+    if (maxLength <= 3) {
+        return '';
+    }
+
+    return `${characters
+        .slice(0, maxLength - 3)
+        .join('')
+        .trimEnd()}...`;
+}
+
+function normalizeWhitespace(text: string) {
+    return text.replace(/\s+/g, ' ').trim();
 }
 
 export interface PostUpdateParams {
@@ -471,57 +533,66 @@ export class Post extends BaseEntity {
         this._updateDirty = false;
     }
 
-    static async createArticleFromGhostPost(
-        account: Account,
-        ghostPost: GhostPost,
-    ): Promise<Result<Post, CreatePostError>> {
-        const isPublic = ghostPost.visibility === 'public';
-
-        let content = ghostPost.html;
-        let excerpt = ghostPost.excerpt
-            ? PostSummary.parse(ghostPost.excerpt)
-            : null;
-
-        const allOptionsDisabled: PrepareContentOptions = {
-            removeGatedContent: false,
-            removeMemberContent: false,
-            escapeHtml: false,
-            convertLineBreaks: false,
-            wrapInParagraph: false,
-            extractLinks: false,
-            addPaidContentMessage: false,
-            addMentions: false,
-        };
-
-        if (content === null || content === '') {
-            return error('missing-content');
-        }
-
-        content = ContentPreparer.prepare(content, {
-            ...allOptionsDisabled,
+    /**
+     * Get the part of a Ghost post's content that is visible to everyone,
+     * and an excerpt that does not reveal anything beyond it
+     *
+     * The excerpt is not validated here: an Article validates it as its
+     * excerpt, while a Note only uses a shortened copy of it.
+     */
+    private static getPublicGhostPostContent(ghostPost: GhostPost): {
+        content: string;
+        excerpt: string | null;
+    } {
+        let content = ContentPreparer.prepare(ghostPost.html ?? '', {
+            ...NO_CONTENT_PREPARATION,
             removeGatedContent: true,
         });
+        let excerpt: string | null = ghostPost.excerpt || null;
 
-        if (isPublic === false) {
+        if (ghostPost.visibility !== 'public') {
             content = ContentPreparer.prepare(content, {
-                ...allOptionsDisabled,
+                ...NO_CONTENT_PREPARATION,
                 removeMemberContent: true,
             });
-
-            if (content === '') {
-                return error('private-content');
-            }
 
             if (
                 ghostPost.custom_excerpt === null ||
                 ghostPost.custom_excerpt === ''
             ) {
-                excerpt = ContentPreparer.regenerateExcerpt(content);
+                excerpt =
+                    content === ''
+                        ? null
+                        : ContentPreparer.regenerateExcerpt(content);
+            }
+        }
+
+        return { content, excerpt };
+    }
+
+    static async createArticleFromGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<Post, CreatePostError>> {
+        if (ghostPost.html === null || ghostPost.html === '') {
+            return error('missing-content');
+        }
+
+        const publicContent = Post.getPublicGhostPostContent(ghostPost);
+        const excerpt =
+            publicContent.excerpt === null
+                ? null
+                : PostSummary.parse(publicContent.excerpt);
+        let content = publicContent.content;
+
+        if (ghostPost.visibility !== 'public') {
+            if (content === '') {
+                return error('private-content');
             }
 
             // We add the paid content message _after_ so it doesn't appear in excerpt
             content = ContentPreparer.prepare(content, {
-                ...allOptionsDisabled,
+                ...NO_CONTENT_PREPARATION,
                 addPaidContentMessage: {
                     url: new URL(ghostPost.url),
                 },
@@ -551,6 +622,101 @@ export class Post extends BaseEntity {
                 },
             ),
         );
+    }
+
+    /**
+     * Create a short Note that links to a Ghost post
+     *
+     * The Note is the post's custom note text when it has one, otherwise
+     * the title and excerpt, followed by a link to the post. The excerpt
+     * (or the custom text) is shortened with "..." so that the whole Note
+     * fits in GHOST_POST_NOTE_MAX_LENGTH characters.
+     *
+     * Only the public part of the post is used for the excerpt, so a
+     * members-only post can be shared without revealing its content.
+     *
+     * The link is never shortened. In the unlikely case that the post's URL
+     * alone is close to GHOST_POST_NOTE_MAX_LENGTH, the Note is only the link
+     * and can be longer than the limit. The limit matches the one of the
+     * Social Web note composer; it is not a limit of ActivityPub, and other
+     * servers accept longer Notes.
+     */
+    static createNoteFromGhostPost(account: Account, ghostPost: GhostPost) {
+        const paragraphs = Post.getGhostPostNoteParagraphs(ghostPost);
+
+        const content = paragraphs
+            .map((paragraph) =>
+                ContentPreparer.prepare(paragraph, {
+                    ...NO_CONTENT_PREPARATION,
+                    escapeHtml: true,
+                    extractLinks: true,
+                    convertLineBreaks: true,
+                    wrapInParagraph: true,
+                }),
+            )
+            .join('');
+
+        return new Post(
+            null,
+            randomUUID(),
+            account,
+            PostType.Note,
+            Audience.Public,
+            null,
+            null,
+            null,
+            content,
+            new URL(ghostPost.url),
+            null,
+            new Date(ghostPost.published_at),
+            {
+                ghostAuthors: ghostPost.authors ?? [],
+            },
+        );
+    }
+
+    /**
+     * Get the plain text paragraphs of a Note created from a Ghost post
+     */
+    private static getGhostPostNoteParagraphs(ghostPost: GhostPost): string[] {
+        const url = ghostPost.url;
+        const separatorLength = GHOST_POST_NOTE_SEPARATOR.length;
+
+        const customText = (ghostPost.social_web_note ?? '')
+            .replace(/\r\n?/g, '\n')
+            .trim();
+
+        if (customText !== '') {
+            const text = truncateText(
+                customText,
+                GHOST_POST_NOTE_MAX_LENGTH - textLength(url) - separatorLength,
+            );
+
+            return text === '' ? [url] : [text, url];
+        }
+
+        const title = truncateText(
+            normalizeWhitespace(ghostPost.title),
+            GHOST_POST_NOTE_MAX_LENGTH - textLength(url) - separatorLength,
+        );
+
+        const excerptLength =
+            GHOST_POST_NOTE_MAX_LENGTH -
+            textLength(title) -
+            textLength(url) -
+            separatorLength * 2;
+
+        const { excerpt } = Post.getPublicGhostPostContent(ghostPost);
+
+        const shortExcerpt =
+            excerptLength >= GHOST_POST_NOTE_MIN_EXCERPT_LENGTH
+                ? truncateText(
+                      normalizeWhitespace(excerpt ?? ''),
+                      excerptLength,
+                  )
+                : '';
+
+        return [title, shortExcerpt, url].filter((text) => text !== '');
     }
 
     static createFromData(account: Account, data: PostData): Post {

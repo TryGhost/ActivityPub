@@ -17,6 +17,7 @@ import {
     type CreatePostError,
     type GhostPost,
     Post,
+    PostType,
     type PostUpdateParams,
 } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
@@ -26,7 +27,8 @@ import { PostDeletedEvent } from '@/post/post-deleted.event';
 type GhostPostError =
     | CreatePostError
     | 'post-already-exists'
-    | 'failed-to-create-post';
+    | 'failed-to-create-post'
+    | 'not-shared';
 
 type DeleteGhostPostError = DeletePostError | 'post-not-found';
 
@@ -46,7 +48,7 @@ export class GhostPostService {
         );
     }
 
-    async updateArticleFromGhostPost(account: Account, ghostPost: GhostPost) {
+    async updateGhostPost(account: Account, ghostPost: GhostPost) {
         const apIdForPost = await this.getApIdForGhostPost(ghostPost.uuid);
         if (!apIdForPost) {
             this.logger.info(
@@ -59,6 +61,26 @@ export class GhostPostService {
         }
         const apId = new URL(apIdForPost);
 
+        // The post should no longer be shared, so remove it
+        if (ghostPost.social_web_share === 'none') {
+            await this.removePost(apId, account);
+            return;
+        }
+
+        // A post shared as a Note is not updated when the Ghost post is
+        // edited: notes can't be edited yet, and updating it from the post
+        // would replace the note with the full content of the post
+        const existingPost = await this.postRepository.getByApId(apId);
+        if (existingPost?.type === PostType.Note) {
+            this.logger.info(
+                'Not updating post: Ghost post with UUID {uuid} was shared as a note',
+                {
+                    uuid: ghostPost.uuid,
+                },
+            );
+            return;
+        }
+
         const postResult = await Post.createArticleFromGhostPost(
             account,
             ghostPost,
@@ -69,16 +91,7 @@ export class GhostPostService {
                 case 'missing-content':
                 case 'private-content': {
                     //Remove the post if it's private or empty
-                    const deleteResult = await this.postService.deleteByApId(
-                        apId,
-                        account,
-                    );
-                    if (isError(deleteResult)) {
-                        this.logger.error(
-                            'Failed to delete post with apId: {apId}, error: {error}',
-                            { apId, error: getError(deleteResult) },
-                        );
-                    }
+                    await this.removePost(apId, account);
                     return;
                 }
                 default:
@@ -124,6 +137,16 @@ export class GhostPostService {
         }
     }
 
+    private async removePost(apId: URL, account: Account) {
+        const deleteResult = await this.postService.deleteByApId(apId, account);
+        if (isError(deleteResult)) {
+            this.logger.error(
+                'Failed to delete post with apId: {apId}, error: {error}',
+                { apId, error: getError(deleteResult) },
+            );
+        }
+    }
+
     async deleteGhostPost(
         account: Account,
         uuid: string,
@@ -136,22 +159,43 @@ export class GhostPostService {
         return await this.postService.deleteByApId(apId, account);
     }
 
+    /**
+     * Share a published Ghost post, as an Article or a Note depending on
+     * the post's `social_web_share` setting
+     *
+     * Returns a `not-shared` error when the post should not be shared
+     */
     async createGhostPost(
         account: Account,
         data: GhostPost,
     ): Promise<Result<Post, GhostPostError>> {
+        const shareMode = data.social_web_share ?? 'article';
+
+        if (shareMode === 'none') {
+            return error('not-shared');
+        }
+
         const existingPost = await this.getApIdForGhostPost(data.uuid);
 
         if (existingPost) {
             return error('post-already-exists');
         }
 
-        const postResult = await Post.createArticleFromGhostPost(account, data);
-        if (isError(postResult)) {
-            return postResult;
+        let post: Post;
+
+        if (shareMode === 'note') {
+            post = Post.createNoteFromGhostPost(account, data);
+        } else {
+            const postResult = await Post.createArticleFromGhostPost(
+                account,
+                data,
+            );
+            if (isError(postResult)) {
+                return postResult;
+            }
+            post = getValue(postResult);
         }
 
-        const post = getValue(postResult);
         await this.postRepository.save(post);
 
         try {
