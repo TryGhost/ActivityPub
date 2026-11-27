@@ -7,6 +7,7 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import type { ModerationService } from '@/moderation/moderation.service';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
+import type { TagPageService } from '@/post/tag-page.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 
 describe('PostService', () => {
@@ -29,6 +30,7 @@ describe('PostService', () => {
             {} as ImageStorageService,
             {} as ModerationService,
             {} as Logger,
+            {} as TagPageService,
         );
 
         const result = await postService.isLikedByAccount(postId, accountId);
@@ -55,6 +57,7 @@ describe('PostService', () => {
             {} as ImageStorageService,
             {} as ModerationService,
             {} as Logger,
+            {} as TagPageService,
         );
 
         const result = await postService.isRepostedByAccount(postId, accountId);
@@ -82,6 +85,7 @@ describe('PostService', () => {
             {} as ImageStorageService,
             {} as ModerationService,
             {} as Logger,
+            {} as TagPageService,
         );
 
         const result = await postService.getOutboxForAccount(
@@ -113,6 +117,7 @@ describe('PostService', () => {
             {} as ImageStorageService,
             {} as ModerationService,
             {} as Logger,
+            {} as TagPageService,
         );
 
         const result = await postService.getOutboxItemCount(accountId);

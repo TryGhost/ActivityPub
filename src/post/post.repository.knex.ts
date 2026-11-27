@@ -10,6 +10,7 @@ import { parseURL } from '@/core/url';
 import {
     type Audience,
     type CreatePostType,
+    isPublicPost,
     type MentionedAccount,
     type Metadata,
     OutboxType,
@@ -212,6 +213,7 @@ export class KnexPostRepository {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
+            const hashtagsToSave = post.getChangedHashtags();
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
@@ -279,6 +281,14 @@ export class KnexPostRepository {
                 if (mentionsToAdd.length > 0) {
                     await this.insertMentions(post, mentionsToAdd, transaction);
                 }
+
+                if (hashtagsToSave !== null) {
+                    await this.insertHashtags(
+                        post,
+                        hashtagsToSave,
+                        transaction,
+                    );
+                }
             } else if (isDeletedPost) {
                 const existingRow = await transaction('posts')
                     .select('deleted_at')
@@ -318,6 +328,11 @@ export class KnexPostRepository {
 
                         // Delete mentions associated with the deleted post
                         await transaction('mentions')
+                            .where({ post_id: post.id })
+                            .del();
+
+                        // Delete hashtags associated with the deleted post
+                        await transaction('post_hashtags')
                             .where({ post_id: post.id })
                             .del();
 
@@ -933,6 +948,48 @@ export class KnexPostRepository {
         }));
 
         await transaction('mentions').insert(mentionsToInsert);
+    }
+
+    /**
+     * Insert hashtags of a post into the database, creating hashtags that
+     * don't exist yet. Only public posts are listed under their hashtags.
+     *
+     * @param post Post to insert hashtags for
+     * @param names Normalized hashtag names
+     * @param transaction Database transaction to use
+     */
+    private async insertHashtags(
+        post: Post,
+        names: string[],
+        transaction: Knex.Transaction,
+    ) {
+        if (names.length === 0 || !isPublicPost(post)) {
+            return;
+        }
+
+        // Insert in a consistent order to avoid deadlocks between concurrent
+        // transactions creating the same hashtags
+        const sortedNames = [...names].sort();
+
+        await transaction('hashtags')
+            .insert(sortedNames.map((name) => ({ name })))
+            .onConflict()
+            .ignore();
+
+        const hashtags: { id: number }[] = await transaction('hashtags')
+            .select('id')
+            .whereRaw(
+                `name_hash IN (${sortedNames.map(() => 'UNHEX(SHA2(?, 256))').join(', ')})`,
+                sortedNames,
+            );
+
+        await transaction('post_hashtags').insert(
+            hashtags.map((hashtag) => ({
+                post_id: post.id,
+                hashtag_id: hashtag.id,
+                published_at: post.publishedAt,
+            })),
+        );
     }
 
     /**

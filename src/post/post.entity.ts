@@ -8,6 +8,7 @@ import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
 import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
+import { normalizeHashtags, type PublishedHashtag } from '@/post/hashtag';
 
 /** @see PostSummary.parse to get a branded PostSummary */
 export type PostSummary = string & { readonly __brand: unique symbol };
@@ -145,6 +146,10 @@ export interface PostData {
     apId?: URL | null;
     attachments?: PostAttachment[] | null;
     mentions?: Mention[] | null;
+    /**
+     * Names of the hashtags the post is tagged with
+     */
+    hashtags?: string[] | null;
     metadata?: Metadata | null;
 }
 
@@ -162,6 +167,43 @@ export function isPublicPost(post: Post): post is PublicPost {
 
 export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
     return post.audience === Audience.FollowersOnly;
+}
+
+/**
+ * Get the hashtags an internal post is published with: the hashtags in a
+ * note's content, linked or not. Articles are published without hashtags, as
+ * Ghost tags are often used to organise a site rather than to label posts for
+ * discovery.
+ *
+ * External posts declare their hashtags in their `tag` property instead,
+ * which is not kept on the post.
+ */
+export function getPublishedHashtags(
+    post: Pick<Post, 'type' | 'content'>,
+): PublishedHashtag[] {
+    if (post.type === PostType.Note && post.content) {
+        return ContentPreparer.parseHashtags(post.content);
+    }
+
+    return [];
+}
+
+function prepareNoteContent(
+    noteContent: string,
+    mentions: Mention[],
+    addHashtags: PrepareContentOptions['addHashtags'],
+) {
+    return ContentPreparer.prepare(noteContent, {
+        removeGatedContent: false,
+        removeMemberContent: false,
+        escapeHtml: true,
+        convertLineBreaks: true,
+        wrapInParagraph: true,
+        extractLinks: true,
+        addPaidContentMessage: false,
+        addMentions: mentions,
+        addHashtags,
+    });
 }
 
 export type CreatePostError = 'private-content' | 'missing-content';
@@ -196,6 +238,7 @@ export class Post extends BaseEntity {
     private _imageUrl: URL | null;
     private _metadata: Metadata | null;
     public readonly mentions: MentionedAccount[] = [];
+    private hashtagsToSave: string[] | null = null;
 
     constructor(
         public readonly id: number | null,
@@ -423,6 +466,22 @@ export class Post extends BaseEntity {
         this.mentions.push(account);
     }
 
+    /**
+     * Get the normalized names of the hashtags to save for this post, or null
+     * if they have not changed since the post was loaded
+     */
+    getChangedHashtags(): string[] | null {
+        const hashtags = this.hashtagsToSave;
+        this.hashtagsToSave = null;
+        return hashtags;
+    }
+
+    private getHashtagNames(): string[] {
+        return normalizeHashtags(
+            getPublishedHashtags(this).map((hashtag) => hashtag.name),
+        );
+    }
+
     get likeCount() {
         return this._likeCount;
     }
@@ -491,6 +550,7 @@ export class Post extends BaseEntity {
             extractLinks: false,
             addPaidContentMessage: false,
             addMentions: false,
+            addHashtags: false,
         };
 
         if (content === null || content === '') {
@@ -615,28 +675,43 @@ export class Post extends BaseEntity {
             post.addMention(mention.account);
         }
 
+        post.hashtagsToSave = normalizeHashtags(data.hashtags ?? []);
+
         return post;
     }
 
+    /**
+     * Get the normalized names of the hashtags a note with the given content
+     * would have
+     *
+     * @param noteContent Content of the note, as written
+     */
+    static getNoteHashtags(noteContent: string): string[] {
+        return normalizeHashtags(
+            ContentPreparer.findHashtagsInText(
+                prepareNoteContent(noteContent, [], false),
+            ),
+        );
+    }
+
+    /**
+     * @param linkedHashtags Normalized names of the hashtags to link to the
+     * site's tag pages
+     */
     static createNote(
         account: Account,
         noteContent: string,
         image?: ImageAttachment,
         mentions: Mention[] = [],
+        linkedHashtags: Set<string> = new Set(),
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
         }
 
-        const content = ContentPreparer.prepare(noteContent, {
-            removeGatedContent: false,
-            removeMemberContent: false,
-            escapeHtml: true,
-            convertLineBreaks: true,
-            wrapInParagraph: true,
-            extractLinks: true,
-            addPaidContentMessage: false,
-            addMentions: mentions,
+        const content = prepareNoteContent(noteContent, mentions, {
+            siteUrl: account.url,
+            linkedHashtags,
         });
 
         const postAttachment = image
@@ -680,15 +755,22 @@ export class Post extends BaseEntity {
             }
         }
 
+        post.hashtagsToSave = post.getHashtagNames();
+
         return post;
     }
 
+    /**
+     * @param linkedHashtags Normalized names of the hashtags to link to the
+     * site's tag pages
+     */
     static createReply(
         account: Account,
         replyContent: string,
         inReplyTo: Post,
         image?: ImageAttachment,
         mentions: Mention[] = [],
+        linkedHashtags: Set<string> = new Set(),
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -701,15 +783,9 @@ export class Post extends BaseEntity {
         const inReplyToId = inReplyTo.id;
         const threadRootId = inReplyTo.threadRoot ?? inReplyTo.id;
 
-        const content = ContentPreparer.prepare(replyContent, {
-            removeGatedContent: false,
-            removeMemberContent: false,
-            escapeHtml: true,
-            convertLineBreaks: true,
-            wrapInParagraph: true,
-            extractLinks: true,
-            addPaidContentMessage: false,
-            addMentions: mentions,
+        const content = prepareNoteContent(replyContent, mentions, {
+            siteUrl: account.url,
+            linkedHashtags,
         });
 
         const postAttachment = image
@@ -752,6 +828,8 @@ export class Post extends BaseEntity {
                 post.addMention(mention.account);
             }
         }
+
+        post.hashtagsToSave = post.getHashtagNames();
 
         return post;
     }

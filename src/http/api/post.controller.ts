@@ -19,7 +19,10 @@ import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { getRelatedActivities } from '@/db';
-import { buildAnnounceActivityForPost } from '@/helpers/activitypub/activity';
+import {
+    buildAnnounceActivityForPost,
+    getHashtagsForPost,
+} from '@/helpers/activitypub/activity';
 import { getHandle } from '@/helpers/activitypub/actor';
 import { postToDTO } from '@/http/api/helpers/post';
 import { requireParam } from '@/http/api/helpers/request';
@@ -516,7 +519,7 @@ export class PostController {
             summary: null,
             published: Temporal.Now.instant(),
             contexts: [conversation],
-            tags: mentions,
+            tags: [...mentions, ...getHashtagsForPost(newReply)],
             to: to,
             ccs: cc,
         });

@@ -216,6 +216,44 @@ describe('Build activity', () => {
             );
         });
 
+        it('should include hashtags in the Note object', async () => {
+            const author = Object.create(AccountEntity);
+            author.id = 123;
+            author.username = 'testuser';
+            author.apId = new URL('https://example.com/user/foo');
+            author.apFollowers = new URL(
+                'https://example.com/user/foo/followers',
+            );
+
+            const post = Object.create(Post);
+            post.id = 'post-123';
+            post.author = author;
+            post.type = PostType.Note;
+            post.content =
+                '<p>Hello <a href="https://example.com/tag/ghost/" class="mention hashtag" rel="tag">#<span>Ghost</span></a> and #coffee</p>';
+            post.apId = new URL('https://example.com/note/post-123');
+            post.mentions = [];
+            post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+            post.publishedAt = new Date('2025-01-01T00:00:00Z');
+
+            const result = await buildCreateActivityAndObjectFromPost(
+                post,
+                context,
+            );
+
+            const noteJsonLd = (await result.fedifyObject.toJsonLd()) as {
+                tag: unknown;
+            };
+            expect(noteJsonLd.tag).toEqual([
+                {
+                    type: 'Hashtag',
+                    href: 'https://example.com/tag/ghost/',
+                    name: '#Ghost',
+                },
+                { type: 'Hashtag', name: '#coffee' },
+            ]);
+        });
+
         it('should throw an error for unsupported post types', async () => {
             const author = Object.create(AccountEntity);
             author.id = 123;
