@@ -559,7 +559,7 @@ describe('Account Posts View', () => {
             });
         });
 
-        it('should only include replies when includeReplies is set', async () => {
+        it('should only return the replies of the account when onlyReplies is set', async () => {
             // Arrange
             const currentContextAccountId = 1;
             const currentContextAccountApId = new URL(
@@ -572,14 +572,18 @@ describe('Account Posts View', () => {
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
 
-            const createActivity = (id: string, inReplyTo?: string) => {
+            const createActivity = (
+                id: string,
+                inReplyTo?: string,
+                type = 'Create',
+            ) => {
                 const activity = Object.create(ActivityClass.prototype);
                 activity.getObject = vi.fn().mockResolvedValue({
                     id: new URL(id),
                     getAttribution: vi.fn().mockResolvedValue(mockActor),
                 });
                 activity.toJsonLd = vi.fn().mockResolvedValue({
-                    type: 'Create',
+                    type,
                     object: {
                         id,
                         type: 'Note',
@@ -598,6 +602,11 @@ describe('Account Posts View', () => {
 
             mockPage.getItems.mockImplementation(async function* () {
                 yield createActivity(
+                    'https://example.com/posts/3',
+                    'https://other.com/posts/2',
+                    'Announce',
+                );
+                yield createActivity(
                     'https://example.com/posts/2',
                     'https://other.com/posts/1',
                 );
@@ -612,14 +621,14 @@ describe('Account Posts View', () => {
             });
 
             // Act
-            const withoutReplies = await view.getPostsByRemoteLookUp(
+            const posts = await view.getPostsByRemoteLookUp(
                 currentContextAccountId,
                 currentContextAccountApId,
                 profileApId,
                 null,
                 null,
             );
-            const withReplies = await view.getPostsByRemoteLookUp(
+            const replies = await view.getPostsByRemoteLookUp(
                 currentContextAccountId,
                 currentContextAccountApId,
                 profileApId,
@@ -629,17 +638,14 @@ describe('Account Posts View', () => {
             );
 
             // Assert
-            if (isError(withoutReplies) || isError(withReplies)) {
+            if (isError(posts) || isError(replies)) {
                 throw new Error('Expected remote lookups to succeed');
             }
-            expect(
-                getValue(withoutReplies).results.map((post) => post.id),
-            ).toEqual(['https://example.com/posts/1']);
-            expect(
-                getValue(withReplies).results.map((post) => post.id),
-            ).toEqual([
-                'https://example.com/posts/2',
+            expect(getValue(posts).results.map((post) => post.id)).toEqual([
                 'https://example.com/posts/1',
+            ]);
+            expect(getValue(replies).results.map((post) => post.id)).toEqual([
+                'https://example.com/posts/2',
             ]);
         });
 

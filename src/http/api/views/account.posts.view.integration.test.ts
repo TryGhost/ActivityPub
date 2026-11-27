@@ -283,10 +283,17 @@ describe('AccountPostsView', () => {
             }
         });
 
-        it('returns replies alongside posts when includeReplies is set', async () => {
+        it('returns only replies when onlyReplies is set', async () => {
             const post = await fixtureManager.createPost(account);
-
             const reply = await fixtureManager.createReply(account, post);
+
+            const [otherAccount] = await fixtureManager.createInternalAccount();
+            const otherReply = await fixtureManager.createReply(
+                otherAccount,
+                post,
+            );
+            otherReply.addRepost(account);
+            await postRepository.save(otherReply);
 
             const result = await viewer.getPostsFromOutbox(
                 account,
@@ -298,9 +305,9 @@ describe('AccountPostsView', () => {
             expect(isError(result)).toBe(false);
             if (!isError(result)) {
                 const accountPosts = getValue(result);
-                expect(accountPosts.results).toHaveLength(2);
-                expect(accountPosts.results[0].id).toBe(reply.apId.href);
-                expect(accountPosts.results[1].id).toBe(post.apId.href);
+                expect(accountPosts.results.map((post) => post.id)).toEqual([
+                    reply.apId.href,
+                ]);
             }
         });
 

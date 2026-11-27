@@ -101,7 +101,7 @@ export class AccountPostsView {
         currentContextAccount: Account,
         limit: number,
         cursor: string | null,
-        includeReplies = false,
+        onlyReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
@@ -110,7 +110,7 @@ export class AccountPostsView {
                 currentContextAccount.id,
                 limit,
                 cursor,
-                includeReplies,
+                onlyReplies,
             );
             if (isError(result)) {
                 throw new Error(
@@ -128,7 +128,7 @@ export class AccountPostsView {
             apId,
             cursor,
             account,
-            includeReplies,
+            onlyReplies,
         );
     }
 
@@ -137,7 +137,7 @@ export class AccountPostsView {
         contextAccountId: number,
         limit: number,
         cursor: string | null,
-        includeReplies = false,
+        onlyReplies = false,
     ): Promise<Result<AccountPosts, GetPostsFromOutboxError>> {
         if (!account.isInternal) {
             return error('not-internal-account');
@@ -258,7 +258,9 @@ export class AccountPostsView {
             })
             .where('outboxes.account_id', account.id)
             .modify((query) => {
-                if (!includeReplies) {
+                if (onlyReplies) {
+                    query.where('outboxes.outbox_type', OutboxType.Reply);
+                } else {
                     query.whereNot('outboxes.outbox_type', OutboxType.Reply);
                 }
             })
@@ -292,7 +294,7 @@ export class AccountPostsView {
         apId: URL,
         cursor: string | null,
         account?: Account | null,
-        includeReplies = false,
+        onlyReplies = false,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
@@ -437,7 +439,12 @@ export class AccountPostsView {
                     };
                 };
 
-                if (activity.object.inReplyTo && !includeReplies) {
+                const isReply = Boolean(activity.object.inReplyTo);
+                const isWanted = onlyReplies
+                    ? isReply && activity.type !== 'Announce'
+                    : !isReply;
+
+                if (!isWanted) {
                     continue;
                 }
 

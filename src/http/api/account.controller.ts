@@ -305,16 +305,15 @@ export class AccountController {
     }
 
     /**
-     * Handle a request for a list of posts by an account, including the
-     * replies made by the account
+     * Handle a request for a list of replies made by an account
      */
-    @APIRoute('GET', 'posts/:handle/with-replies')
+    @APIRoute('GET', 'posts/:handle/replies')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
-    async handleGetAccountPostsWithReplies(ctx: AppContext) {
+    async handleGetAccountReplies(ctx: AppContext) {
         return this.getAccountPosts(ctx, true);
     }
 
-    private async getAccountPosts(ctx: AppContext, includeReplies: boolean) {
+    private async getAccountPosts(ctx: AppContext, onlyReplies: boolean) {
         const params = validateRequestParams(ctx);
         if (!params) {
             return new Response(null, { status: 400 });
@@ -336,7 +335,7 @@ export class AccountController {
                     currentContextAccount.id,
                     params.limit,
                     params.cursor,
-                    includeReplies,
+                    onlyReplies,
                 );
             if (isError(accountPostsResult)) {
                 const error = getError(accountPostsResult);
@@ -370,7 +369,7 @@ export class AccountController {
                 currentContextAccount,
                 params.limit,
                 params.cursor,
-                includeReplies,
+                onlyReplies,
             );
             if (isError(result)) {
                 const error = getError(result);
