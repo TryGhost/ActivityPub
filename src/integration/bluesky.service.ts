@@ -332,7 +332,7 @@ export class BlueskyService {
         // Bridgy Fed keeps a domain handle through disabling and enabling
         // Bluesky sharing again, while this service stops serving the DID for
         // it. The handle can't be confirmed until the domain is claimed again
-        if (handleInvalid && row.did && this.shouldSetUpDomainHandle(row)) {
+        if (handleInvalid && row.did && this.shouldRecoverDomainHandle(row)) {
             await this.claimDomainHandle(account, row.did, null, row, true);
 
             return this.getCurrentDetails(account);
@@ -616,6 +616,19 @@ export class BlueskyService {
     private shouldSetUpDomainHandle(row: IntegrationRow) {
         return (
             row.domain_handle_status === null && !!row.domain_handle_automatic
+        );
+    }
+
+    /**
+     * Whether to claim the domain for a handle Bluesky doesn't accept, when
+     * enabling Bluesky sharing. A claim that failed is tried again, as nothing
+     * else gets the handle accepted
+     */
+    private shouldRecoverDomainHandle(row: IntegrationRow) {
+        return (
+            !!row.domain_handle_automatic &&
+            (row.domain_handle_status === null ||
+                row.domain_handle_status === 'unavailable')
         );
     }
 

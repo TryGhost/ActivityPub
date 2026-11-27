@@ -1055,6 +1055,40 @@ describe('BlueskyService', () => {
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
         });
 
+        it('should try the domain again when the claim for an invalid handle failed', async () => {
+            await enableNewIntegration();
+
+            vi.mocked(blueskyApiClient.getProfile).mockResolvedValue(
+                ok({ did, handle: 'handle.invalid' }),
+            );
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockReset()
+                .mockResolvedValue(null);
+
+            await blueskyService.confirmHandleForAccount(account);
+
+            vi.mocked(atprotoHandleResolver.resolveHttps)
+                .mockReset()
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(did);
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                handleConfirmed: false,
+                handle: null,
+                domainHandle: {
+                    domain,
+                    status: 'claiming',
+                    reason: null,
+                    automatic: true,
+                },
+            });
+            expect(await getSentDms()).toEqual([`username ${domain}`]);
+            expect(await blueskyService.getDomainHandleDid(account)).toBe(did);
+        });
+
         it('should not claim the domain for an invalid handle unless Bluesky sharing is being enabled', async () => {
             await fixtureManager.enableBlueskyIntegration(account, false);
 

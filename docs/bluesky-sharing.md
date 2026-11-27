@@ -132,7 +132,8 @@ Bridgy Fed keeps a domain handle when Bluesky sharing is disabled and enabled
 again, while this service stops serving the DID for it. If Bluesky no longer
 accepts the handle by then (it reports `handle.invalid`), the handle can't be
 confirmed until the domain resolves again, so the domain is claimed right away
-rather than after confirming the handle
+rather than after confirming the handle. If that claim fails, it is tried again
+each time the handle is confirmed
 
 Requests for `/.well-known/atproto-did` only follow redirects to HTTPS URLs on
 public addresses, as the domain is set by whoever runs the site.
@@ -180,7 +181,7 @@ an earlier claim found
 ### Checking the domain first
 
 Before offering the domain to the publisher, the client can find out which
-domain a claim would use right now, without changing anything, by making an
+domain a claim would use right now, without claiming it, by making an
 empty POST request to:
 
 ```
